@@ -1,0 +1,357 @@
+/* 统一样式文件 - 基于colors.css配色 */
+
+/* --- 全局重置与字体 --- */
+* {
+  box-sizing: border-box;
+}
+
+.page-container {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background-color: var(--bg-page);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* --- Header --- */
+.main-header {
+  height: 60px;
+  background: var(--bg-white);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.logo-section {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.logo-icon svg {
+  background: var(--color-primary);
+  border-radius: 50%;
+  padding: 2px;
+}
+
+.system-name {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-main);
+  margin: 0;
+}
+
+.sub-name {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.dept-badge {
+  background: var(--bg-card-light);
+  color: var(--text-regular);
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+}
+
+.avatar {
+  width: 32px;
+  height: 32px;
+  background: var(--color-primary);
+  color: var(--bg-white);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+}
+
+/* --- Nav Tabs --- */
+.nav-tabs {
+  display: flex;
+  justify-content: center;
+  background: var(--bg-white);
+  padding-top: 15px;
+  gap: 40px;
+  box-shadow: var(--shadow-light);
+}
+
+.nav-item {
+  padding: 10px 30px;
+  font-size: 14px;
+  cursor: pointer;
+  color: var(--text-regular);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: 20px 20px 0 0;
+}
+
+.nav-item.active {
+  background: var(--color-primary-dark);
+  color: var(--bg-white);
+  border-radius: 8px 8px 0 0;
+  padding: 10px 50px;
+}
+
+/* --- Main Layout --- */
+.main-body {
+  flex: 1;
+  display: flex;
+  padding: 20px;
+  gap: 20px;
+  max-width: 1440px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* --- Sidebar --- */
+.sidebar {
+  width: 260px;
+  flex-shrink: 0;
+}
+
+.sidebar-header {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.dept-select {
+  flex: 1;
+  padding: 6px;
+  border: 1px solid var(--border-input);
+  border-radius: 4px;
+  color: var(--text-regular);
+}
+
+.btn-primary-small {
+  background: var(--color-primary);
+  color: var(--bg-white);
+  border: none;
+  border-radius: 4px;
+  padding: 6px 12px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.task-list-title {
+  font-weight: 600;
+  margin-bottom: 10px;
+  color: var(--text-main);
+}
+
+.task-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.task-item {
+  padding: 12px 10px;
+  font-size: 13px;
+  color: var(--text-regular);
+  cursor: pointer;
+  border-radius: 4px;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.task-item:hover {
+  background: var(--bg-page);
+}
+
+.task-item.active {
+  background: var(--color-primary-dark);
+  color: var(--bg-white);
+}
+
+/* --- Content Card --- */
+.content-card {
+  flex: 1;
+  background: var(--bg-white);
+  border-radius: 8px;
+  padding: 20px 30px;
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+}
+
+.task-title {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0 0 15px 0;
+  color: var(--text-main);
+}
+
+.task-meta-row {
+  font-size: 13px;
+  margin-bottom: 6px;
+  color: var(--text-regular);
+}
+
+.meta-label {
+  color: var(--text-secondary);
+}
+
+/* --- Indicator Table Area --- */
+.indicator-toolbar {
+  margin-top: 30px;
+  margin-bottom: 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.section-title {
+  font-weight: 600;
+  font-size: 15px;
+  margin-right: 20px;
+}
+
+.btn-text-icon {
+  background: none;
+  border: none;
+  color: var(--color-primary);
+  font-size: 13px;
+  cursor: pointer;
+  margin-right: 15px;
+}
+
+/* --- Table Styles --- */
+.table-container {
+  flex: 1;
+  overflow: auto;
+}
+
+.indicator-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.indicator-table th {
+  background: var(--bg-light);
+  color: var(--text-secondary);
+  font-weight: 500;
+  text-align: left;
+  padding: 12px 10px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.indicator-table td {
+  padding: 12px 10px;
+  color: var(--text-regular);
+  border-bottom: 1px solid var(--border-color);
+  vertical-align: middle;
+}
+
+/* 颜色类 */
+.text-orange {
+  color: var(--color-orange);
+}
+
+.text-blue {
+  color: var(--color-primary-dark);
+}
+
+.text-remark {
+  color: var(--text-main);
+  max-width: 200px;
+}
+
+/* 标签样式 */
+.tags-wrapper {
+  display: flex;
+  gap: 6px;
+}
+
+.tag {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  transform: scale(0.95);
+}
+
+.tag-purple {
+  background: var(--bg-purple-light);
+  color: var(--color-purple);
+}
+
+.tag-blue {
+  background: var(--bg-blue-light);
+  color: var(--color-blue-light);
+}
+
+/* 操作按钮 */
+.actions span {
+  cursor: pointer;
+  margin-right: 10px;
+  font-size: 12px;
+}
+
+.action-btn.view {
+  color: var(--color-primary);
+}
+
+.action-btn.warn {
+  color: var(--color-warning);
+}
+
+.action-btn.delete {
+  color: var(--color-danger);
+}
+
+/* 编辑行样式 */
+.edit-row {
+  background: var(--bg-light);
+}
+
+.form-input {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--border-input);
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.form-input:focus {
+  border-color: var(--color-primary);
+  outline: none;
+}
+
+.form-input.small {
+  width: 60px;
+}
+
+.select-trigger {
+  border: 1px solid var(--border-input);
+  padding: 6px 8px;
+  border-radius: 4px;
+  background: var(--bg-white);
+  font-size: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+}
+
+.btn-primary-xs {
+  background: var(--color-primary);
+  color: var(--bg-white);
+  border: none;
+  border-radius: 2px;
+  padding: 4px 8px;
+  font-size: 12px;
+}
