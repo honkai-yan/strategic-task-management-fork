@@ -51,6 +51,7 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = null
     token.value = null
     localStorage.removeItem('auth_token')
+    localStorage.removeItem('currentUser')
   }
 
   const fetchUser = async () => {
@@ -115,8 +116,18 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   // Initialize auth state on store creation
-  if (token.value) {
-    fetchUser()
+  // 从 localStorage 恢复用户状态（用于页面刷新后保持登录）
+  const savedUser = localStorage.getItem('currentUser')
+  if (token.value && savedUser) {
+    try {
+      user.value = JSON.parse(savedUser)
+    } catch (e) {
+      console.error('Failed to parse saved user:', e)
+      logout()
+    }
+  } else if (token.value && !savedUser) {
+    // 有 token 但没有用户信息，清除登录状态
+    logout()
   }
 
   return {

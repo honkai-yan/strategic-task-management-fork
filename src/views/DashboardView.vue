@@ -1,17 +1,99 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { Download, TrendCharts, DataAnalysis, Warning, Aim } from '@element-plus/icons-vue'
 import type { DashboardData, DepartmentProgress } from '@/types'
-import { dashboardData as initialData, departmentProgress as initialProgress } from '@/data/mockData'
+import { useStrategicStore } from '@/stores/strategic'
 
-const dashboardData = ref<DashboardData>(initialData)
-const departmentProgress = ref<DepartmentProgress[]>(initialProgress)
+// 接收视角角色（可选）
+defineProps<{
+  viewingRole?: string
+}>()
+
+const strategicStore = useStrategicStore()
+
+// 从 store 计算仪表盘数据
+const dashboardData = computed<DashboardData>(() => {
+  const indicators = strategicStore.indicators
+  const totalIndicators = indicators.length
+  const completedIndicators = indicators.filter(i => i.progress >= 100).length
+  
+  // 计算基础性和发展性指标得分
+  const basicIndicators = indicators.filter(i => i.type2 === '基础性')
+  const developmentIndicators = indicators.filter(i => i.type2 === '发展性')
+  
+  const basicScore = basicIndicators.length > 0 
+    ? Math.round(basicIndicators.reduce((sum, i) => sum + i.progress, 0) / basicIndicators.length)
+    : 0
+  const developmentScore = developmentIndicators.length > 0
+    ? Math.round(developmentIndicators.reduce((sum, i) => sum + i.progress, 0) / developmentIndicators.length * 0.2)
+    : 0
+  
+  // 计算预警数量（进度低于50%的指标）
+  const warningCount = indicators.filter(i => i.progress < 50).length
+  
+  return {
+    totalScore: basicScore + developmentScore,
+    basicScore,
+    developmentScore,
+    completionRate: totalIndicators > 0 ? Math.round((completedIndicators / totalIndicators) * 100) : 0,
+    warningCount,
+    totalIndicators,
+    completedIndicators,
+    alertIndicators: {
+      severe: indicators.filter(i => i.progress < 30).length,
+      moderate: indicators.filter(i => i.progress >= 30 && i.progress < 60).length,
+      normal: indicators.filter(i => i.progress >= 60).length
+    }
+  }
+})
+
+// 从 store 计算部门进度
+const departmentProgress = computed<DepartmentProgress[]>(() => {
+  const indicators = strategicStore.indicators
+  const deptMap = new Map<string, { total: number; progress: number; count: number }>()
+  
+  indicators.forEach(indicator => {
+    const dept = indicator.responsibleDept || '未分配'
+    if (!deptMap.has(dept)) {
+      deptMap.set(dept, { total: 0, progress: 0, count: 0 })
+    }
+    const data = deptMap.get(dept)!
+    data.total += indicator.weight
+    data.progress += indicator.progress
+    data.count += 1
+  })
+  
+  const result: DepartmentProgress[] = []
+  deptMap.forEach((data, dept) => {
+    const avgProgress = data.count > 0 ? Math.round(data.progress / data.count) : 0
+    result.push({
+      dept,
+      progress: avgProgress,
+      score: Math.round(avgProgress * 1.2), // 简单计算得分
+      status: avgProgress >= 80 ? 'success' : avgProgress >= 50 ? 'warning' : 'exception',
+      totalIndicators: data.count,
+      completedIndicators: 0,
+      alertCount: 0
+    })
+  })
+  
+  // 如果没有数据，返回默认部门
+  if (result.length === 0) {
+    return [
+      { dept: '教务处', progress: 75, score: 90, status: 'success', totalIndicators: 0, completedIndicators: 0, alertCount: 0 },
+      { dept: '科研处', progress: 60, score: 72, status: 'warning', totalIndicators: 0, completedIndicators: 0, alertCount: 0 },
+      { dept: '人事处', progress: 45, score: 54, status: 'exception', totalIndicators: 0, completedIndicators: 0, alertCount: 0 }
+    ]
+  }
+  
+  return result
+})
 
 const getProgressStatus = (status: string) => {
   switch (status) {
-    case 'normal': return 'success'
+    case 'success': return 'success'
     case 'warning': return 'warning'
-    case 'danger': return 'exception'
+    case 'exception': return 'exception'
     default: return ''
   }
 }

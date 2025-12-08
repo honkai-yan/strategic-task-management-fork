@@ -36,23 +36,70 @@ import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { Message, MessageType } from '@/types'
 import MessageList from '@/components/MessageList.vue'
+import { useAuthStore } from '@/stores/auth'
+import { useStrategicStore } from '@/stores/strategic'
+
+// 使用共享 Store
+const authStore = useAuthStore()
+const strategicStore = useStrategicStore()
 
 const activeTab = ref('all')
 const messages = ref<Message[]>([])
 
-// Mock data - replace with actual API calls
+// 根据 Store 数据生成预警消息
+const generateAlertMessages = (): Message[] => {
+  const alerts: Message[] = []
+  
+  // 获取逾期里程碑
+  strategicStore.getOverdueMilestones.forEach((item, index) => {
+    alerts.push({
+      id: `alert-overdue-${index}`,
+      type: 'alert',
+      title: '里程碑逾期预警',
+      content: `指标"${item.indicator.name}"的里程碑"${item.milestone.name}"已逾期，请及时处理`,
+      severity: 'severe',
+      recipientId: authStore.user?.id || 'user1',
+      isRead: false,
+      createdAt: new Date(),
+      relatedId: item.indicator.id
+    })
+  })
+  
+  // 获取即将到期的里程碑
+  strategicStore.getUpcomingMilestones.forEach((item, index) => {
+    alerts.push({
+      id: `alert-upcoming-${index}`,
+      type: 'alert',
+      title: '里程碑即将到期',
+      content: `指标"${item.indicator.name}"的里程碑"${item.milestone.name}"即将到期，请注意进度`,
+      severity: 'moderate',
+      recipientId: authStore.user?.id || 'user1',
+      isRead: false,
+      createdAt: new Date(),
+      relatedId: item.indicator.id
+    })
+  })
+  
+  // 获取进度低于50%的指标
+  strategicStore.indicators.filter(i => i.progress < 50).forEach((indicator, index) => {
+    alerts.push({
+      id: `alert-progress-${index}`,
+      type: 'alert',
+      title: '进度预警',
+      content: `指标"${indicator.name}"完成率仅${indicator.progress}%，低于预期`,
+      severity: indicator.progress < 30 ? 'severe' : 'moderate',
+      recipientId: authStore.user?.id || 'user1',
+      isRead: false,
+      createdAt: new Date(),
+      relatedId: indicator.id
+    })
+  })
+  
+  return alerts
+}
+
+// Mock data - 结合 Store 数据
 const mockMessages: Message[] = [
-  {
-    id: '1',
-    type: 'alert',
-    title: '严重预警',
-    content: '指标"学生就业率"完成率低于60%，请及时关注',
-    severity: 'severe',
-    recipientId: 'user1',
-    isRead: false,
-    createdAt: new Date('2024-01-15T10:30:00'),
-    relatedId: 'indicator1'
-  },
   {
     id: '2',
     type: 'approval',
@@ -103,8 +150,9 @@ const clearReadMessages = () => {
 }
 
 onMounted(() => {
-  // Initialize with mock data
-  messages.value = mockMessages
+  // 结合 Store 数据和 mock 数据初始化消息
+  const alertMessages = generateAlertMessages()
+  messages.value = [...alertMessages, ...mockMessages]
 })
 </script>
 

@@ -1,4 +1,5 @@
-import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router'
+import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 
 const routes: RouteRecordRaw[] = [
   {
@@ -66,19 +67,19 @@ const router = createRouter({
 })
 
 // Navigation guards
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, _from, next) => {
   const authStore = useAuthStore()
 
   // Check if route requires authentication
-  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
+  if (to.meta['requiresAuth'] && !authStore.isAuthenticated) {
     next('/login')
     return
   }
 
   // Check if route requires specific roles
-  if (to.meta.roles && Array.isArray(to.meta.roles)) {
+  if (to.meta['roles'] && Array.isArray(to.meta['roles'])) {
     const userRole = authStore.user?.role
-    if (!userRole || !(to.meta.roles as string[]).includes(userRole)) {
+    if (!userRole || !(to.meta['roles'] as string[]).includes(userRole)) {
       next('/dashboard')
       return
     }

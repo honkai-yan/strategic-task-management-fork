@@ -156,8 +156,13 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted, onUnmounted, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, type FormInstance } from 'element-plus'
 import { User, Lock, Aim, Trophy, MapLocation } from '@element-plus/icons-vue'
+import { useAuthStore } from '@/stores/auth'
+
+const router = useRouter()
+const authStore = useAuthStore()
 
 // ================== 1. 核心逻辑 (保持不变) ==================
 const slogans = [
@@ -423,12 +428,37 @@ const handleLogin = async () => {
     if (user) {
       // 登录成功，重置错误计数
       resetErrorCount()
-      localStorage.setItem('currentUser', JSON.stringify({ ...user, loginTime: new Date().toISOString() }))
+      
+      // 更新 auth store
+      const roleMap: Record<string, 'strategic_dept' | 'functional_dept' | 'secondary_college'> = {
+        '战略发展部': 'strategic_dept',
+        '教务处': 'functional_dept',
+        '科研处': 'functional_dept',
+        '人事处': 'functional_dept',
+        '计算机学院': 'secondary_college',
+        '艺术与科技学院': 'secondary_college'
+      }
+      
+      authStore.user = {
+        id: user.username,
+        username: user.username,
+        name: user.username,
+        role: roleMap[user.department] || 'functional_dept',
+        department: user.department,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }
+      authStore.token = 'mock-token-' + Date.now()
+      localStorage.setItem('auth_token', authStore.token)
+      localStorage.setItem('currentUser', JSON.stringify(authStore.user))
+      
       ElMessage({
         message: `登录成功！欢迎 ${user.department}`,
         type: 'success',
         duration: 2000
       })
+      
+      // 触发登录成功事件，App.vue 会根据 authStore.isAuthenticated 自动切换视图
       emit('login-success', user)
     } else {
       // 密码错误，增加错误计数

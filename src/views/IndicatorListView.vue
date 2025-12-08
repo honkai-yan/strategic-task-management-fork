@@ -4,6 +4,8 @@ import { Plus, View, Download, Delete, ArrowDown, Promotion, RefreshLeft } from 
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { ElTable } from 'element-plus'
 import type { StrategicTask, StrategicIndicator } from '@/types'
+import { useStrategicStore } from '@/stores/strategic'
+import { useAuthStore } from '@/stores/auth'
 
 // --- 新增：自定义指令，用于自动聚焦 ---
 const vFocus = {
@@ -19,9 +21,14 @@ const vFocus = {
   }
 }
 
-// 接收父组件传递的选中角色
+// 使用共享 Store
+const strategicStore = useStrategicStore()
+const authStore = useAuthStore()
+
+// 接收父组件传递的视角角色
 const props = defineProps<{
-  selectedRole: string
+  selectedRole?: string
+  viewingRole?: string
 }>()
 
 // 当前选中任务索引
@@ -35,69 +42,29 @@ const selectedDepartment = ref('')
 const tableRef = ref<InstanceType<typeof ElTable>>()
 const selectedIndicators = ref<StrategicIndicator[]>([])
 
-// 任务列表数据
-const taskList = ref<StrategicTask[]>([
-  { id: 1, title: '2025年度教学质量提升战略任务', desc: '通过多维度教学改革提升整体教学质量', createTime: '2025年12月1日', cycle: '2025年度' },
-  { id: 2, title: '科研创新能力建设战略任务', desc: '加强科研团队建设，提升科研产出', createTime: '2025年11月15日', cycle: '2025年度' },
-  { id: 3, title: '就业质量提升战略任务', desc: '提高毕业生就业率和就业质量', createTime: '2025年11月10日', cycle: '2025年度' },
-  { id: 4, title: '师资队伍建设战略任务', desc: '引进高层次人才，优化师资结构', createTime: '2025年10月20日', cycle: '2025年度' },
-  { id: 5, title: '信息化建设战略任务', desc: '推进智慧校园建设，提升信息化水平', createTime: '2025年10月1日', cycle: '2025年度' }
-])
+// 从 Store 获取任务列表
+const taskList = computed(() => strategicStore.tasks.map(t => ({
+  id: Number(t.id),
+  title: t.title,
+  desc: t.desc,
+  createTime: t.createTime,
+  cycle: t.cycle
+})))
 
 // 当前选中的任务
-const currentTask = computed(() => taskList.value[currentTaskIndex.value])
+const currentTask = computed(() => taskList.value[currentTaskIndex.value] || {
+  id: 0,
+  title: '暂无任务',
+  desc: '',
+  createTime: '',
+  cycle: ''
+})
 
-// 指标列表
-const indicators = ref<StrategicIndicator[]>([
-  {
-    id: 101,
-    name: '就业率达90%',
-    isQualitative: true,
-    type1: '定性',
-    type2: '发展性',
-    progress: 33,
-    createTime: '2025年11月21日',
-    weight: 20,
-    remark: '需要各学院配合完成就业数据统计',
-    canWithdraw: true
-  },
-  {
-    id: 102,
-    name: '针对各学院开设专业引进优质校招企业（各专业大类不低于2家）',
-    isQualitative: false,
-    type1: '定量',
-    type2: '基础性',
-    progress: 90,
-    createTime: '2025年11月21日',
-    weight: 66,
-    remark: '已对接多家企业，进展顺利非常',
-    canWithdraw: false
-  },
-  {
-    id: 103,
-    name: '教学质量评估达标率提升至95%',
-    isQualitative: false,
-    type1: '定量',
-    type2: '发展性',
-    progress: 100,
-    createTime: '2025年12月1日',
-    weight: 80,
-    remark: '已完成阶段性目标',
-    canWithdraw: false
-  },
-  {
-    id: 104,
-    name: '科研项目申报数量增长20%',
-    isQualitative: false,
-    type1: '定量',
-    type2: '发展性',
-    progress: 75,
-    createTime: '2025年12月1日',
-    weight: 80,
-    remark: '正在积极推进中',
-    canWithdraw: false
-  }
-])
+// 从 Store 获取指标列表
+const indicators = computed(() => strategicStore.indicators.map(i => ({
+  ...i,
+  id: Number(i.id)
+})))
 
 // 新增行数据
 const newRow = ref({
@@ -121,7 +88,7 @@ const editingIndicatorField = ref<string | null>(null)
 const editingIndicatorValue = ref<any>(null)
 
 // 判断是否可以编辑（只有战略发展部可以编辑）
-const canEdit = computed(() => props.selectedRole === '战略发展部')
+const canEdit = computed(() => authStore.userRole === 'strategic_dept' || props.selectedRole === 'strategic_dept')
 
 // 任务详情双击编辑处理
 const handleDoubleClick = (field: 'title' | 'desc' | 'cycle' | 'createTime', value: string) => {
@@ -204,8 +171,9 @@ const cancelAdd = () => {
 const saveNewRow = () => {
   if (!newRow.value.name) return
 
-  indicators.value.push({
-    id: Date.now(),
+  // 使用 Store 添加指标
+  strategicStore.addIndicator({
+    id: Date.now().toString(),
     name: newRow.value.name,
     isQualitative: newRow.value.type1 === '定性',
     type1: newRow.value.type1,
@@ -214,7 +182,14 @@ const saveNewRow = () => {
     createTime: currentDate,
     weight: Number(newRow.value.weight) || 0,
     remark: newRow.value.remark || '无备注',
-    canWithdraw: true
+    canWithdraw: true,
+    milestones: [],
+    targetValue: 100,
+    unit: '%',
+    responsibleDept: authStore.userDepartment || '未分配',
+    responsiblePerson: authStore.userName || '未分配',
+    status: 'active',
+    isStrategic: true
   })
   cancelAdd()
 }
@@ -257,10 +232,7 @@ const handleBatchOperation = (command: string) => {
 // 批量下发
 const batchDistribute = () => {
   selectedIndicators.value.forEach(indicator => {
-    const target = indicators.value.find(i => i.id === indicator.id)
-    if (target && target.canWithdraw) {
-      target.canWithdraw = false
-    }
+    strategicStore.updateIndicator(indicator.id.toString(), { canWithdraw: false })
   })
   ElMessage.success(`已成功下发 ${selectedIndicators.value.length} 个指标`)
   tableRef.value?.clearSelection()
@@ -269,10 +241,7 @@ const batchDistribute = () => {
 // 批量撤回
 const batchWithdraw = () => {
   selectedIndicators.value.forEach(indicator => {
-    const target = indicators.value.find(i => i.id === indicator.id)
-    if (target && !target.canWithdraw) {
-      target.canWithdraw = true
-    }
+    strategicStore.updateIndicator(indicator.id.toString(), { canWithdraw: true })
   })
   ElMessage.success(`已成功撤回 ${selectedIndicators.value.length} 个指标`)
   tableRef.value?.clearSelection()
@@ -289,9 +258,10 @@ const batchDelete = () => {
       type: 'warning'
     }
   ).then(() => {
-    const idsToDelete = selectedIndicators.value.map(i => i.id)
-    indicators.value = indicators.value.filter(i => !idsToDelete.includes(i.id))
-    ElMessage.success(`已成功删除 ${idsToDelete.length} 个指标`)
+    selectedIndicators.value.forEach(indicator => {
+      strategicStore.deleteIndicator(indicator.id.toString())
+    })
+    ElMessage.success(`已成功删除 ${selectedIndicators.value.length} 个指标`)
     tableRef.value?.clearSelection()
   }).catch(() => {
     // 取消删除

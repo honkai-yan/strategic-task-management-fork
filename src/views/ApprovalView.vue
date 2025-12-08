@@ -5,6 +5,17 @@ import {
   User, Clock, Document, Check, Close, 
   RefreshLeft, Delete, Search, ArrowRight 
 } from '@element-plus/icons-vue'
+import { useAuthStore } from '@/stores/auth'
+import { useStrategicStore } from '@/stores/strategic'
+
+// 接收视角角色（可选）
+defineProps<{
+  viewingRole?: string
+}>()
+
+// 使用共享 Store
+const authStore = useAuthStore()
+const strategicStore = useStrategicStore()
 
 // ================== 1. 类型定义 (严谨性基础) ==================
 
@@ -32,7 +43,7 @@ interface ApprovalItem {
 
 // ================== 2. 模拟数据 ==================
 
-const currentUser = '战略考核办-张总'
+const currentUser = computed(() => `${authStore.userDepartment}-${authStore.userName}` || '未登录用户')
 
 // 待审批数据源
 const pendingList = ref<ApprovalItem[]>([

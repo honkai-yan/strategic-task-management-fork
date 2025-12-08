@@ -5,6 +5,17 @@ import {
   RefreshLeft, CircleCheck, Warning, Edit, 
   Timer, Document, Calendar, ArrowLeft, FolderOpened
 } from '@element-plus/icons-vue'
+import { useAuthStore } from '@/stores/auth'
+import { useStrategicStore } from '@/stores/strategic'
+
+// 接收视角角色（可选）
+defineProps<{
+  viewingRole?: string
+}>()
+
+// 使用共享 Store
+const authStore = useAuthStore()
+const strategicStore = useStrategicStore()
 
 // ================== 1. 类型定义 ==================
 const SHARED_DB_KEY = 'STRATEGIC_ASSESSMENT_DB_V2_MULTI_MONTH'
@@ -44,7 +55,7 @@ interface MonthModule {
 }
 
 // ================== 2. 初始数据 ==================
-const currentUser = '教务处-李老师'
+const currentUser = computed(() => `${authStore.userDepartment}-${authStore.userName}` || '未登录用户')
 const currentView = ref<'list' | 'detail'>('list')
 const activeMonthId = ref<string | null>(null)
 

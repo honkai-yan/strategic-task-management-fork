@@ -21,10 +21,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import BasicInfo from '@/components/profile/BasicInfo.vue'
 import ChangePassword from '@/components/profile/ChangePassword.vue'
 import NotificationSettings from '@/components/profile/NotificationSettings.vue'
+import { useAuthStore } from '@/stores/auth'
+
+// 使用共享 Store
+const authStore = useAuthStore()
+
+// 当前用户信息
+const currentUser = computed(() => authStore.user)
 
 const activeTab = ref('basic')
 </script>
