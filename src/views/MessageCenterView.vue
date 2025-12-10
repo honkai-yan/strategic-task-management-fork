@@ -13,17 +13,41 @@
     </div>
 
     <div class="message-content">
-      <el-tabs v-model="activeTab">
-        <el-tab-pane label="全部消息" name="all">
+      <el-tabs v-model="activeTab" class="message-tabs">
+        <el-tab-pane name="all">
+          <template #label>
+            <span class="tab-label">
+              全部消息
+              <el-badge v-if="unreadCount.all > 0" :value="unreadCount.all" :max="99" class="tab-badge" />
+            </span>
+          </template>
           <MessageList :messages="allMessages" @read="handleMessageRead" />
         </el-tab-pane>
-        <el-tab-pane label="预警通知" name="alerts">
+        <el-tab-pane name="alerts">
+          <template #label>
+            <span class="tab-label">
+              预警通知
+              <el-badge v-if="unreadCount.alerts > 0" :value="unreadCount.alerts" :max="99" class="tab-badge" type="danger" />
+            </span>
+          </template>
           <MessageList :messages="alertMessages" @read="handleMessageRead" />
         </el-tab-pane>
-        <el-tab-pane label="审批通知" name="approvals">
+        <el-tab-pane name="approvals">
+          <template #label>
+            <span class="tab-label">
+              审批通知
+              <el-badge v-if="unreadCount.approvals > 0" :value="unreadCount.approvals" :max="99" class="tab-badge" type="warning" />
+            </span>
+          </template>
           <MessageList :messages="approvalMessages" @read="handleMessageRead" />
         </el-tab-pane>
-        <el-tab-pane label="系统通知" name="system">
+        <el-tab-pane name="system">
+          <template #label>
+            <span class="tab-label">
+              系统通知
+              <el-badge v-if="unreadCount.system > 0" :value="unreadCount.system" :max="99" class="tab-badge" type="info" />
+            </span>
+          </template>
           <MessageList :messages="systemMessages" @read="handleMessageRead" />
         </el-tab-pane>
       </el-tabs>
@@ -126,6 +150,14 @@ const alertMessages = computed(() => messages.value.filter(msg => msg.type === '
 const approvalMessages = computed(() => messages.value.filter(msg => msg.type === 'approval'))
 const systemMessages = computed(() => messages.value.filter(msg => msg.type === 'system'))
 
+// 未读消息计数
+const unreadCount = computed(() => ({
+  all: messages.value.filter(msg => !msg.isRead).length,
+  alerts: alertMessages.value.filter(msg => !msg.isRead).length,
+  approvals: approvalMessages.value.filter(msg => !msg.isRead).length,
+  system: systemMessages.value.filter(msg => !msg.isRead).length
+}))
+
 const handleMessageRead = (messageId: string) => {
   const message = messages.value.find(msg => msg.id === messageId)
   if (message) {
@@ -158,9 +190,9 @@ onMounted(() => {
 
 <style scoped>
 .message-center {
-  padding: 24px;
+  padding: var(--spacing-2xl, 24px);
   background: var(--bg-white);
-  border-radius: 12px;
+  border-radius: var(--radius-lg, 12px);
   min-height: calc(100vh - 200px);
 }
 
@@ -168,8 +200,8 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 24px;
-  padding-bottom: 16px;
+  margin-bottom: var(--spacing-2xl, 24px);
+  padding-bottom: var(--spacing-lg, 16px);
   border-bottom: 1px solid var(--border-color);
 }
 
@@ -182,10 +214,39 @@ onMounted(() => {
 
 .header-actions {
   display: flex;
-  gap: 12px;
+  gap: var(--spacing-md, 12px);
 }
 
 .message-content {
   min-height: 400px;
+}
+
+/* Tab 标签样式 */
+.tab-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-sm, 8px);
+}
+
+.tab-badge {
+  margin-left: var(--spacing-xs, 4px);
+}
+
+.tab-badge :deep(.el-badge__content) {
+  font-size: 10px;
+  height: 16px;
+  line-height: 16px;
+  padding: 0 5px;
+}
+
+/* Tab 样式定制 */
+.message-tabs :deep(.el-tabs__item) {
+  font-size: 15px;
+  transition: all var(--transition-fast, 0.15s);
+}
+
+.message-tabs :deep(.el-tabs__active-bar) {
+  height: 3px;
+  border-radius: 2px;
 }
 </style>

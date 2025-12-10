@@ -9,6 +9,12 @@ export type AlertLevel = 'severe' | 'moderate' | 'normal'
 
 export type MessageType = 'alert' | 'approval' | 'system'
 
+export type DrillDownLevel = 'organization' | 'department' | 'indicator'
+
+export type AuditAction = 'create' | 'update' | 'delete' | 'approve' | 'reject' | 'withdraw' | 'submit'
+
+export type EntityType = 'task' | 'indicator' | 'approval'
+
 // User and Permission Types
 export interface User {
   id: string
@@ -323,4 +329,88 @@ export interface ValidationError {
   field: string
   message: string
   value?: any
+}
+
+// 面包屑导航
+export interface BreadcrumbItem {
+  level: DrillDownLevel
+  label: string
+  value?: string
+}
+
+// 筛选状态
+export interface FilterState {
+  department?: string
+  indicatorType?: '定性' | '定量'
+  alertLevel?: AlertLevel
+  dateRange?: [Date, Date]
+}
+
+// 审计日志
+export interface AuditLogItem {
+  id: string
+  entityType: EntityType
+  entityId: string
+  entityName: string
+  action: AuditAction
+  operator: string
+  operatorName: string
+  operateTime: Date
+  ipAddress?: string
+  dataBefore?: Record<string, any>
+  dataAfter?: Record<string, any>
+  changes?: FieldChange[]
+}
+
+export interface FieldChange {
+  field: string
+  fieldLabel: string
+  oldValue: any
+  newValue: any
+}
+
+export interface AuditLogFilters {
+  operator?: string
+  entityType?: EntityType
+  action?: AuditAction
+  dateRange?: [Date, Date]
+}
+
+// 审批流程节点
+export interface WorkflowNode {
+  id: string
+  name: string
+  status: 'completed' | 'current' | 'pending' | 'rejected'
+  operator?: string
+  operatorName?: string
+  operateTime?: Date
+  comment?: string
+}
+
+// 审批历史项
+export interface ApprovalHistoryItem {
+  id: string
+  action: 'submit' | 'approve' | 'reject' | 'withdraw'
+  operator: string
+  operatorName: string
+  operateTime: Date
+  comment?: string
+  dataBefore?: Record<string, any>
+  dataAfter?: Record<string, any>
+}
+
+// 热力图数据
+export interface HeatmapData {
+  taskId: string
+  taskName: string
+  progress: number
+  status: 'success' | 'warning' | 'danger'
+}
+
+// 预警汇总
+export interface AlertSummary {
+  severe: number
+  moderate: number
+  normal: number
+  total: number
 }

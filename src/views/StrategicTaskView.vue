@@ -881,22 +881,25 @@ const batchDelete = () => {
   width: 280px;
   flex-shrink: 0;
   background: var(--bg-white);
-  border-radius: 12px;
-  padding: 16px;
+  border-radius: var(--radius-lg, 12px);
+  padding: var(--spacing-lg, 16px);
   border: 2px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 200px);
 }
 
 .sidebar-header {
   display: flex;
   gap: 10px;
-  margin-bottom: 20px;
+  margin-bottom: var(--spacing-xl, 20px);
 }
 
 .task-list-title {
   font-weight: 600;
   font-size: 14px;
   color: var(--text-main);
-  margin-bottom: 12px;
+  margin-bottom: var(--spacing-md, 12px);
   padding-left: 4px;
 }
 
@@ -904,23 +907,45 @@ const batchDelete = () => {
   list-style: none;
   padding: 0;
   margin: 0;
+  overflow-y: auto;
+  flex: 1;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-light) transparent;
+}
+
+.task-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.task-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.task-list::-webkit-scrollbar-thumb {
+  background: var(--border-light);
+  border-radius: 3px;
+}
+
+.task-list::-webkit-scrollbar-thumb:hover {
+  background: var(--border-color);
 }
 
 .task-item {
-  padding: 12px 10px;
+  padding: var(--spacing-md, 12px) 10px;
   font-size: 13px;
   color: var(--text-regular);
   cursor: pointer;
-  border-radius: 8px;
-  margin-bottom: 4px;
+  border-radius: var(--radius-md, 8px);
+  margin-bottom: var(--spacing-xs, 4px);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  transition: all 0.3s;
+  transition: all var(--transition-normal, 0.25s);
 }
 
 .task-item:hover {
   background: var(--bg-page);
+  transform: translateX(4px);
 }
 
 .task-item.active {
@@ -933,12 +958,21 @@ const batchDelete = () => {
 .task-detail {
   flex: 1;
   background: var(--bg-white);
-  border-radius: 12px;
-  padding: 24px;
+  border-radius: var(--radius-lg, 12px);
+  padding: var(--spacing-2xl, 24px);
   border: 2px solid var(--border-color);
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+/* 表格行 hover 效果 */
+:deep(.el-table__body tr) {
+  transition: background var(--transition-fast, 0.15s);
+}
+
+:deep(.el-table__body tr:hover > td.el-table__cell) {
+  background: rgba(64, 158, 255, 0.06) !important;
 }
 
 .detail-header {
@@ -954,8 +988,8 @@ const batchDelete = () => {
 
 .task-meta {
   background: var(--bg-page);
-  padding: 16px;
-  border-radius: 8px;
+  padding: var(--spacing-lg, 16px);
+  border-radius: var(--radius-md, 8px);
 }
 
 .meta-row {
@@ -976,17 +1010,19 @@ const batchDelete = () => {
   color: var(--text-main);
 }
 
-/* 可编辑字段样式 */
+/* 可编辑字段样式 - 增强双击编辑提示 */
 .editable {
-  cursor: pointer;
-  transition: all 0.2s;
+  cursor: text;
+  transition: all var(--transition-fast, 0.15s);
   padding: 4px 8px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm, 4px);
   display: inline-block;
+  border: 1px dashed transparent;
 }
 
 .editable:hover {
   background: var(--bg-page);
+  border-color: var(--color-primary);
   box-shadow: 0 0 0 1px var(--color-primary);
 }
 
@@ -995,15 +1031,44 @@ const batchDelete = () => {
 }
 
 .editable-cell {
-  cursor: pointer;
-  border-radius: 4px;
+  cursor: text;
+  border-radius: var(--radius-sm, 4px);
   padding: 2px 4px;
-  transition: background-color 0.2s;
+  transition: all var(--transition-fast, 0.15s);
+  border: 1px dashed transparent;
+  min-height: 24px;
+  position: relative;
 }
 
 .editable-cell:hover {
   background: var(--bg-page);
-  box-shadow: 0 0 0 1px var(--border-color);
+  border-color: var(--border-light);
+  box-shadow: inset 0 0 0 1px var(--border-color);
+}
+
+/* 双击编辑提示 tooltip */
+.editable-cell::after,
+.editable::after {
+  content: '双击编辑';
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--text-main);
+  color: var(--bg-white);
+  padding: 4px 8px;
+  border-radius: var(--radius-sm, 4px);
+  font-size: 11px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--transition-fast, 0.15s);
+  z-index: 10;
+}
+
+.editable-cell:hover::after,
+.editable:hover::after {
+  opacity: 0.9;
 }
 
 /* 指标工具栏 */

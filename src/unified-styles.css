@@ -355,3 +355,275 @@
   padding: 4px 8px;
   font-size: 12px;
 }
+
+
+/* ========================================
+   视觉优化增强样式
+   注意：圆角、阴影、过渡变量已在 colors.css 中统一定义
+   ======================================== */
+
+/* --- 补充阴影变量 --- */
+:root {
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* --- 数据卡片统一悬停效果 --- */
+.stat-card,
+.chart-card,
+.data-card {
+  transition: transform var(--transition-normal), box-shadow var(--transition-normal);
+}
+
+.stat-card:hover,
+.chart-card:hover,
+.data-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-hover);
+}
+
+/* --- 表格样式优化（斑马纹、悬停高亮） --- */
+.el-table {
+  --el-table-border-color: var(--border-light);
+  --el-table-header-bg-color: var(--bg-light);
+}
+
+.el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell {
+  background: var(--bg-page);
+}
+
+.el-table__body tr:hover > td.el-table__cell {
+  background: rgba(64, 158, 255, 0.08) !important;
+}
+
+.el-table th.el-table__cell {
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+/* --- 页面加载淡入动画 --- */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.page-fade-enter {
+  animation: fadeIn var(--transition-slow) ease-out;
+}
+
+/* --- 数据卡片入场动画 --- */
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.card-animate {
+  animation: slideUp 0.4s ease-out;
+}
+
+.card-animate:nth-child(1) { animation-delay: 0s; }
+.card-animate:nth-child(2) { animation-delay: 0.1s; }
+.card-animate:nth-child(3) { animation-delay: 0.2s; }
+.card-animate:nth-child(4) { animation-delay: 0.3s; }
+
+/* --- 操作反馈过渡效果 --- */
+.el-button {
+  transition: all var(--transition-fast);
+}
+
+.el-button:active {
+  transform: scale(0.96);
+}
+
+/* --- 消息提示样式统一 --- */
+.el-message {
+  border-radius: var(--radius-md) !important;
+  box-shadow: var(--shadow-md) !important;
+}
+
+.el-message--success {
+  background: linear-gradient(135deg, #f0f9eb 0%, #e1f3d8 100%) !important;
+  border-color: var(--color-success) !important;
+}
+
+.el-message--error {
+  background: linear-gradient(135deg, #fef0f0 0%, #fde2e2 100%) !important;
+  border-color: var(--color-danger) !important;
+}
+
+.el-message--warning {
+  background: linear-gradient(135deg, #fdf6ec 0%, #faecd8 100%) !important;
+  border-color: var(--color-warning) !important;
+}
+
+/* --- 确认对话框美化 --- */
+.el-message-box {
+  border-radius: var(--radius-lg) !important;
+  box-shadow: var(--shadow-lg) !important;
+}
+
+.el-message-box__header {
+  padding: 20px 20px 10px !important;
+}
+
+.el-message-box__title {
+  font-weight: 600 !important;
+}
+
+.el-message-box__content {
+  padding: 10px 20px 20px !important;
+}
+
+.el-message-box__btns {
+  padding: 10px 20px 20px !important;
+}
+
+/* --- 进度条美化 --- */
+.el-progress-bar__outer {
+  border-radius: 100px !important;
+  background: var(--bg-light) !important;
+}
+
+.el-progress-bar__inner {
+  border-radius: 100px !important;
+  transition: width var(--transition-slow) !important;
+}
+
+/* 进度条 exception 状态使用柔和红色 */
+.el-progress--exception .el-progress-bar__inner {
+  background-color: var(--color-danger-soft, #fab6b6) !important;
+}
+
+.el-progress--exception .el-progress__text {
+  color: var(--color-danger) !important;
+}
+
+/* --- 标签页美化 --- */
+.el-tabs__item {
+  transition: all var(--transition-fast);
+}
+
+.el-tabs__item:hover {
+  color: var(--color-primary);
+}
+
+.el-tabs__active-bar {
+  transition: transform var(--transition-normal);
+}
+
+/* --- 输入框聚焦效果 --- */
+.el-input__wrapper:focus-within {
+  box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.2) !important;
+}
+
+.el-select .el-input__wrapper:focus-within {
+  box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.2) !important;
+}
+
+/* --- 下拉菜单美化 --- */
+.el-select-dropdown {
+  border-radius: var(--radius-md) !important;
+  box-shadow: var(--shadow-md) !important;
+}
+
+.el-select-dropdown__item:hover {
+  background: rgba(64, 158, 255, 0.08) !important;
+}
+
+/* --- 工具提示美化 --- */
+.el-tooltip__popper {
+  border-radius: var(--radius-sm) !important;
+  box-shadow: var(--shadow-sm) !important;
+}
+
+/* --- 骨架屏加载效果 --- */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton-loading {
+  background: linear-gradient(90deg, var(--bg-light) 25%, var(--bg-page) 50%, var(--bg-light) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: var(--radius-sm);
+}
+
+/* --- 空状态美化 --- */
+.el-empty {
+  padding: 40px 0;
+}
+
+.el-empty__description {
+  color: var(--text-secondary);
+}
+
+/* --- 分页器美化 --- */
+.el-pagination {
+  --el-pagination-button-bg-color: var(--bg-white);
+  --el-pagination-hover-color: var(--color-primary);
+}
+
+.el-pagination .el-pager li {
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
+}
+
+.el-pagination .el-pager li:hover {
+  background: rgba(64, 158, 255, 0.1);
+}
+
+/* --- 徽章动画 --- */
+.el-badge__content {
+  animation: badgePulse 2s ease-in-out infinite;
+}
+
+@keyframes badgePulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+/* --- 加载状态 --- */
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  border-radius: inherit;
+}
+
+/* --- 成功/失败状态图标动画 --- */
+@keyframes checkmark {
+  0% {
+    stroke-dashoffset: 100;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+.success-icon {
+  animation: checkmark 0.5s ease-out forwards;
+}

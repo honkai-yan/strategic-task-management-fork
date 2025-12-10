@@ -8,6 +8,7 @@
   --text-main: #303133;      /* 一级标题/强调色 */
   --text-regular: #606266;   /* 正文/表格内容 */
   --text-secondary: #909399; /* 辅助/占位符 */
+  --text-placeholder: #c0c4cc; /* 占位符颜色 */
 
   /* --- 背景与边框 --- */
   --bg-page: #f5f7fa;        /* 页面大背景（浅灰） */
@@ -20,6 +21,7 @@
 
   /* --- 状态色 --- */
   --color-danger: #f56c6c;    /* 危险色 */
+  --color-danger-soft: #fab6b6; /* 柔和危险色（进度条exception） */
   --color-warning: #e6a23c;   /* 警告色 */
   --color-success: #67c23a;   /* 成功色 */
   --color-orange: #ff6600;    /* 橙色（特殊强调） */
@@ -30,7 +32,60 @@
   --bg-purple-light: #f3e8ff; /* 紫色背景（标签） */
   --bg-blue-light: #dbeafe;   /* 浅蓝背景（标签） */
 
+  /* --- 统一圆角规范 --- */
+  --radius-sm: 4px;           /* 小圆角：按钮、输入框 */
+  --radius-md: 8px;           /* 中圆角：小卡片、下拉框 */
+  --radius-lg: 12px;          /* 大圆角：普通卡片 */
+  --radius-xl: 16px;          /* 特大圆角：主卡片、弹窗 */
+
+  /* --- 统一间距规范 --- */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 12px;
+  --spacing-lg: 16px;
+  --spacing-xl: 20px;
+  --spacing-2xl: 24px;
+
   /* --- 阴影效果 --- */
   --shadow-light: 0 2px 4px rgba(0,0,0,0.02);
   --shadow-card: 0 2px 12px 0 rgba(0,0,0,0.05);
+  --shadow-hover: 0 8px 20px rgba(64, 158, 255, 0.15);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+
+  /* --- 过渡动画 --- */
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.25s ease;
+  --transition-slow: 0.35s ease;
+}
+
+/* === 深色模式支持 === */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-primary-dark: #5a9cf8;
+    --color-primary: #79bbff;
+    --color-primary-light: #1d3a5c;
+
+    --text-main: #e5eaf3;
+    --text-regular: #cfd3dc;
+    --text-secondary: #a3a6ad;
+    --text-placeholder: #8d9095;
+
+    --bg-page: #141414;
+    --bg-white: #1d1e1f;
+    --bg-light: #262727;
+    --bg-card-light: #2c2c2c;
+    --border-color: #414243;
+    --border-light: #363637;
+    --border-input: #4c4d4f;
+
+    --color-danger: #f89898;
+    --color-danger-soft: #8b4d4d;
+    --color-warning: #f0c78a;
+    --color-success: #95d475;
+
+    --shadow-light: 0 2px 4px rgba(0,0,0,0.3);
+    --shadow-card: 0 2px 12px 0 rgba(0,0,0,0.4);
+    --shadow-hover: 0 8px 20px rgba(64, 158, 255, 0.25);
+    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+  }
 }

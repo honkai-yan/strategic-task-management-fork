@@ -3,10 +3,14 @@ import { ref, computed, reactive } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { 
   User, Clock, Document, Check, Close, 
-  RefreshLeft, Delete, Search, ArrowRight 
+  RefreshLeft, Delete, Search, ArrowRight,
+  Select, CloseBold
 } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 import { useStrategicStore } from '@/stores/strategic'
+import { useAuditLogStore } from '@/stores/auditLog'
+import ApprovalWorkflow from '@/components/approval/ApprovalWorkflow.vue'
+import type { WorkflowNode } from '@/types'
 
 // 接收视角角色（可选）
 defineProps<{
@@ -16,6 +20,7 @@ defineProps<{
 // 使用共享 Store
 const authStore = useAuthStore()
 const strategicStore = useStrategicStore()
+const auditLogStore = useAuditLogStore()
 
 // ================== 1. 类型定义 (严谨性基础) ==================
 
@@ -109,6 +114,99 @@ const currentRejectItem = ref<ApprovalItem | null>(null)
 // --- 详情抽屉 ---
 const detailDrawerVisible = ref(false)
 const currentDetail = ref<ApprovalItem | null>(null)
+
+// --- 批量操作 ---
+const selectedItems = ref<number[]>([])
+const selectAll = ref(false)
+
+// 批量选择逻辑
+const toggleSelectAll = () => {
+  if (selectAll.value) {
+    selectedItems.value = pendingList.value.map(item => item.id)
+  } else {
+    selectedItems.value = []
+  }
+}
+
+const toggleSelectItem = (id: number) => {
+  const index = selectedItems.value.indexOf(id)
+  if (index > -1) {
+    selectedItems.value.splice(index, 1)
+  } else {
+    selectedItems.value.push(id)
+  }
+  selectAll.value = selectedItems.value.length === pendingList.value.length
+}
+
+const isSelected = (id: number) => selectedItems.value.includes(id)
+
+// 批量操作按钮启用状态
+const canBatchOperate = computed(() => selectedItems.value.length > 0)
+
+// 批量通过
+const handleBatchApprove = () => {
+  if (selectedItems.value.length === 0) return
+  
+  ElMessageBox.confirm(
+    `确认批量通过 ${selectedItems.value.length} 个审批项？`,
+    '批量审批确认',
+    { confirmButtonText: '确认通过', cancelButtonText: '取消', type: 'success' }
+  ).then(() => {
+    const itemsToApprove = pendingList.value.filter(item => selectedItems.value.includes(item.id))
+    itemsToApprove.forEach(item => {
+      moveItemToHistory(item, 'approved', '批量审批通过')
+    })
+    selectedItems.value = []
+    selectAll.value = false
+    ElMessage.success(`已批量通过 ${itemsToApprove.length} 个审批项`)
+  })
+}
+
+// 批量驳回
+const batchRejectDialogVisible = ref(false)
+const batchRejectReason = ref('')
+
+const openBatchRejectDialog = () => {
+  if (selectedItems.value.length === 0) return
+  batchRejectReason.value = ''
+  batchRejectDialogVisible.value = true
+}
+
+const confirmBatchReject = () => {
+  if (!batchRejectReason.value.trim()) {
+    ElMessage.warning('请输入驳回原因')
+    return
+  }
+  
+  const itemsToReject = pendingList.value.filter(item => selectedItems.value.includes(item.id))
+  itemsToReject.forEach(item => {
+    moveItemToHistory(item, 'rejected', batchRejectReason.value)
+  })
+  
+  selectedItems.value = []
+  selectAll.value = false
+  batchRejectDialogVisible.value = false
+  ElMessage.warning(`已批量驳回 ${itemsToReject.length} 个审批项`)
+}
+
+// 生成审批流程节点
+const getWorkflowNodes = (item: ApprovalItem): WorkflowNode[] => {
+  const nodes: WorkflowNode[] = [
+    { id: '1', name: '提交申请', status: 'completed', operatorName: item.submitter, operateTime: new Date(item.time) }
+  ]
+  
+  if (item.status === 'pending') {
+    nodes.push({ id: '2', name: '审批中', status: 'current' })
+    nodes.push({ id: '3', name: '完成', status: 'pending' })
+  } else if (item.status === 'approved') {
+    nodes.push({ id: '2', name: '审批通过', status: 'completed', operatorName: currentUser.value })
+    nodes.push({ id: '3', name: '完成', status: 'completed' })
+  } else if (item.status === 'rejected') {
+    nodes.push({ id: '2', name: '审批驳回', status: 'rejected', operatorName: currentUser.value })
+  }
+  
+  return nodes
+}
 
 // 1. 审批通过
 const handleApprove = (item: ApprovalItem) => {
@@ -245,13 +343,49 @@ const getStatusLabel = (status: string) => {
         <div class="header-desc">请严格依据《年度战略考核标准》进行核定</div>
       </div>
 
+      <!-- 批量操作工具栏 -->
+      <div v-if="pendingList.length > 0" class="batch-toolbar">
+        <el-checkbox v-model="selectAll" @change="toggleSelectAll">
+          全选 ({{ selectedItems.length }}/{{ pendingList.length }})
+        </el-checkbox>
+        <div class="batch-actions">
+          <el-button 
+            type="success" 
+            :icon="Check" 
+            :disabled="!canBatchOperate"
+            @click="handleBatchApprove"
+          >
+            批量通过
+          </el-button>
+          <el-button 
+            type="danger" 
+            :icon="Close" 
+            :disabled="!canBatchOperate"
+            @click="openBatchRejectDialog"
+          >
+            批量驳回
+          </el-button>
+        </div>
+      </div>
+
       <div v-if="pendingList.length === 0" class="empty-state-mini">
         <el-icon><Check /></el-icon>
         <span>当前无待处理事项，您已完成所有审批。</span>
       </div>
 
       <div class="approval-list">
-        <div v-for="item in pendingList" :key="item.id" class="approval-item">
+        <div 
+          v-for="item in pendingList" 
+          :key="item.id" 
+          class="approval-item"
+          :class="{ 'is-selected': isSelected(item.id) }"
+        >
+          <div class="item-checkbox">
+            <el-checkbox 
+              :model-value="isSelected(item.id)" 
+              @change="toggleSelectItem(item.id)"
+            />
+          </div>
           <div class="item-left">
             <div class="item-main-info">
               <h4 class="item-title">{{ item.title }}</h4>
@@ -361,6 +495,32 @@ const getStatusLabel = (status: string) => {
       </template>
     </el-dialog>
 
+    <!-- 弹窗：批量驳回原因 -->
+    <el-dialog v-model="batchRejectDialogVisible" title="批量驳回" width="450px">
+      <div class="dialog-content">
+        <el-alert 
+          :title="`将驳回 ${selectedItems.length} 个审批项`" 
+          type="warning" 
+          :closable="false"
+          show-icon
+          style="margin-bottom: 16px;"
+        />
+        <p style="margin-bottom: 10px; color: #606266;">请填写统一的驳回原因：</p>
+        <el-input
+          v-model="batchRejectReason"
+          type="textarea"
+          rows="3"
+          placeholder="请输入驳回原因..."
+        />
+      </div>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="batchRejectDialogVisible = false">取消</el-button>
+          <el-button type="danger" @click="confirmBatchReject">确认批量驳回</el-button>
+        </span>
+      </template>
+    </el-dialog>
+
     <!-- 抽屉：查看详情 & 审计追踪 -->
     <el-drawer v-model="detailDrawerVisible" title="考核指标详情追溯" size="40%">
       <div v-if="currentDetail" class="detail-container">
@@ -378,6 +538,15 @@ const getStatusLabel = (status: string) => {
           <el-descriptions-item label="申报分值">{{ currentDetail.score }} 分</el-descriptions-item>
           <el-descriptions-item label="提交时间">{{ currentDetail.time }}</el-descriptions-item>
         </el-descriptions>
+
+        <div class="divider"></div>
+
+        <!-- 审批流程可视化 -->
+        <h4>审批流程</h4>
+        <ApprovalWorkflow 
+          :nodes="getWorkflowNodes(currentDetail)" 
+          :rejection-reason="currentDetail.status === 'rejected' ? currentDetail.auditLogs.find(l => l.action === '审批驳回')?.comment : undefined"
+        />
 
         <div class="divider"></div>
 
@@ -428,10 +597,10 @@ const getStatusLabel = (status: string) => {
 /* 卡片容器 */
 .approval-card {
   background: var(--bg-white);
-  border-radius: 12px;
-  padding: 24px;
-  border: 1px solid var(--border-color); /* 稍微减淡边框 */
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.05);
+  border-radius: var(--radius-lg, 12px);
+  padding: var(--spacing-2xl, 24px);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-card);
 }
 
 .pending-section { border-top: 4px solid #E6A23C; /* 待办用橙色顶部条强调 */ }
@@ -469,17 +638,17 @@ const getStatusLabel = (status: string) => {
 .header-desc { font-size: 13px; color: var(--text-secondary); }
 
 /* 待审批列表项 */
-.approval-list { display: flex; flex-direction: column; gap: 16px; }
+.approval-list { display: flex; flex-direction: column; gap: 12px; }
 
 .approval-item {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 20px;
+  padding: 16px;
   background: #fcfcfc;
   border: 1px solid var(--border-color);
   border-radius: 8px;
   transition: all 0.3s;
+  gap: 12px;
 }
 
 .approval-item:hover {
@@ -488,18 +657,52 @@ const getStatusLabel = (status: string) => {
   border-color: #c0c4cc;
 }
 
-.item-main-info { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
-.item-title { font-size: 16px; font-weight: 600; margin: 0; color: #303133; }
-.type-tag { font-weight: normal; }
-
-.item-sub-info {
-  display: flex; gap: 24px; font-size: 13px; color: #606266;
+.item-checkbox {
+  flex-shrink: 0;
 }
 
-.info-bit { display: flex; align-items: center; gap: 6px; }
+.item-left {
+  flex: 1;
+  min-width: 0;
+}
+
+.item-main-info { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+.item-title { font-size: 15px; font-weight: 600; margin: 0; color: #303133; }
+.type-tag { font-weight: normal; flex-shrink: 0; }
+
+.item-sub-info {
+  display: flex; gap: 16px; font-size: 12px; color: #606266; flex-wrap: wrap;
+}
+
+.info-bit { display: flex; align-items: center; gap: 4px; }
 .info-bit.score { color: #409EFF; }
 
-.item-actions { display: flex; gap: 12px; }
+.item-actions { 
+  display: flex; 
+  gap: 8px; 
+  flex-shrink: 0;
+  align-items: center;
+}
+
+.batch-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: #f5f7fa;
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+
+.batch-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.approval-item.is-selected {
+  background: #ecf5ff;
+  border-color: #409EFF;
+}
 
 /* 空状态 */
 .empty-state-mini {
@@ -520,18 +723,28 @@ const getStatusLabel = (status: string) => {
 .empty-icon { opacity: 0.5; margin-bottom: 8px; }
 
 /* 抽屉内样式 */
-.detail-header { margin-bottom: 20px; }
+.detail-header { margin-bottom: var(--spacing-xl, 20px); }
 .detail-header h3 { margin: 0 0 10px 0; }
-.detail-tags { display: flex; gap: 8px; }
-.detail-desc { margin-bottom: 24px; }
-.divider { height: 1px; background: #ebeef5; margin: 24px 0; }
+.detail-tags { display: flex; gap: var(--spacing-sm, 8px); }
+.detail-desc { margin-bottom: var(--spacing-2xl, 24px); }
+.divider { height: 1px; background: var(--border-color); margin: var(--spacing-2xl, 24px) 0; }
+
+/* Timeline 样式优化 */
+:deep(.el-timeline) {
+  padding-left: var(--spacing-xl, 20px);
+}
+
+:deep(.el-timeline-item__wrapper) {
+  padding-left: var(--spacing-lg, 16px);
+}
 
 .timeline-card {
-  padding: 12px;
-  background: #f5f7fa;
-  border-radius: 4px;
+  padding: var(--spacing-md, 12px) var(--spacing-lg, 16px);
+  background: var(--bg-page);
+  border-radius: var(--radius-md, 8px);
+  border-left: 3px solid var(--color-primary);
 }
 .timeline-header { font-weight: bold; display: flex; justify-content: space-between; font-size: 14px; }
-.operator-text { font-weight: normal; color: #909399; font-size: 12px; }
-.timeline-comment { margin-top: 8px; color: #606266; font-size: 13px; font-style: italic; }
+.operator-text { font-weight: normal; color: var(--text-secondary); font-size: 12px; }
+.timeline-comment { margin-top: var(--spacing-sm, 8px); color: var(--text-regular); font-size: 13px; font-style: italic; }
 </style>

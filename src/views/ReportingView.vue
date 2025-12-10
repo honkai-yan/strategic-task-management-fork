@@ -55,47 +55,58 @@ interface MonthModule {
 }
 
 // ================== 2. 初始数据 ==================
-const currentUser = computed(() => `${authStore.userDepartment}-${authStore.userName}` || '未登录用户')
+const currentUser = computed(() => {
+  const dept = authStore.userDepartment
+  const name = authStore.userName
+  if (dept && name) return `${dept}-${name}`
+  return '未登录用户'
+})
 const currentView = ref<'list' | 'detail'>('list')
 const activeMonthId = ref<string | null>(null)
 
-const createDefaultIndicators = (monthPrefix: string): IndicatorItem[] => [
-  {
-    id: Date.now() + 1,
-    type: 'quantitative',
-    title: `${monthPrefix} - 教学质量提升`,
-    subtitle: '数据驱动 • 目标达成率',
-    status: 'draft',
-    isChecked: false,
-    percentage: 0,
-    submitter: currentUser,
-    dept: '教务处',
-    auditLogs: [],
-    quantMilestones: [
-      { name: '阶段一：启动', target: 30 },
-      { name: '阶段二：实施', target: 60 },
-      { name: '阶段三：验收', target: 100 }
-    ]
-  },
-  {
-    id: Date.now() + 2,
-    type: 'qualitative',
-    title: `${monthPrefix} - 课程体系优化`,
-    subtitle: '任务驱动 • 关键节点确认',
-    status: 'draft',
-    isChecked: false,
-    submitter: currentUser,
-    dept: '教务处',
-    auditLogs: [],
-    qualMilestones: [
-      { name: '调研', weight: 30, completed: false },
-      { name: '方案', weight: 40, completed: false },
-      { name: '落地', weight: 30, completed: false }
-    ]
-  }
-]
+// 动态创建默认指标（使用当前用户信息）
+const createDefaultIndicators = (monthPrefix: string): IndicatorItem[] => {
+  const user = currentUser.value
+  const dept = authStore.userDepartment || '未知部门'
+  return [
+    {
+      id: Date.now() + Math.random(),
+      type: 'quantitative',
+      title: `${monthPrefix} - 教学质量提升`,
+      subtitle: '数据驱动 • 目标达成率',
+      status: 'draft',
+      isChecked: false,
+      percentage: 0,
+      submitter: user,
+      dept: dept,
+      auditLogs: [],
+      quantMilestones: [
+        { name: '阶段一：启动', target: 30 },
+        { name: '阶段二：实施', target: 60 },
+        { name: '阶段三：验收', target: 100 }
+      ]
+    },
+    {
+      id: Date.now() + Math.random() + 1,
+      type: 'qualitative',
+      title: `${monthPrefix} - 课程体系优化`,
+      subtitle: '任务驱动 • 关键节点确认',
+      status: 'draft',
+      isChecked: false,
+      submitter: user,
+      dept: dept,
+      auditLogs: [],
+      qualMilestones: [
+        { name: '调研', weight: 30, completed: false },
+        { name: '方案', weight: 40, completed: false },
+        { name: '落地', weight: 30, completed: false }
+      ]
+    }
+  ]
+}
 
-const defaultMonths: MonthModule[] = [
+// 创建默认月份数据（延迟到需要时调用）
+const createDefaultMonths = (): MonthModule[] => [
   {
     id: '2023-11',
     name: '11月指标填报',
@@ -137,7 +148,7 @@ const backToList = () => {
 }
 
 const addLog = (item: IndicatorItem, action: string, comment?: string) => {
-  item.auditLogs.push({ timestamp: new Date().toLocaleString(), action, operator: currentUser, comment })
+  item.auditLogs.push({ timestamp: new Date().toLocaleString(), action, operator: currentUser.value, comment })
 }
 
 const handleBatchSubmit = () => {
@@ -217,8 +228,16 @@ const getQualVisuals = (item: IndicatorItem) => {
 const saveToLocal = () => localStorage.setItem(SHARED_DB_KEY, JSON.stringify(monthList.value))
 const loadFromLocal = () => {
   const saved = localStorage.getItem(SHARED_DB_KEY)
-  if (saved) { try { monthList.value = JSON.parse(saved) } catch { monthList.value = JSON.parse(JSON.stringify(defaultMonths)) } } 
-  else { monthList.value = JSON.parse(JSON.stringify(defaultMonths)); saveToLocal() }
+  if (saved) { 
+    try { 
+      monthList.value = JSON.parse(saved) 
+    } catch { 
+      monthList.value = createDefaultMonths() 
+    } 
+  } else { 
+    monthList.value = createDefaultMonths()
+    saveToLocal() 
+  }
 }
 onMounted(() => loadFromLocal())
 watch(monthList, () => saveToLocal(), { deep: true })
@@ -274,7 +293,7 @@ watch(monthList, () => saveToLocal(), { deep: true })
       </div>
 
       <!-- 指标卡片网格 -->
-      <div class="cards-grid">
+      <div v-if="indicatorList.length > 0" class="cards-grid">
         <div 
           v-for="item in indicatorList" 
           :key="item.id"
@@ -381,13 +400,31 @@ watch(monthList, () => saveToLocal(), { deep: true })
           </div>
         </div>
       </div>
+
+      <!-- 空状态处理 -->
+      <div v-else class="empty-state">
+        <el-empty description="当前月份暂无指标任务">
+          <el-button type="primary" @click="backToList">返回列表</el-button>
+        </el-empty>
+      </div>
     </div>
   </div>
 </template>
 
 <style scoped>
 /* 基础布局 */
-.dashboard-container { padding: 20px; background: #f5f7fa; min-height: 100vh; }
+.dashboard-container { padding: var(--spacing-xl, 20px); background: var(--bg-page); min-height: 100vh; }
+
+/* 空状态样式 */
+.empty-state {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+  background: var(--bg-white);
+  border-radius: var(--radius-lg, 12px);
+  box-shadow: var(--shadow-card);
+}
 
 /* VIEW 1: 月度概览样式 */
 .month-overview { max-width: 1200px; margin: 0 auto; }
@@ -396,10 +433,11 @@ watch(monthList, () => saveToLocal(), { deep: true })
 .overview-header .desc { color: #909399; font-size: 14px; }
 .month-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 24px; }
 .month-card {
-  background: #fff; border-radius: 16px; padding: 24px;
-  display: flex; align-items: center; gap: 20px;
-  cursor: pointer; transition: all 0.3s ease;
-  border: 2px solid transparent; box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+  background: var(--bg-white); border-radius: var(--radius-xl, 16px); padding: var(--spacing-2xl, 24px);
+  display: flex; align-items: center; gap: var(--spacing-xl, 20px);
+  cursor: pointer; transition: all var(--transition-normal, 0.25s);
+  border: 2px solid transparent; box-shadow: var(--shadow-card);
+  height: 100%; /* 确保等高 */
 }
 .month-card:hover {
   transform: translateY(-5px); box-shadow: 0 8px 24px rgba(0,0,0,0.08);
@@ -434,17 +472,18 @@ watch(monthList, () => saveToLocal(), { deep: true })
 }
 
 .metric-card { 
-  background: #fff; 
-  border-radius: 16px; 
+  background: var(--bg-white); 
+  border-radius: var(--radius-xl, 16px); 
   border: 2px solid transparent; 
-  box-shadow: 0 4px 20px rgba(0,0,0,0.03); 
+  box-shadow: var(--shadow-card); 
   overflow: hidden; 
   cursor: pointer;
   
   /* Flex列布局，确保高度充满 */
   display: flex; 
   flex-direction: column; 
-  height: 100%; 
+  height: 100%;
+  min-height: 380px; /* 最小高度保证一致性 */
 }
 
 .card-header { padding: 20px 24px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f2f6fc; flex-shrink: 0; }
@@ -457,16 +496,33 @@ watch(monthList, () => saveToLocal(), { deep: true })
 
 /* 内容区域：占据剩余空间，且将底部操作区推到底部 */
 .card-body { 
-  padding: 20px 24px 24px; 
+  padding: var(--spacing-xl, 20px) var(--spacing-2xl, 24px) var(--spacing-2xl, 24px); 
   flex: 1; 
   display: flex; 
   flex-direction: column; 
 }
 
+/* 定量/定性标签移到卡片头部右侧 */
 .type-tag {
   font-weight: normal;
-  margin-bottom: 12px;
+  margin-bottom: var(--spacing-md, 12px);
   display: inline-block;
+}
+
+/* 将标签移到头部 */
+.card-header .type-tag {
+  position: absolute;
+  top: var(--spacing-lg, 16px);
+  right: 80px;
+}
+
+.card-header {
+  position: relative;
+}
+
+/* 轨道包装器增加弹性 */
+.milestone-track-wrapper {
+  flex-shrink: 0;
 }
 
 /* 状态与印章 */
@@ -483,8 +539,9 @@ watch(monthList, () => saveToLocal(), { deep: true })
 /* 轨道与面板 */
 .action-panel { 
   margin-top: auto; /* === 核心：自动推到底部 === */
-  padding: 16px; 
-  border-radius: 8px; 
+  padding: var(--spacing-lg, 16px); 
+  border-radius: var(--radius-md, 8px);
+  flex-shrink: 0; /* 防止被压缩 */
 }
 .blue-panel { background: #f0f7ff; border: 1px dashed #c6e2ff; }
 .orange-panel { background: #fdf6ec; border: 1px dashed #f5dab1; }
