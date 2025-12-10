@@ -207,23 +207,36 @@ onMounted(() => {
 </template>
 
 <style scoped>
+/* ========== 高校教务系统风格 - 主框架 ========== */
 .app-container {
+  --primary-dark: #1a365d;
+  --primary: #2c5282;
+  --primary-light: #3182ce;
+  --accent: #c9a227;
+  --text-dark: #1e293b;
+  --text-regular: #475569;
+  --text-light: #94a3b8;
+  --bg-page: #f1f5f9;
+  --bg-card: #ffffff;
+  --border: #e2e8f0;
+  
   min-height: 100vh;
-  background: linear-gradient(135deg, var(--bg-page) 0%, var(--bg-light) 100%);
+  background: var(--bg-page);
 }
 
+/* ========== 顶部导航栏 ========== */
 .app-header {
-  background: var(--bg-white);
-  border-bottom: 1px solid var(--border-color);
+  background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%);
   position: sticky;
   top: 0;
   z-index: 100;
+  box-shadow: 0 2px 8px rgba(26, 54, 93, 0.3);
 }
 
 .header-content {
   max-width: 1400px;
   margin: 0 auto;
-  padding: 16px 24px;
+  padding: 12px 24px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -238,11 +251,12 @@ onMounted(() => {
 .logo-box {
   width: 40px;
   height: 40px;
-  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
-  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .title-box {
@@ -251,17 +265,20 @@ onMounted(() => {
 }
 
 .app-title {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
-  color: var(--text-main);
+  color: #fff;
   margin: 0;
   line-height: 1.2;
+  letter-spacing: 1px;
 }
 
 .app-subtitle {
-  font-size: 12px;
-  color: var(--text-secondary);
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.7);
   margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }
 
 .header-right {
@@ -270,78 +287,110 @@ onMounted(() => {
   gap: 16px;
 }
 
+/* 部门切换器 */
 .dept-switcher {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 6px 12px;
-  background: var(--bg-page);
-  border-radius: 8px;
-  border: 1px solid var(--border-color);
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .switcher-icon {
-  color: var(--color-primary);
+  color: var(--accent);
   font-size: 16px;
 }
 
 .dept-select {
-  width: 140px;
+  width: 130px;
 }
 
 .dept-select :deep(.el-input__wrapper) {
   box-shadow: none !important;
   background: transparent;
+  border: none;
+}
+
+.dept-select :deep(.el-input__inner) {
+  color: #fff;
+  font-size: 13px;
+}
+
+.dept-select :deep(.el-input__suffix) {
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .viewing-tag {
   margin-left: 4px;
+  background: var(--accent);
+  border-color: var(--accent);
 }
 
+/* 用户信息 */
 .user-info {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
   gap: 2px;
-  margin-right: 12px;
+  margin-right: 8px;
 }
 
 .dept-name {
-  font-size: 12px;
-  color: var(--text-secondary);
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .user-name {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
-  color: var(--text-main);
+  color: #fff;
 }
 
 .notification-badge {
   margin-right: 8px;
 }
 
-.user-avatar {
-  background: var(--color-primary);
-  color: var(--bg-white);
-  font-weight: 600;
-  cursor: pointer;
+.notification-badge :deep(.el-button) {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
 }
 
+.notification-badge :deep(.el-button:hover) {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.notification-badge :deep(.el-badge__content) {
+  background: #dc2626;
+}
+
+.user-avatar {
+  background: var(--accent);
+  color: var(--primary-dark);
+  font-weight: 700;
+  cursor: pointer;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+/* ========== 主内容区 ========== */
 .app-main {
   max-width: 1400px;
   margin: 0 auto;
-  padding: 24px;
+  padding: 20px 24px;
 }
 
+/* ========== 标签页导航 ========== */
 .tab-nav {
-  background: var(--bg-white);
-  border-radius: 12px;
-  padding: 8px;
-  margin-bottom: 24px;
+  background: var(--bg-card);
+  border-radius: 4px;
+  padding: 4px;
+  margin-bottom: 20px;
   display: flex;
-  gap: 8px;
-  border: 2px solid var(--border-color);
+  gap: 4px;
+  border: 1px solid var(--border);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .tab-item {
@@ -351,31 +400,35 @@ onMounted(() => {
   justify-content: center;
   gap: 8px;
   padding: 12px 16px;
-  border-radius: 8px;
+  border-radius: 4px;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all 0.2s;
   color: var(--text-regular);
   font-weight: 500;
+  font-size: 14px;
 }
 
 .tab-item:hover {
   background: var(--bg-page);
+  color: var(--primary);
 }
 
 .tab-item.active {
-  background: var(--color-primary);
-  color: var(--bg-white);
-  box-shadow: 0 4px 12px rgba(64, 158, 255, 0.4);
+  background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(26, 54, 93, 0.3);
 }
 
 .content-area {
-  min-height: calc(100vh - 200px);
+  min-height: calc(100vh - 180px);
 }
 
+/* ========== 响应式 ========== */
 @media (max-width: 768px) {
   .header-content {
     flex-direction: column;
-    gap: 16px;
+    gap: 12px;
+    padding: 12px 16px;
   }
 
   .tab-nav {
@@ -384,9 +437,15 @@ onMounted(() => {
 
   .tab-item {
     flex: 1 1 45%;
+    padding: 10px 12px;
+    font-size: 13px;
   }
 
   .app-subtitle {
+    display: none;
+  }
+  
+  .dept-switcher {
     display: none;
   }
 }
