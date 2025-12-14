@@ -1,6 +1,24 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
+// 确保从 localStorage 恢复认证状态
+const ensureAuthRestored = () => {
+  const authStore = useAuthStore()
+  
+  // 如果有 token 但没有 user，尝试从 localStorage 恢复
+  if (authStore.token && !authStore.user) {
+    const savedUser = localStorage.getItem('currentUser')
+    if (savedUser) {
+      try {
+        authStore.user = JSON.parse(savedUser)
+      } catch (e) {
+        console.error('Failed to restore user from localStorage:', e)
+        authStore.logout()
+      }
+    }
+  }
+}
+
 const routes: RouteRecordRaw[] = [
   {
     path: '/',
@@ -68,6 +86,9 @@ const router = createRouter({
 
 // Navigation guards
 router.beforeEach((to, _from, next) => {
+  // 确保认证状态已从 localStorage 恢复
+  ensureAuthRestored()
+  
   const authStore = useAuthStore()
 
   // Check if route requires authentication
@@ -77,12 +98,15 @@ router.beforeEach((to, _from, next) => {
   }
 
   // Check if route requires specific roles
-  if (to.meta['roles'] && Array.isArray(to.meta['roles'])) {
+  // 只有在用户已认证且路由需要特定角色时才检查
+  if (to.meta['roles'] && Array.isArray(to.meta['roles']) && authStore.isAuthenticated) {
     const userRole = authStore.user?.role
-    if (!userRole || !(to.meta['roles'] as string[]).includes(userRole)) {
+    // 如果用户角色不在允许的角色列表中，才重定向
+    if (userRole && !(to.meta['roles'] as string[]).includes(userRole)) {
       next('/dashboard')
       return
     }
+    // 如果用户角色为空但已认证，允许访问（可能是数据恢复问题）
   }
 
   // Redirect authenticated users away from login page

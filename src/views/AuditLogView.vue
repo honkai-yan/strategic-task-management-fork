@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { Search, Refresh, Document, User, Clock, Operation } from '@element-plus/icons-vue'
 import { useAuditLogStore } from '@/stores/auditLog'
+import { getStatusTagType } from '@/utils'
 import type { AuditLogFilters, AuditLogItem, AuditAction, EntityType } from '@/types'
 import dayjs from 'dayjs'
 
@@ -53,19 +54,22 @@ const paginatedLogs = computed(() => {
   return filteredLogs.value.slice(start, start + pageSize.value)
 })
 
-// 获取操作类型标签
-type TagType = 'success' | 'warning' | 'danger' | 'primary' | 'info'
-const getActionTag = (action: AuditAction): { type: TagType; label: string } => {
-  const map: Record<AuditAction, { type: TagType; label: string }> = {
-    create: { type: 'success', label: '创建' },
-    update: { type: 'warning', label: '修改' },
-    delete: { type: 'danger', label: '删除' },
-    submit: { type: 'primary', label: '提交' },
-    approve: { type: 'success', label: '通过' },
-    reject: { type: 'danger', label: '驳回' },
-    withdraw: { type: 'info', label: '撤回' }
+// 获取操作类型标签 - 使用统一的 getStatusTagType 函数
+// Requirements: 9.2 - 统一标签颜色映射
+const getActionTag = (action: AuditAction): { type: ReturnType<typeof getStatusTagType>; label: string } => {
+  const labelMap: Record<AuditAction, string> = {
+    create: '创建',
+    update: '修改',
+    delete: '删除',
+    submit: '提交',
+    approve: '通过',
+    reject: '驳回',
+    withdraw: '撤回'
   }
-  return map[action] || { type: 'info' as TagType, label: action }
+  return {
+    type: getStatusTagType(action),
+    label: labelMap[action] || action
+  }
 }
 
 // 获取实体类型标签
@@ -328,26 +332,74 @@ onMounted(() => {
 
 
 <style scoped>
+/* ========================================
+   AuditLogView 统一样式
+   使用 colors.css 中定义的 CSS 变量
+   Requirements: 2.1, 4.1, 5.1, 9.2
+   ======================================== */
+
+/* 页面主容器 */
 .audit-log-view {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--spacing-2xl);
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
+/* ========================================
+   筛选卡片样式 - 使用统一的卡片规范
+   Requirements: 2.1, 2.2
+   ======================================== */
 .filter-card {
-  border-radius: 12px;
+  background: var(--bg-white);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-card);
+  transition: box-shadow var(--transition-normal);
 }
 
+.filter-card:hover {
+  box-shadow: var(--shadow-hover);
+}
+
+/* 筛选表单样式 */
 .filter-form {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--spacing-md);
+  align-items: flex-end;
 }
 
+.filter-form :deep(.el-form-item) {
+  margin-bottom: 0;
+}
+
+.filter-form :deep(.el-form-item__label) {
+  color: var(--text-regular);
+  font-size: 14px;
+}
+
+/* ========================================
+   日志列表卡片样式 - 使用统一的卡片规范
+   Requirements: 2.1, 2.2, 2.4
+   ======================================== */
 .log-list-card {
-  border-radius: 12px;
+  background: var(--bg-white);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-card);
+  transition: box-shadow var(--transition-normal);
 }
 
+.log-list-card:hover {
+  box-shadow: var(--shadow-hover);
+}
+
+/* ========================================
+   卡片头部样式 - 统一页面头部规范
+   Requirements: 5.1, 5.2, 5.3, 5.4
+   ======================================== */
 .card-header {
   display: flex;
   justify-content: space-between;
@@ -358,6 +410,7 @@ onMounted(() => {
   font-size: 16px;
   font-weight: 600;
   color: var(--text-main);
+  margin: 0;
 }
 
 .card-header .count {
@@ -365,72 +418,219 @@ onMounted(() => {
   color: var(--text-secondary);
 }
 
+/* ========================================
+   表格样式 - 统一表格规范
+   Requirements: 4.1, 4.2, 4.3, 4.4
+   ======================================== */
+.log-list-card :deep(.el-table) {
+  --el-table-border-color: var(--border-light);
+  --el-table-header-bg-color: var(--bg-light);
+}
+
+.log-list-card :deep(.el-table th.el-table__cell) {
+  background: var(--bg-light);
+  color: var(--text-main);
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.log-list-card :deep(.el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell) {
+  background: var(--bg-page);
+}
+
+.log-list-card :deep(.el-table__body tr:hover > td.el-table__cell) {
+  background: rgba(64, 158, 255, 0.08) !important;
+}
+
+/* 表格单元格样式 */
 .time-cell,
 .operator-cell {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--spacing-sm);
   color: var(--text-regular);
+  font-size: 14px;
 }
 
+.time-cell .el-icon,
+.operator-cell .el-icon {
+  color: var(--text-secondary);
+}
+
+/* ========================================
+   变更摘要样式
+   ======================================== */
 .changes-summary {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--spacing-xs);
 }
 
 .change-item {
   font-size: 12px;
   color: var(--text-regular);
+  line-height: 1.5;
 }
 
 .old-value {
   color: var(--color-danger);
   text-decoration: line-through;
+  padding: 0 var(--spacing-xs);
 }
 
 .new-value {
   color: var(--color-success);
   font-weight: 500;
+  padding: 0 var(--spacing-xs);
 }
 
 .more-changes {
   font-size: 12px;
   color: var(--color-primary);
+  font-weight: 500;
 }
 
 .no-changes {
   color: var(--text-placeholder);
 }
 
+/* ========================================
+   分页样式
+   ======================================== */
 .pagination-wrapper {
   display: flex;
   justify-content: flex-end;
-  margin-top: 16px;
+  margin-top: var(--spacing-lg);
+  padding-top: var(--spacing-lg);
+  border-top: 1px solid var(--border-light);
 }
 
+/* ========================================
+   详情弹窗样式 - 统一弹窗规范
+   Requirements: 2.1, 6.1
+   ======================================== */
 .changes-detail {
-  margin-top: 20px;
+  margin-top: var(--spacing-xl);
 }
 
 .changes-detail h4 {
-  margin: 0 0 12px 0;
+  margin: 0 0 var(--spacing-md) 0;
   font-size: 14px;
   font-weight: 600;
   color: var(--text-main);
 }
 
+/* 变更详情表格样式 */
+.changes-detail :deep(.el-table) {
+  --el-table-border-color: var(--border-light);
+  --el-table-header-bg-color: var(--bg-light);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.changes-detail :deep(.el-table th.el-table__cell) {
+  background: var(--bg-light);
+  color: var(--text-main);
+  font-weight: 600;
+}
+
+/* 差异值样式 */
 .diff-old {
   color: var(--color-danger);
   background: rgba(245, 108, 108, 0.1);
-  padding: 2px 6px;
-  border-radius: 4px;
+  padding: 2px var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
 }
 
 .diff-new {
   color: var(--color-success);
   background: rgba(103, 194, 58, 0.1);
-  padding: 2px 6px;
-  border-radius: 4px;
+  padding: 2px var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+}
+
+/* ========================================
+   标签样式 - 统一标签规范
+   Requirements: 9.1, 9.2, 9.3
+   ======================================== */
+.log-list-card :deep(.el-tag) {
+  border-radius: var(--radius-sm);
+}
+
+/* 标签间距 */
+.tags-wrapper {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+/* ========================================
+   描述列表样式 - 统一弹窗内容规范
+   ======================================== */
+:deep(.el-descriptions) {
+  --el-descriptions-item-bordered-label-background: var(--bg-light);
+}
+
+:deep(.el-descriptions__label) {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+:deep(.el-descriptions__content) {
+  color: var(--text-main);
+}
+
+/* ========================================
+   弹窗样式覆盖
+   Requirements: 6.1
+   ======================================== */
+:deep(.el-dialog) {
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+}
+
+:deep(.el-dialog__header) {
+  padding: var(--spacing-xl) var(--spacing-2xl) var(--spacing-lg);
+  border-bottom: 1px solid var(--border-light);
+}
+
+:deep(.el-dialog__title) {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+:deep(.el-dialog__body) {
+  padding: var(--spacing-2xl);
+}
+
+/* ========================================
+   动画效果 - 统一过渡动画规范
+   Requirements: 6.1
+   ======================================== */
+.filter-card,
+.log-list-card {
+  animation: fadeInUp 0.4s ease-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 按钮过渡效果 */
+.filter-form :deep(.el-button) {
+  transition: all var(--transition-fast);
+}
+
+.filter-form :deep(.el-button:active) {
+  transform: scale(0.96);
 }
 </style>

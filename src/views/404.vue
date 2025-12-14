@@ -57,22 +57,29 @@ const router = useRouter()
 </script>
 
 <style scoped>
+/* ========== 404 页面样式 - 使用统一设计令牌 ========== */
+
 .not-found {
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
   background: linear-gradient(135deg, var(--bg-page) 0%, var(--bg-light) 100%);
-  padding: 20px;
+  padding: var(--spacing-xl);
 }
 
 .not-found-content {
   text-align: center;
   max-width: 500px;
+  background: var(--bg-white);
+  padding: calc(var(--spacing-2xl) * 2);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-card);
+  animation: fadeInUp 0.5s ease-out;
 }
 
 .illustration {
-  margin-bottom: 32px;
+  margin-bottom: var(--spacing-2xl);
 }
 
 .not-found-svg {
@@ -123,32 +130,73 @@ const router = useRouter()
   50% { transform: translateY(-8px); }
 }
 
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .title {
   font-size: 28px;
   font-weight: 700;
   color: var(--text-main);
-  margin: 0 0 12px 0;
+  margin: 0 0 var(--spacing-md) 0;
 }
 
 .subtitle {
   font-size: 16px;
   color: var(--text-secondary);
-  margin: 0 0 32px 0;
+  margin: 0 0 var(--spacing-2xl) 0;
+  line-height: 1.5;
 }
 
 .actions {
   display: flex;
   justify-content: center;
-  gap: 16px;
-  margin-bottom: 32px;
+  gap: var(--spacing-lg);
+  margin-bottom: var(--spacing-2xl);
+}
+
+.actions :deep(.el-button) {
+  border-radius: var(--radius-md);
+  transition: all var(--transition-normal);
+}
+
+.actions :deep(.el-button--primary) {
+  background: linear-gradient(135deg, var(--color-primary-dark) 0%, var(--color-primary) 100%);
+  border: none;
+}
+
+.actions :deep(.el-button--primary:hover) {
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-hover);
+}
+
+.actions :deep(.el-button--default) {
+  border-color: var(--border-color);
+  color: var(--text-regular);
+}
+
+.actions :deep(.el-button--default:hover) {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: var(--color-primary-light);
 }
 
 .quick-links {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
   flex-wrap: wrap;
+  padding-top: var(--spacing-lg);
+  border-top: 1px solid var(--border-color);
 }
 
 .quick-label {
@@ -156,11 +204,32 @@ const router = useRouter()
   color: var(--text-secondary);
 }
 
+.quick-links :deep(.el-button) {
+  font-size: 13px;
+  transition: color var(--transition-fast);
+}
+
 /* 响应式 */
 @media (max-width: 480px) {
-  .title { font-size: 24px; }
-  .subtitle { font-size: 14px; }
-  .actions { flex-direction: column; }
-  .actions .el-button { width: 100%; }
+  .not-found-content {
+    padding: var(--spacing-2xl);
+    margin: var(--spacing-lg);
+  }
+  
+  .title { 
+    font-size: 24px; 
+  }
+  
+  .subtitle { 
+    font-size: 14px; 
+  }
+  
+  .actions { 
+    flex-direction: column; 
+  }
+  
+  .actions .el-button { 
+    width: 100%; 
+  }
 }
 </style>

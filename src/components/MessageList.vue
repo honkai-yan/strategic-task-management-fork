@@ -166,36 +166,56 @@ const viewDetails = (message: Message) => {
 </script>
 
 <style scoped>
+/* ========================================
+   MessageList 统一样式
+   使用 colors.css 中定义的 CSS 变量
+   Requirements: 2.1, 5.1, 9.1
+   ======================================== */
+
 .message-list {
   min-height: 300px;
 }
 
+/* ========================================
+   空状态样式 - 统一空状态规范
+   Requirements: 7.1, 7.2, 7.3
+   ======================================== */
 .empty-state {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
   align-items: center;
-  min-height: 200px;
+  justify-content: center;
+  padding: calc(var(--spacing-2xl) * 2);
+  color: var(--text-secondary);
 }
 
+/* ========================================
+   消息列表样式 - 统一列表规范
+   Requirements: 2.1, 3.3
+   ======================================== */
 .messages {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-md, 12px);
+  gap: var(--spacing-md);
 }
 
+/* ========================================
+   消息项样式 - 统一卡片规范
+   Requirements: 2.1, 2.2, 2.3
+   ======================================== */
 .message-item {
   display: flex;
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-md, 8px);
+  border-radius: var(--radius-md);
   cursor: pointer;
-  transition: all var(--transition-normal, 0.25s);
+  transition: all var(--transition-normal);
   background: var(--bg-white);
   overflow: hidden;
 }
 
 .message-item:hover {
   border-color: var(--color-primary);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow-hover);
   transform: translateX(4px);
 }
 
@@ -203,15 +223,18 @@ const viewDetails = (message: Message) => {
   background: var(--bg-light);
 }
 
-/* 未读消息左侧彩色标记条 */
+/* ========================================
+   未读消息指示器 - 统一状态色规范
+   Requirements: 1.3
+   ======================================== */
 .unread-indicator {
   width: 4px;
   flex-shrink: 0;
-  transition: width var(--transition-fast, 0.15s);
+  transition: width var(--transition-fast);
 }
 
 .indicator-danger {
-  background: linear-gradient(180deg, var(--color-danger) 0%, #f89898 100%);
+  background: linear-gradient(180deg, var(--color-danger) 0%, var(--color-danger-soft) 100%);
 }
 
 .indicator-warning {
@@ -226,54 +249,83 @@ const viewDetails = (message: Message) => {
   width: 6px;
 }
 
+/* ========================================
+   消息内容区域 - 统一间距规范
+   Requirements: 3.1, 3.3
+   ======================================== */
 .message-body {
   flex: 1;
-  padding: var(--spacing-lg, 16px);
+  padding: var(--spacing-lg);
 }
 
 .message-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: var(--spacing-sm, 8px);
+  margin-bottom: var(--spacing-sm);
 }
 
+/* ========================================
+   标签样式 - 统一标签规范
+   Requirements: 9.1, 9.2, 9.3
+   ======================================== */
 .message-type {
   display: flex;
-  gap: var(--spacing-sm, 8px);
+  gap: var(--spacing-sm);
   align-items: center;
 }
 
 .severity-tag {
-  margin-left: var(--spacing-xs, 4px);
+  margin-left: var(--spacing-xs);
 }
 
+/* ========================================
+   消息时间样式 - 统一字体规范
+   Requirements: 1.4
+   ======================================== */
 .message-time {
   font-size: 12px;
   color: var(--text-secondary);
   cursor: help;
 }
 
+/* ========================================
+   消息标题和内容 - 统一字体规范
+   Requirements: 1.4, 3.3
+   ======================================== */
 .message-title {
   font-size: 16px;
   font-weight: 600;
   color: var(--text-main);
-  margin-bottom: var(--spacing-sm, 8px);
+  margin-bottom: var(--spacing-sm);
 }
 
 .message-content {
   font-size: 14px;
   color: var(--text-regular);
   line-height: 1.5;
-  margin-bottom: var(--spacing-md, 12px);
+  margin-bottom: var(--spacing-md);
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
 
+/* ========================================
+   操作按钮区域 - 统一按钮规范
+   Requirements: 6.1
+   ======================================== */
 .message-actions {
   display: flex;
-  gap: var(--spacing-sm, 8px);
+  gap: var(--spacing-sm);
+}
+
+/* 按钮过渡效果 */
+.message-actions :deep(.el-button) {
+  transition: all var(--transition-fast);
+}
+
+.message-actions :deep(.el-button:active) {
+  transform: scale(0.96);
 }
 </style>

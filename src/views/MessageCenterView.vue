@@ -1,8 +1,12 @@
 <template>
   <div class="message-center">
+    <!-- 页面头部 - Requirements: 5.1, 5.2, 5.3, 5.4 -->
     <div class="page-header">
-      <h2 class="page-title">消息中心</h2>
-      <div class="header-actions">
+      <div class="header-content">
+        <h1 class="page-title">消息中心</h1>
+        <p class="page-desc">查看和管理您的所有通知消息</p>
+      </div>
+      <div class="page-actions">
         <el-button type="primary" @click="markAllAsRead">
           全部标为已读
         </el-button>
@@ -12,7 +16,8 @@
       </div>
     </div>
 
-    <div class="message-content">
+    <!-- 消息内容卡片 - Requirements: 2.1, 2.2 -->
+    <el-card class="message-card card-animate" shadow="never">
       <el-tabs v-model="activeTab" class="message-tabs">
         <el-tab-pane name="all">
           <template #label>
@@ -21,7 +26,9 @@
               <el-badge v-if="unreadCount.all > 0" :value="unreadCount.all" :max="99" class="tab-badge" />
             </span>
           </template>
-          <MessageList :messages="allMessages" @read="handleMessageRead" />
+          <transition name="tab-fade" mode="out-in">
+            <MessageList v-if="activeTab === 'all'" :messages="allMessages" @read="handleMessageRead" />
+          </transition>
         </el-tab-pane>
         <el-tab-pane name="alerts">
           <template #label>
@@ -30,7 +37,9 @@
               <el-badge v-if="unreadCount.alerts > 0" :value="unreadCount.alerts" :max="99" class="tab-badge" type="danger" />
             </span>
           </template>
-          <MessageList :messages="alertMessages" @read="handleMessageRead" />
+          <transition name="tab-fade" mode="out-in">
+            <MessageList v-if="activeTab === 'alerts'" :messages="alertMessages" @read="handleMessageRead" />
+          </transition>
         </el-tab-pane>
         <el-tab-pane name="approvals">
           <template #label>
@@ -39,7 +48,9 @@
               <el-badge v-if="unreadCount.approvals > 0" :value="unreadCount.approvals" :max="99" class="tab-badge" type="warning" />
             </span>
           </template>
-          <MessageList :messages="approvalMessages" @read="handleMessageRead" />
+          <transition name="tab-fade" mode="out-in">
+            <MessageList v-if="activeTab === 'approvals'" :messages="approvalMessages" @read="handleMessageRead" />
+          </transition>
         </el-tab-pane>
         <el-tab-pane name="system">
           <template #label>
@@ -48,10 +59,12 @@
               <el-badge v-if="unreadCount.system > 0" :value="unreadCount.system" :max="99" class="tab-badge" type="info" />
             </span>
           </template>
-          <MessageList :messages="systemMessages" @read="handleMessageRead" />
+          <transition name="tab-fade" mode="out-in">
+            <MessageList v-if="activeTab === 'system'" :messages="systemMessages" @read="handleMessageRead" />
+          </transition>
         </el-tab-pane>
       </el-tabs>
-    </div>
+    </el-card>
   </div>
 </template>
 
@@ -189,20 +202,34 @@ onMounted(() => {
 </script>
 
 <style scoped>
+/* ========================================
+   MessageCenterView 统一样式
+   使用 colors.css 中定义的 CSS 变量
+   Requirements: 2.1, 5.1, 9.1
+   ======================================== */
+
+/* 页面主容器 - 使用统一的页面容器样式 */
 .message-center {
-  padding: var(--spacing-2xl, 24px);
-  background: var(--bg-white);
-  border-radius: var(--radius-lg, 12px);
-  min-height: calc(100vh - 200px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2xl);
 }
 
+/* ========================================
+   页面头部样式 - 统一页面头部规范
+   Requirements: 5.1, 5.2, 5.3, 5.4
+   ======================================== */
 .page-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: var(--spacing-2xl, 24px);
-  padding-bottom: var(--spacing-lg, 16px);
-  border-bottom: 1px solid var(--border-color);
+  align-items: flex-start;
+  margin-bottom: var(--spacing-md);
+}
+
+.header-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
 }
 
 .page-title {
@@ -212,24 +239,82 @@ onMounted(() => {
   color: var(--text-main);
 }
 
-.header-actions {
+.page-desc {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.page-actions {
   display: flex;
-  gap: var(--spacing-md, 12px);
+  align-items: center;
+  gap: var(--spacing-md);
 }
 
-.message-content {
-  min-height: 400px;
+/* ========================================
+   消息卡片样式 - 统一卡片规范
+   Requirements: 2.1, 2.2, 2.4
+   ======================================== */
+.message-card {
+  background: var(--bg-white);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-card);
+  transition: box-shadow var(--transition-normal);
+  min-height: 500px;
 }
 
-/* Tab 标签样式 */
+.message-card:hover {
+  box-shadow: var(--shadow-hover);
+}
+
+/* ========================================
+   Tab 样式定制 - 统一 Tab 规范
+   Requirements: 5.1, 9.1
+   ======================================== */
+.message-tabs :deep(.el-tabs__header) {
+  margin-bottom: var(--spacing-xl);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.message-tabs :deep(.el-tabs__nav-wrap::after) {
+  display: none;
+}
+
+.message-tabs :deep(.el-tabs__item) {
+  font-size: 15px;
+  padding: 0 var(--spacing-xl);
+  height: 48px;
+  line-height: 48px;
+  color: var(--text-regular);
+  transition: all var(--transition-fast);
+}
+
+.message-tabs :deep(.el-tabs__item:hover) {
+  color: var(--color-primary);
+}
+
+.message-tabs :deep(.el-tabs__item.is-active) {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.message-tabs :deep(.el-tabs__active-bar) {
+  height: 3px;
+  border-radius: 2px;
+  background-color: var(--color-primary);
+  transition: transform var(--transition-normal);
+}
+
+/* Tab 标签样式 - Requirements: 9.1, 9.3 */
 .tab-label {
   display: inline-flex;
   align-items: center;
-  gap: var(--spacing-sm, 8px);
+  gap: var(--spacing-sm);
 }
 
 .tab-badge {
-  margin-left: var(--spacing-xs, 4px);
+  margin-left: var(--spacing-xs);
 }
 
 .tab-badge :deep(.el-badge__content) {
@@ -237,16 +322,56 @@ onMounted(() => {
   height: 16px;
   line-height: 16px;
   padding: 0 5px;
+  border-radius: var(--radius-sm);
 }
 
-/* Tab 样式定制 */
-.message-tabs :deep(.el-tabs__item) {
-  font-size: 15px;
-  transition: all var(--transition-fast, 0.15s);
+/* ========================================
+   Tab 切换过渡动画 - 统一过渡动画规范
+   Requirements: 6.1
+   ======================================== */
+.tab-fade-enter-active,
+.tab-fade-leave-active {
+  transition: all var(--transition-normal);
 }
 
-.message-tabs :deep(.el-tabs__active-bar) {
-  height: 3px;
-  border-radius: 2px;
+.tab-fade-enter-from {
+  opacity: 0;
+  transform: translateX(20px);
+}
+
+.tab-fade-leave-to {
+  opacity: 0;
+  transform: translateX(-20px);
+}
+
+/* ========================================
+   卡片入场动画 - 统一动画规范
+   Requirements: 6.1
+   ======================================== */
+.card-animate {
+  animation: fadeInUp 0.4s ease-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ========================================
+   按钮过渡效果 - 统一过渡动画规范
+   Requirements: 6.1
+   ======================================== */
+:deep(.el-button) {
+  transition: all var(--transition-fast);
+}
+
+:deep(.el-button:active) {
+  transform: scale(0.96);
 }
 </style>

@@ -5,12 +5,181 @@
   box-sizing: border-box;
 }
 
+/* ========================================
+   页面级统一样式
+   ======================================== */
+
+/* 页面主容器 - 用于包裹页面主要内容区域 */
 .page-container {
+  padding: var(--spacing-2xl);
+  background: var(--bg-white);
+  border-radius: var(--radius-lg);
+  min-height: calc(100vh - 200px);
+}
+
+/* 页面布局容器 - 用于整体页面布局 */
+.page-layout {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   background-color: var(--bg-page);
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+}
+
+/* 页面头部 */
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-2xl);
+  padding-bottom: var(--spacing-lg);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.page-header-simple {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-2xl);
+}
+
+/* 页面标题 */
+.page-title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+/* 页面描述 */
+.page-desc {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-top: var(--spacing-sm);
+}
+
+/* 页面操作区 */
+.page-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+/* ========================================
+   卡片统一样式
+   ======================================== */
+
+/* 卡片基础样式 */
+.card-base {
+  background: var(--bg-white);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  transition: all var(--transition-normal);
+}
+
+.card-base:hover {
+  box-shadow: var(--shadow-hover);
+}
+
+/* 卡片头部 */
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-lg) var(--spacing-2xl);
+  border-bottom: 1px solid var(--border-color);
+}
+
+/* 卡片标题 */
+.card-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-main);
+  margin: 0;
+}
+
+/* 卡片内容区 */
+.card-body {
+  padding: var(--spacing-2xl);
+}
+
+/* 卡片底部 */
+.card-footer {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: var(--spacing-lg) var(--spacing-2xl);
+  border-top: 1px solid var(--border-color);
+  gap: var(--spacing-md);
+}
+
+/* ========================================
+   表格统一样式
+   ======================================== */
+
+/* 统一表格样式 */
+.table-unified {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.table-unified th {
+  background: var(--bg-light);
+  color: var(--text-regular);
+  font-weight: 600;
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-bottom: 1px solid var(--border-color);
+  text-align: left;
+}
+
+.table-unified td {
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-bottom: 1px solid var(--border-light);
+  color: var(--text-regular);
+}
+
+.table-unified tr:hover td {
+  background: #f0f7ff;
+}
+
+/* 表格斑马纹 */
+.table-unified tr:nth-child(even) td {
+  background: var(--bg-page);
+}
+
+.table-unified tr:nth-child(even):hover td {
+  background: #f0f7ff;
+}
+
+/* ========================================
+   空状态统一样式
+   ======================================== */
+
+/* 空状态 */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: calc(var(--spacing-2xl) * 2);
+  color: var(--text-secondary);
+}
+
+.empty-state-icon {
+  font-size: 48px;
+  margin-bottom: var(--spacing-lg);
+  color: var(--text-placeholder);
+}
+
+.empty-state-text {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: var(--spacing-lg);
+}
+
+.empty-state-action {
+  margin-top: var(--spacing-md);
 }
 
 /* --- Header --- */
@@ -393,7 +562,7 @@
 }
 
 .el-table__body tr:hover > td.el-table__cell {
-  background: rgba(64, 158, 255, 0.08) !important;
+  background: #f0f7ff !important;
 }
 
 .el-table th.el-table__cell {
@@ -539,7 +708,7 @@
 }
 
 .el-select-dropdown__item:hover {
-  background: rgba(64, 158, 255, 0.08) !important;
+  background: #f0f7ff !important;
 }
 
 /* --- 工具提示美化 --- */
@@ -586,7 +755,7 @@
 }
 
 .el-pagination .el-pager li:hover {
-  background: rgba(64, 158, 255, 0.1);
+  background: #f0f7ff;
 }
 
 /* --- 徽章动画 --- */

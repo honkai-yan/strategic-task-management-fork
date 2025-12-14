@@ -294,3 +294,84 @@ export const deepClone = <T>(obj: T): T => {
   }
   return obj
 }
+
+// ========================================
+// 样式辅助函数
+// ========================================
+
+/**
+ * 根据进度值返回对应的CSS颜色变量
+ * @param progress 进度值 (0-100)
+ * @returns CSS颜色变量字符串
+ * 
+ * 规则:
+ * - progress >= 80: 绿色 (success)
+ * - 50 <= progress < 80: 黄色 (warning)
+ * - progress < 50: 红色 (danger)
+ */
+export const getProgressColor = (progress: number): string => {
+  if (progress >= 80) return 'var(--color-success)' // #67c23a
+  if (progress >= 50) return 'var(--color-warning)' // #e6a23c
+  return 'var(--color-danger)' // #f56c6c
+}
+
+/**
+ * 根据进度值返回Element Plus进度条状态类型
+ * @param progress 进度值 (0-100)
+ * @returns Element Plus状态类型
+ * 
+ * 规则:
+ * - progress >= 80: 'success'
+ * - 50 <= progress < 80: 'warning'
+ * - progress < 50: 'exception'
+ */
+export const getProgressStatus = (progress: number): 'success' | 'warning' | 'exception' => {
+  if (progress >= 80) return 'success'
+  if (progress >= 50) return 'warning'
+  return 'exception'
+}
+
+/**
+ * 状态标签类型
+ */
+export type StatusTagType = 'success' | 'warning' | 'danger' | 'info' | 'primary'
+
+/**
+ * 根据状态字符串返回对应的Element Plus标签类型
+ * @param status 状态字符串
+ * @returns Element Plus标签类型
+ */
+export const getStatusTagType = (status: string): StatusTagType => {
+  const map: Record<string, StatusTagType> = {
+    // 审批相关状态
+    'approved': 'success',
+    'completed': 'success',
+    'passed': 'success',
+    // 进行中/待处理状态
+    'pending': 'warning',
+    'processing': 'warning',
+    'in_progress': 'warning',
+    // 拒绝/逾期状态
+    'rejected': 'danger',
+    'overdue': 'danger',
+    'failed': 'danger',
+    // 草稿/信息状态
+    'draft': 'info',
+    'inactive': 'info',
+    // 活跃状态
+    'active': 'primary',
+    // 操作类型状态
+    'create': 'success',
+    'update': 'warning',
+    'delete': 'danger',
+    'submit': 'primary',
+    'approve': 'success',
+    'reject': 'danger',
+    'withdraw': 'info'
+  }
+  // Use Object.hasOwn to avoid prototype pollution issues
+  if (Object.hasOwn(map, status)) {
+    return map[status] as StatusTagType
+  }
+  return 'info'
+}

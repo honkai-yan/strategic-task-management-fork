@@ -260,7 +260,7 @@ watch(monthList, () => saveToLocal(), { deep: true })
             <p class="deadline">{{ month.deadline }}</p>
             <div class="month-meta">
               <el-tag size="small" effect="plain">{{ month.indicators.length }} 项任务</el-tag>
-              <el-tag size="small" :type="month.status === 'completed' ? 'success' : 'warning'" style="margin-left: 8px;">
+              <el-tag size="small" :type="month.status === 'completed' ? 'success' : 'warning'">
                 {{ month.status === 'completed' ? '已归档' : '进行中' }}
               </el-tag>
             </div>
@@ -412,152 +412,643 @@ watch(monthList, () => saveToLocal(), { deep: true })
 </template>
 
 <style scoped>
-/* 基础布局 */
-.dashboard-container { padding: var(--spacing-xl, 20px); background: var(--bg-page); min-height: 100vh; }
+/* ========================================
+   基础布局 - 使用统一CSS变量
+   ======================================== */
+.dashboard-container { 
+  padding: var(--spacing-xl); 
+  background: var(--bg-page); 
+  min-height: 100vh; 
+}
 
-/* 空状态样式 */
+/* ========================================
+   空状态样式 - 统一样式 (Requirements 7.1)
+   ======================================== */
 .empty-state {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
   align-items: center;
+  justify-content: center;
   min-height: 400px;
+  padding: calc(var(--spacing-2xl) * 2);
   background: var(--bg-white);
-  border-radius: var(--radius-lg, 12px);
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
+  color: var(--text-secondary);
 }
 
-/* VIEW 1: 月度概览样式 */
-.month-overview { max-width: 1200px; margin: 0 auto; }
-.overview-header { margin-bottom: 32px; text-align: center; }
-.overview-header h3 { font-size: 28px; color: #303133; margin-bottom: 8px; }
-.overview-header .desc { color: #909399; font-size: 14px; }
-.month-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 24px; }
+/* ========================================
+   VIEW 1: 月度概览样式 - 统一卡片样式 (Requirements 2.1)
+   ======================================== */
+.month-overview { 
+  max-width: 1200px; 
+  margin: 0 auto; 
+}
+
+.overview-header { 
+  margin-bottom: var(--spacing-2xl); 
+  text-align: center; 
+}
+
+.overview-header h3 { 
+  font-size: 28px; 
+  color: var(--text-main); 
+  margin-bottom: var(--spacing-sm); 
+  font-weight: 600;
+}
+
+.overview-header .desc { 
+  color: var(--text-secondary); 
+  font-size: 14px; 
+}
+
+.month-grid { 
+  display: grid; 
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); 
+  gap: var(--spacing-2xl); 
+}
+
+/* 月份选择卡片 - 统一卡片样式 */
 .month-card {
-  background: var(--bg-white); border-radius: var(--radius-xl, 16px); padding: var(--spacing-2xl, 24px);
-  display: flex; align-items: center; gap: var(--spacing-xl, 20px);
-  cursor: pointer; transition: all var(--transition-normal, 0.25s);
-  border: 2px solid transparent; box-shadow: var(--shadow-card);
-  height: 100%; /* 确保等高 */
+  background: var(--bg-white); 
+  border-radius: var(--radius-lg); 
+  padding: var(--spacing-2xl);
+  display: flex; 
+  align-items: center; 
+  gap: var(--spacing-xl);
+  cursor: pointer; 
+  transition: all var(--transition-normal);
+  border: 2px solid transparent; 
+  box-shadow: var(--shadow-card);
+  height: 100%;
 }
+
 .month-card:hover {
-  transform: translateY(-5px); box-shadow: 0 8px 24px rgba(0,0,0,0.08);
-  border-color: #409EFF;
+  transform: translateY(-4px); 
+  box-shadow: var(--shadow-hover);
+  border-color: var(--color-primary);
 }
-.month-icon-box { width: 60px; height: 60px; background: #ecf5ff; color: #409EFF; border-radius: 12px; display: flex; align-items: center; justify-content: center; }
-.month-info { flex: 1; }
-.month-info h4 { margin: 0 0 4px 0; font-size: 18px; color: #303133; }
-.deadline { color: #F56C6C; font-size: 12px; margin-bottom: 8px; }
-.enter-btn { font-size: 12px; color: #909399; display: flex; flex-direction: column; align-items: center; gap: 4px; opacity: 0; transition: opacity 0.3s; }
-.month-card:hover .enter-btn { opacity: 1; color: #409EFF; }
 
-/* VIEW 2: 详情页样式 */
-.detail-header { display: flex; justify-content: space-between; align-items: center; background: #fff; padding: 16px 24px; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.03); margin-bottom: 24px; }
-.header-left { display: flex; align-items: center; gap: 12px; }
-.back-btn { font-size: 14px; color: #606266; }
-.linkage-badge { font-size: 12px; color: #67C23A; background: #f0f9eb; padding: 2px 8px; border-radius: 4px; }
-.batch-tools { display: flex; gap: 20px; align-items: center; }
+.month-icon-box { 
+  width: 60px; 
+  height: 60px; 
+  background: var(--color-primary-light); 
+  color: var(--color-primary); 
+  border-radius: var(--radius-lg); 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+}
 
-/* === 卡片等高布局核心样式 === */
+.month-info { 
+  flex: 1; 
+}
+
+.month-info h4 { 
+  margin: 0 0 var(--spacing-xs) 0; 
+  font-size: 18px; 
+  color: var(--text-main); 
+  font-weight: 600;
+}
+
+.deadline { 
+  color: var(--color-danger); 
+  font-size: 12px; 
+  margin-bottom: var(--spacing-sm); 
+}
+
+/* 月份元数据标签 - 统一标签间距 (Requirements 9.1) */
+.month-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.enter-btn { 
+  font-size: 12px; 
+  color: var(--text-secondary); 
+  display: flex; 
+  flex-direction: column; 
+  align-items: center; 
+  gap: var(--spacing-xs); 
+  opacity: 0; 
+  transition: opacity var(--transition-normal); 
+}
+
+.month-card:hover .enter-btn { 
+  opacity: 1; 
+  color: var(--color-primary); 
+}
+
+/* ========================================
+   VIEW 2: 详情页样式 - 统一页面头部 (Requirements 5.1)
+   ======================================== */
+.detail-header { 
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center; 
+  background: var(--bg-white); 
+  padding: var(--spacing-lg) var(--spacing-2xl); 
+  border-radius: var(--radius-lg); 
+  box-shadow: var(--shadow-card); 
+  margin-bottom: var(--spacing-2xl); 
+}
+
+.header-left { 
+  display: flex; 
+  align-items: center; 
+  gap: var(--spacing-md); 
+}
+
+.header-left h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.back-btn { 
+  font-size: 14px; 
+  color: var(--text-regular); 
+}
+
+.header-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.linkage-badge { 
+  font-size: 12px; 
+  color: var(--color-success); 
+  background: #f0f9eb; 
+  padding: 2px var(--spacing-sm); 
+  border-radius: var(--radius-sm); 
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.batch-tools { 
+  display: flex; 
+  gap: var(--spacing-xl); 
+  align-items: center; 
+}
+
+/* ========================================
+   指标卡片网格 - 统一卡片样式 (Requirements 2.1)
+   ======================================== */
 .cards-grid { 
   display: grid; 
   grid-template-columns: repeat(auto-fit, minmax(480px, 1fr)); 
-  gap: 24px; 
-  /* Grid默认会align-items: stretch，保证wrapper高度一致 */
+  gap: var(--spacing-2xl); 
 }
 
 .metric-card-wrapper { 
   position: relative; 
-  transition: all 0.3s; 
-  height: 100%; /* 填满 grid cell */
+  transition: all var(--transition-normal); 
+  height: 100%;
 }
 
+/* 指标卡片 - 统一卡片圆角、阴影 */
 .metric-card { 
   background: var(--bg-white); 
-  border-radius: var(--radius-xl, 16px); 
+  border-radius: var(--radius-lg); 
   border: 2px solid transparent; 
   box-shadow: var(--shadow-card); 
   overflow: hidden; 
   cursor: pointer;
-  
-  /* Flex列布局，确保高度充满 */
   display: flex; 
   flex-direction: column; 
   height: 100%;
-  min-height: 380px; /* 最小高度保证一致性 */
+  min-height: 380px;
+  transition: all var(--transition-normal);
 }
 
-.card-header { padding: 20px 24px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f2f6fc; flex-shrink: 0; }
-.header-main { display: flex; align-items: center; gap: 12px; }
-.icon-wrapper { width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px; }
-.blue-bg { background: #ecf5ff; color: #409EFF; }
-.orange-bg { background: #fdf6ec; color: #E6A23C; }
-.current-value { font-size: 28px; font-weight: 700; }
-.blue-text { color: #409EFF; } .orange-text { color: #E6A23C; }
+.metric-card:hover {
+  box-shadow: var(--shadow-hover);
+}
 
-/* 内容区域：占据剩余空间，且将底部操作区推到底部 */
+/* 卡片头部 - 统一样式 */
+.card-header { 
+  padding: var(--spacing-xl) var(--spacing-2xl); 
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center; 
+  border-bottom: 1px solid var(--border-color); 
+  flex-shrink: 0;
+  position: relative;
+}
+
+.header-main { 
+  display: flex; 
+  align-items: center; 
+  gap: var(--spacing-md); 
+}
+
+.card-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.card-subtitle {
+  margin: var(--spacing-xs) 0 0 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.icon-wrapper { 
+  width: 42px; 
+  height: 42px; 
+  border-radius: var(--radius-md); 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  font-weight: 800; 
+  font-size: 14px; 
+}
+
+.blue-bg { 
+  background: var(--color-primary-light); 
+  color: var(--color-primary); 
+}
+
+.orange-bg { 
+  background: #fdf6ec; 
+  color: var(--color-warning); 
+}
+
+.current-value { 
+  font-size: 28px; 
+  font-weight: 700; 
+}
+
+.current-value .unit {
+  font-size: 14px;
+  font-weight: 400;
+  margin-left: 2px;
+}
+
+.blue-text { 
+  color: var(--color-primary); 
+} 
+
+.orange-text { 
+  color: var(--color-warning); 
+}
+
+/* 卡片内容区域 */
 .card-body { 
-  padding: var(--spacing-xl, 20px) var(--spacing-2xl, 24px) var(--spacing-2xl, 24px); 
+  padding: var(--spacing-xl) var(--spacing-2xl) var(--spacing-2xl); 
   flex: 1; 
   display: flex; 
   flex-direction: column; 
 }
 
-/* 定量/定性标签移到卡片头部右侧 */
+/* 定量/定性标签 */
 .type-tag {
   font-weight: normal;
-  margin-bottom: var(--spacing-md, 12px);
+  margin-bottom: var(--spacing-md);
   display: inline-block;
 }
 
-/* 将标签移到头部 */
-.card-header .type-tag {
-  position: absolute;
-  top: var(--spacing-lg, 16px);
-  right: 80px;
-}
-
-.card-header {
-  position: relative;
-}
-
-/* 轨道包装器增加弹性 */
-.milestone-track-wrapper {
+/* ========================================
+   进度轨道样式 - 统一进度条样式 (Requirements 10.1)
+   ======================================== */
+.milestone-track-wrapper { 
+  position: relative; 
+  height: 60px; 
+  margin: 0 var(--spacing-md) var(--spacing-xl); 
+  display: flex; 
+  align-items: center;
   flex-shrink: 0;
 }
 
-/* 状态与印章 */
-.metric-card-wrapper.is-submitted .metric-card { filter: grayscale(0.8); background: #fafafa; cursor: default; }
-.stamp-pending { position: absolute; top: 15px; right: 100px; color: #E6A23C; background: #fdf6ec; padding: 4px 12px; border-radius: 20px; font-size: 12px; z-index: 10; }
-.metric-card-wrapper.is-approved .metric-card { border-color: #67C23A; }
-.stamp-approved { position: absolute; top: 15px; right: 100px; color: #67C23A; font-weight: bold; z-index: 10; }
-.metric-card-wrapper.is-rejected .metric-card { border-color: #F56C6C; }
-.reject-reason-box { position: absolute; top: 55px; left: 24px; right: 24px; z-index: 15; background: #fef0f0; border: 1px solid #fde2e2; border-radius: 8px; padding: 8px 12px; color: #F56C6C; }
-.card-top-action { position: absolute; top: 18px; right: 20px; z-index: 20; }
-.card-locked { pointer-events: none; }
-.card-locked .action-panel { opacity: 0.6; }
-
-/* 轨道与面板 */
-.action-panel { 
-  margin-top: auto; /* === 核心：自动推到底部 === */
-  padding: var(--spacing-lg, 16px); 
-  border-radius: var(--radius-md, 8px);
-  flex-shrink: 0; /* 防止被压缩 */
+.track-bg { 
+  position: absolute; 
+  left: 0; 
+  right: 0; 
+  height: 6px; 
+  background: var(--border-light); 
+  border-radius: 100px; 
 }
-.blue-panel { background: #f0f7ff; border: 1px dashed #c6e2ff; }
-.orange-panel { background: #fdf6ec; border: 1px dashed #f5dab1; }
 
-.milestone-track-wrapper { position: relative; height: 60px; margin: 0 10px 20px; display: flex; align-items: center; }
-.track-bg { position: absolute; left: 0; right: 0; height: 6px; background: #e4e7ed; border-radius: 3px; }
-.track-fill { position: absolute; left: 0; height: 6px; border-radius: 3px; transition: width 0.5s; }
-.blue-fill { background: #409EFF; } .orange-fill { background: #E6A23C; }
-.track-marker { position: absolute; width: 20px; height: 100%; top: 50%; transform: translate(-50%, -50%); }
-.marker-point { width: 10px; height: 10px; background: #fff; border: 2px solid #dcdfe6; border-radius: 50%; position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); }
-.marker-info { position: absolute; left: 50%; transform: translateX(-50%); font-size: 10px; white-space: nowrap; color: #909399; }
-.marker-top .marker-info { bottom: 60%; } .marker-bottom .marker-info { top: 60%; }
+.track-fill { 
+  position: absolute; 
+  left: 0; 
+  height: 6px; 
+  border-radius: 100px; 
+  transition: width var(--transition-slow); 
+}
 
-.checklist-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-.check-card { background: #fff; border: 1px solid #ebeef5; padding: 8px; border-radius: 4px; font-size: 12px; display: flex; gap: 4px; align-items: center; cursor: pointer; }
-.check-card.is-active { border-color: #E6A23C; color: #E6A23C; background: #fdf6ec; }
-.check-indicator { width: 16px; height: 16px; border: 1px solid #dcdfe6; border-radius: 2px; display: flex; align-items: center; justify-content: center; }
-.is-active .check-indicator { border-color: #E6A23C; background: #E6A23C; color: #fff; }
+.blue-fill { 
+  background: var(--color-primary); 
+} 
+
+.orange-fill { 
+  background: var(--color-warning); 
+}
+
+.track-marker { 
+  position: absolute; 
+  width: 20px; 
+  height: 100%; 
+  top: 50%; 
+  transform: translate(-50%, -50%); 
+}
+
+.marker-point { 
+  width: 10px; 
+  height: 10px; 
+  background: var(--bg-white); 
+  border: 2px solid var(--border-input); 
+  border-radius: 50%; 
+  position: absolute; 
+  top: 50%; 
+  left: 50%; 
+  transform: translate(-50%,-50%);
+  transition: all var(--transition-fast);
+}
+
+.marker-point.orange-mode {
+  border-color: var(--border-input);
+}
+
+.track-marker.completed .marker-point {
+  border-color: var(--color-primary);
+  background: var(--color-primary-light);
+}
+
+.track-marker.completed .marker-point.orange-mode {
+  border-color: var(--color-warning);
+  background: #fdf6ec;
+}
+
+.marker-info { 
+  position: absolute; 
+  left: 50%; 
+  transform: translateX(-50%); 
+  font-size: 10px; 
+  white-space: nowrap; 
+  color: var(--text-secondary); 
+}
+
+.marker-top .marker-info { 
+  bottom: 60%; 
+} 
+
+.marker-bottom .marker-info { 
+  top: 60%; 
+}
+
+.marker-label {
+  color: var(--text-secondary);
+}
+
+/* ========================================
+   操作面板样式
+   ======================================== */
+.action-panel { 
+  margin-top: auto;
+  padding: var(--spacing-lg); 
+  border-radius: var(--radius-md);
+  flex-shrink: 0;
+}
+
+.blue-panel { 
+  background: rgba(64, 158, 255, 0.06); 
+  border: 1px dashed rgba(64, 158, 255, 0.3); 
+}
+
+.orange-panel { 
+  background: rgba(230, 162, 60, 0.06); 
+  border: 1px dashed rgba(230, 162, 60, 0.3); 
+}
+
+.panel-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.input-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.input-group .label {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* 定性指标检查列表 */
+.checklist-grid { 
+  display: grid; 
+  grid-template-columns: repeat(3, 1fr); 
+  gap: var(--spacing-sm); 
+}
+
+.check-card { 
+  background: var(--bg-white); 
+  border: 1px solid var(--border-color); 
+  padding: var(--spacing-sm); 
+  border-radius: var(--radius-sm); 
+  font-size: 12px; 
+  display: flex; 
+  gap: var(--spacing-xs); 
+  align-items: center; 
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.check-card:hover {
+  border-color: var(--color-warning);
+}
+
+.check-card.is-active { 
+  border-color: var(--color-warning); 
+  color: var(--color-warning); 
+  background: rgba(230, 162, 60, 0.06); 
+}
+
+.check-card.is-disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.check-indicator { 
+  width: 16px; 
+  height: 16px; 
+  border: 1px solid var(--border-input); 
+  border-radius: 2px; 
+  display: flex; 
+  align-items: center; 
+  justify-content: center;
+  transition: all var(--transition-fast);
+}
+
+.is-active .check-indicator { 
+  border-color: var(--color-warning); 
+  background: var(--color-warning); 
+  color: var(--bg-white); 
+}
+
+.check-icon {
+  font-style: normal;
+  font-size: 10px;
+}
+
+/* ========================================
+   状态与印章样式 - 统一标签样式 (Requirements 9.1)
+   ======================================== */
+.metric-card-wrapper.is-submitted .metric-card { 
+  filter: grayscale(0.8); 
+  background: var(--bg-light); 
+  cursor: default; 
+}
+
+.stamp-pending { 
+  position: absolute; 
+  top: 15px; 
+  right: 100px; 
+  color: var(--color-warning); 
+  background: rgba(230, 162, 60, 0.1); 
+  padding: var(--spacing-xs) var(--spacing-md); 
+  border-radius: 20px; 
+  font-size: 12px; 
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.metric-card-wrapper.is-approved .metric-card { 
+  border-color: var(--color-success); 
+}
+
+.stamp-approved { 
+  position: absolute; 
+  top: 15px; 
+  right: 100px; 
+  color: var(--color-success); 
+  font-weight: bold; 
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.metric-card-wrapper.is-rejected .metric-card { 
+  border-color: var(--color-danger); 
+}
+
+.reject-reason-box { 
+  position: absolute; 
+  top: 55px; 
+  left: var(--spacing-2xl); 
+  right: var(--spacing-2xl); 
+  z-index: 15; 
+  background: #fef0f0; 
+  border: 1px solid #fde2e2; 
+  border-radius: var(--radius-md); 
+  padding: var(--spacing-sm) var(--spacing-md); 
+  color: var(--color-danger); 
+}
+
+.reason-title {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-weight: 600;
+  font-size: 12px;
+  margin-bottom: var(--spacing-xs);
+}
+
+.reason-content {
+  font-size: 12px;
+  font-style: italic;
+}
+
+.card-top-action { 
+  position: absolute; 
+  top: 18px; 
+  right: var(--spacing-xl); 
+  z-index: 20; 
+}
+
+.card-locked { 
+  pointer-events: none; 
+}
+
+.card-locked .action-panel { 
+  opacity: 0.6; 
+}
+
+/* ========================================
+   操作按钮样式
+   ======================================== */
+.action-btn {
+  font-size: 12px;
+}
+
+.revoke-btn {
+  color: var(--color-warning);
+}
+
+.fix-btn {
+  color: var(--color-danger);
+}
+
+/* ========================================
+   自定义滑块样式
+   ======================================== */
+.custom-slider {
+  width: 100%;
+}
+
+.custom-slider :deep(.el-slider__runway) {
+  background: var(--border-light);
+}
+
+.custom-slider :deep(.el-slider__bar) {
+  background: var(--color-primary);
+}
+
+/* ========================================
+   响应式适配
+   ======================================== */
+@media (max-width: 1024px) {
+  .cards-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .checklist-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard-container {
+    padding: var(--spacing-md);
+  }
+  
+  .month-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .detail-header {
+    flex-direction: column;
+    gap: var(--spacing-md);
+    align-items: flex-start;
+  }
+  
+  .batch-tools {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
 </style>

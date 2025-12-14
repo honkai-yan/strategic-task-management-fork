@@ -398,26 +398,7 @@ onUnmounted(() => {
 
 
 <style scoped>
-/* ========== 高校教务系统风格 - 严肃方正专业 ========== */
-
-/* 色彩变量 */
-.login-page {
-  --primary-dark: #1a365d;      /* 深藏青 - 主色 */
-  --primary: #2c5282;           /* 藏青 */
-  --primary-light: #3182ce;     /* 亮蓝 */
-  --accent: #c9a227;            /* 金色点缀 */
-  --accent-light: #d4af37;
-  --bg-dark: #0f172a;
-  --bg-card: #ffffff;
-  --text-dark: #1e293b;
-  --text-regular: #475569;
-  --text-light: #94a3b8;
-  --border: #e2e8f0;
-  --border-dark: #cbd5e1;
-  --success: #059669;
-  --error: #dc2626;
-  --warning: #d97706;
-}
+/* ========== 登录页面样式 - 使用统一设计令牌 ========== */
 
 .login-page {
   min-height: 100vh;
@@ -425,7 +406,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: 'Microsoft YaHei', 'SimHei', 'PingFang SC', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Microsoft YaHei', sans-serif;
   position: relative;
   overflow: hidden;
 }
@@ -444,7 +425,7 @@ onUnmounted(() => {
   background-position: center;
   background-repeat: no-repeat;
   /* 默认渐变背景（图片加载前显示） */
-  background-color: var(--primary-dark);
+  background-color: var(--color-primary-dark);
   /* 轻微放大效果 */
   transform: scale(1.05);
   transition: transform 10s ease-out;
@@ -466,7 +447,7 @@ onUnmounted(() => {
   inset: 0;
   /* 深色遮罩确保文字可读 */
   background: 
-    linear-gradient(135deg, rgba(26, 54, 93, 0.85) 0%, rgba(15, 23, 42, 0.8) 100%);
+    linear-gradient(135deg, rgba(43, 109, 231, 0.85) 0%, rgba(64, 158, 255, 0.7) 100%);
   /* 网格纹理 */
   background-image: 
     linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
@@ -482,21 +463,21 @@ onUnmounted(() => {
   width: 100%;
   max-width: 1100px;
   min-height: 600px;
-  margin: 20px;
-  background: var(--bg-card);
-  border-radius: 4px;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  margin: var(--spacing-xl);
+  background: var(--bg-white);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
   overflow: hidden;
 }
 
 /* ========== 左侧信息面板 ========== */
 .info-panel {
   flex: 1;
-  background: linear-gradient(180deg, var(--primary-dark) 0%, #0f2744 100%);
-  padding: 48px 40px;
+  background: linear-gradient(180deg, var(--color-primary-dark) 0%, #1a4a8a 100%);
+  padding: calc(var(--spacing-2xl) * 2) var(--spacing-2xl);
   display: flex;
   flex-direction: column;
-  color: #fff;
+  color: var(--bg-white);
   position: relative;
 }
 
@@ -507,23 +488,23 @@ onUnmounted(() => {
   right: 0;
   bottom: 0;
   width: 1px;
-  background: linear-gradient(180deg, transparent, var(--accent), transparent);
+  background: linear-gradient(180deg, transparent, var(--color-warning), transparent);
 }
 
 /* 学校品牌 */
 .school-brand {
   display: flex;
   align-items: center;
-  gap: 16px;
-  margin-bottom: 48px;
-  padding-bottom: 24px;
+  gap: var(--spacing-lg);
+  margin-bottom: calc(var(--spacing-2xl) * 2);
+  padding-bottom: var(--spacing-2xl);
   border-bottom: 1px solid rgba(255,255,255,0.1);
 }
 
 .school-emblem {
   width: 64px;
   height: 64px;
-  color: var(--accent);
+  color: var(--color-warning);
   flex-shrink: 0;
 }
 
@@ -539,9 +520,9 @@ onUnmounted(() => {
 .school-name {
   font-size: 22px;
   font-weight: 700;
-  margin: 0 0 4px 0;
+  margin: 0 0 var(--spacing-xs) 0;
   letter-spacing: 2px;
-  color: #fff;
+  color: var(--bg-white);
 }
 
 .school-name-en {
@@ -563,12 +544,12 @@ onUnmounted(() => {
 .info-stats {
   display: flex;
   align-items: center;
-  gap: 24px;
-  padding: 24px;
+  gap: var(--spacing-2xl);
+  padding: var(--spacing-2xl);
   background: rgba(255,255,255,0.05);
   border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 4px;
-  margin-bottom: 32px;
+  border-radius: var(--radius-md);
+  margin-bottom: var(--spacing-2xl);
 }
 
 .stat-item {
@@ -579,7 +560,7 @@ onUnmounted(() => {
 .stat-value {
   font-size: 24px;
   font-weight: 600;
-  color: var(--accent);
+  color: var(--color-warning);
   font-family: 'Consolas', 'Monaco', monospace;
   letter-spacing: 1px;
 }
@@ -587,7 +568,7 @@ onUnmounted(() => {
 .stat-label {
   font-size: 12px;
   color: rgba(255,255,255,0.6);
-  margin-top: 4px;
+  margin-top: var(--spacing-xs);
 }
 
 .stat-divider {
@@ -599,19 +580,19 @@ onUnmounted(() => {
 /* 公告区域 */
 .info-notice {
   flex: 1;
-  padding: 20px;
+  padding: var(--spacing-xl);
   background: rgba(0,0,0,0.2);
   border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 4px;
-  margin-bottom: 24px;
+  border-radius: var(--radius-md);
+  margin-bottom: var(--spacing-2xl);
 }
 
 .notice-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 16px;
-  padding-bottom: 12px;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-lg);
+  padding-bottom: var(--spacing-md);
   border-bottom: 1px solid rgba(255,255,255,0.1);
 }
 
@@ -622,7 +603,7 @@ onUnmounted(() => {
 .notice-title {
   font-size: 14px;
   font-weight: 600;
-  color: var(--accent);
+  color: var(--color-warning);
 }
 
 .notice-list {
@@ -634,8 +615,8 @@ onUnmounted(() => {
 .notice-list li {
   font-size: 13px;
   color: rgba(255,255,255,0.8);
-  padding: 8px 0;
-  padding-left: 16px;
+  padding: var(--spacing-sm) 0;
+  padding-left: var(--spacing-lg);
   position: relative;
   line-height: 1.5;
 }
@@ -644,7 +625,7 @@ onUnmounted(() => {
   content: '•';
   position: absolute;
   left: 0;
-  color: var(--accent);
+  color: var(--color-warning);
 }
 
 .notice-list li + li {
@@ -656,8 +637,8 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  padding-top: 16px;
+  gap: var(--spacing-md);
+  padding-top: var(--spacing-lg);
   border-top: 1px solid rgba(255,255,255,0.1);
 }
 
@@ -665,11 +646,11 @@ onUnmounted(() => {
   font-size: 12px;
   color: rgba(255,255,255,0.6);
   text-decoration: none;
-  transition: color 0.2s;
+  transition: color var(--transition-fast);
 }
 
 .info-link:hover {
-  color: var(--accent);
+  color: var(--color-warning);
 }
 
 .link-divider {
@@ -680,10 +661,10 @@ onUnmounted(() => {
 /* ========== 右侧登录面板 ========== */
 .login-panel {
   width: 420px;
-  padding: 48px 40px;
+  padding: calc(var(--spacing-2xl) * 2) var(--spacing-2xl);
   display: flex;
   flex-direction: column;
-  background: #fff;
+  background: var(--bg-white);
 }
 
 .login-card {
@@ -695,20 +676,20 @@ onUnmounted(() => {
 /* 登录头部 */
 .login-header {
   text-align: center;
-  margin-bottom: 40px;
+  margin-bottom: calc(var(--spacing-2xl) + var(--spacing-lg));
 }
 
 .login-title {
   font-size: 24px;
   font-weight: 700;
-  color: var(--primary-dark);
-  margin: 0 0 8px 0;
+  color: var(--color-primary-dark);
+  margin: 0 0 var(--spacing-sm) 0;
   letter-spacing: 4px;
 }
 
 .login-subtitle {
   font-size: 12px;
-  color: var(--text-light);
+  color: var(--text-secondary);
   margin: 0;
   text-transform: uppercase;
   letter-spacing: 2px;
@@ -727,41 +708,41 @@ onUnmounted(() => {
   display: block;
   font-size: 13px;
   font-weight: 600;
-  color: var(--text-dark);
-  margin-bottom: 8px;
+  color: var(--text-main);
+  margin-bottom: var(--spacing-sm);
 }
 
 /* Element Plus 输入框样式覆盖 */
 .login-form :deep(.el-input__wrapper) {
-  background: #f8fafc;
-  border: 1px solid var(--border);
-  border-radius: 4px;
+  background: var(--bg-light);
+  border: 1px solid var(--border-input);
+  border-radius: var(--radius-sm);
   box-shadow: none !important;
-  padding: 4px 12px;
-  transition: all 0.2s;
+  padding: var(--spacing-xs) var(--spacing-md);
+  transition: all var(--transition-fast);
 }
 
 .login-form :deep(.el-input__wrapper:hover) {
-  border-color: var(--border-dark);
+  border-color: var(--border-color);
 }
 
 .login-form :deep(.el-input__wrapper.is-focus) {
-  background: #fff;
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(44, 82, 130, 0.1) !important;
+  background: var(--bg-white);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(64, 158, 255, 0.15) !important;
 }
 
 .login-form :deep(.el-input__inner) {
   font-size: 14px;
-  color: var(--text-dark);
+  color: var(--text-main);
 }
 
 .login-form :deep(.el-input__prefix) {
-  color: var(--text-light);
+  color: var(--text-secondary);
 }
 
 .login-form :deep(.el-form-item) {
-  margin-bottom: 24px;
+  margin-bottom: var(--spacing-2xl);
 }
 
 /* 表单选项 */
@@ -769,7 +750,7 @@ onUnmounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 24px;
+  margin-bottom: var(--spacing-2xl);
 }
 
 .form-options :deep(.el-checkbox__label) {
@@ -778,13 +759,13 @@ onUnmounted(() => {
 }
 
 .form-options :deep(.el-checkbox__input.is-checked .el-checkbox__inner) {
-  background-color: var(--primary);
-  border-color: var(--primary);
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
 }
 
 .form-options :deep(.el-button) {
   font-size: 13px;
-  color: var(--primary);
+  color: var(--color-primary);
 }
 
 /* 登录按钮 */
@@ -794,16 +775,16 @@ onUnmounted(() => {
   font-size: 16px;
   font-weight: 600;
   letter-spacing: 8px;
-  border-radius: 4px;
-  background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%);
+  border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, var(--color-primary-dark) 0%, var(--color-primary) 100%);
   border: none;
-  transition: all 0.3s;
+  transition: all var(--transition-normal);
 }
 
 .login-btn:hover:not(:disabled) {
-  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(26, 54, 93, 0.4);
+  box-shadow: var(--shadow-hover);
 }
 
 .login-btn:active:not(:disabled) {
@@ -811,66 +792,66 @@ onUnmounted(() => {
 }
 
 .login-btn:disabled {
-  background: var(--border-dark);
+  background: var(--border-color);
   cursor: not-allowed;
 }
 
 /* 警告提示 */
 .lock-alert,
 .error-alert {
-  margin-top: 16px;
+  margin-top: var(--spacing-lg);
 }
 
 .lock-alert :deep(.el-alert),
 .error-alert :deep(.el-alert) {
-  border-radius: 4px;
+  border-radius: var(--radius-md);
 }
 
 .lock-alert :deep(.el-alert p) {
-  margin: 4px 0;
+  margin: var(--spacing-xs) 0;
   font-size: 12px;
 }
 
 /* 登录底部 */
 .login-footer {
   margin-top: auto;
-  padding-top: 24px;
-  border-top: 1px solid var(--border);
+  padding-top: var(--spacing-2xl);
+  border-top: 1px solid var(--border-color);
 }
 
 .footer-status {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
   font-size: 12px;
-  color: var(--text-light);
+  color: var(--text-secondary);
 }
 
 .status-indicator {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--error);
+  background: var(--color-danger);
 }
 
 .status-indicator.online {
-  background: var(--success);
-  box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.2);
+  background: var(--color-success);
+  box-shadow: 0 0 0 3px rgba(103, 194, 58, 0.2);
 }
 
 /* 版权信息 */
 .copyright {
   text-align: center;
-  margin-top: 24px;
-  padding-top: 16px;
-  border-top: 1px solid var(--border);
+  margin-top: var(--spacing-2xl);
+  padding-top: var(--spacing-lg);
+  border-top: 1px solid var(--border-color);
 }
 
 .copyright p {
   margin: 0;
   font-size: 11px;
-  color: var(--text-light);
+  color: var(--text-secondary);
   line-height: 1.8;
 }
 
@@ -883,7 +864,7 @@ onUnmounted(() => {
   }
 
   .info-panel {
-    padding: 32px 24px;
+    padding: var(--spacing-2xl);
   }
 
   .info-panel::after {
@@ -891,13 +872,13 @@ onUnmounted(() => {
   }
 
   .school-brand {
-    margin-bottom: 24px;
-    padding-bottom: 16px;
+    margin-bottom: var(--spacing-2xl);
+    padding-bottom: var(--spacing-lg);
   }
 
   .info-stats {
-    margin-bottom: 20px;
-    padding: 16px;
+    margin-bottom: var(--spacing-xl);
+    padding: var(--spacing-lg);
   }
 
   .info-notice {
@@ -906,11 +887,11 @@ onUnmounted(() => {
 
   .login-panel {
     width: 100%;
-    padding: 32px 24px;
+    padding: var(--spacing-2xl);
   }
 
   .login-header {
-    margin-bottom: 24px;
+    margin-bottom: var(--spacing-2xl);
   }
 }
 
