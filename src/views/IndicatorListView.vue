@@ -39,6 +39,18 @@ const isAddingOrEditing = ref(false)
 // 选中的部门
 const selectedDepartment = ref('')
 
+// 筛选条件
+const filterType2 = ref('')  // 任务类型筛选
+const filterType1 = ref('')  // 指标类型筛选
+const filterDept = ref('')   // 责任部门筛选
+
+// 重置筛选条件
+const resetFilters = () => {
+  filterType2.value = ''
+  filterType1.value = ''
+  filterDept.value = ''
+}
+
 // 职能部门列表
 const functionalDepartments = [
   '党委办公室 | 党委统战部',
@@ -83,11 +95,71 @@ const currentTask = computed(() => taskList.value[currentTaskIndex.value] || {
   cycle: ''
 })
 
-// 从 Store 获取指标列表（带里程碑）
-const indicators = computed(() => strategicStore.indicators.map(i => ({
-  ...i,
-  id: Number(i.id)
-})))
+// 从 Store 获取指标列表（带里程碑），按任务类型和战略任务分组排序，并应用筛选
+const indicators = computed(() => {
+  let list = strategicStore.indicators.map(i => ({
+    ...i,
+    id: Number(i.id)
+  }))
+
+  // 应用筛选条件
+  if (filterType2.value) {
+    list = list.filter(i => i.type2 === filterType2.value)
+  }
+  if (filterType1.value) {
+    list = list.filter(i => i.type1 === filterType1.value)
+  }
+  if (filterDept.value) {
+    list = list.filter(i => i.responsibleDept === filterDept.value)
+  }
+
+  // 先按 type2（任务类型）排序，再按 taskContent（战略任务）排序
+  return list.sort((a, b) => {
+    const type2A = a.type2 || ''
+    const type2B = b.type2 || ''
+    if (type2A !== type2B) {
+      // 发展性排在前面
+      return type2A === '发展性' ? -1 : 1
+    }
+    const taskA = a.taskContent || ''
+    const taskB = b.taskContent || ''
+    return taskA.localeCompare(taskB)
+  })
+})
+
+// 计算单元格合并信息
+const getSpanMethod = ({ row, column, rowIndex, columnIndex }: { row: any; column: any; rowIndex: number; columnIndex: number }) => {
+  const dataList = indicators.value
+
+  // 战略任务列（第1列，index=1，选择框后面）合并
+  if (columnIndex === 1) {
+    const currentTask = row.taskContent || '未关联任务'
+
+    // 计算当前任务在列表中的起始位置
+    let startIndex = rowIndex
+    while (startIndex > 0 && (dataList[startIndex - 1].taskContent || '未关联任务') === currentTask) {
+      startIndex--
+    }
+
+    // 如果是该任务的第一行，计算合并行数
+    if (startIndex === rowIndex) {
+      let count = 1
+      while (rowIndex + count < dataList.length && (dataList[rowIndex + count].taskContent || '未关联任务') === currentTask) {
+        count++
+      }
+      return { rowspan: count, colspan: 1 }
+    } else {
+      // 不是第一行，隐藏该单元格
+      return { rowspan: 0, colspan: 0 }
+    }
+  }
+  return { rowspan: 1, colspan: 1 }
+}
+
+// 获取任务类型对应的颜色
+const getTaskTypeColor = (type2: string) => {
+  return type2 === '发展性' ? '#409EFF' : '#67C23A'
+}
 
 // 按类别筛选指标
 const developmentIndicators = computed(() => indicators.value.filter(i => i.type2 === '发展性'))
@@ -95,6 +167,7 @@ const basicIndicators = computed(() => indicators.value.filter(i => i.type2 === 
 
 // 新增行数据
 const newRow = ref({
+  taskContent: '',
   name: '',
   type1: '定性' as '定性' | '定量',
   type2: '发展性' as '发展性' | '基础性',
@@ -102,6 +175,12 @@ const newRow = ref({
   remark: '',
   milestones: [] as Milestone[]
 })
+
+// 获取任务选项列表（从 Store 中的 tasks 获取）
+const taskOptions = computed(() => strategicStore.tasks.map(t => ({
+  value: t.title,
+  label: t.title
+})))
 
 // 里程碑输入状态
 const showMilestoneInput = ref(false)
@@ -220,11 +299,18 @@ const addIndicatorToCategory = (category: '发展性' | '基础性') => {
 
 const cancelAdd = () => {
   isAddingOrEditing.value = false
-  newRow.value = { name: '', type1: '定性', type2: '发展性', weight: '', remark: '', milestones: [] }
+  newRow.value = { taskContent: '', name: '', type1: '定性', type2: '发展性', weight: '', remark: '', milestones: [] }
 }
 
 const saveNewRow = () => {
-  if (!newRow.value.name) return
+  if (!newRow.value.taskContent) {
+    ElMessage.warning('请先选择所属战略任务')
+    return
+  }
+  if (!newRow.value.name) {
+    ElMessage.warning('请输入指标名称')
+    return
+  }
 
   strategicStore.addIndicator({
     id: Date.now().toString(),
@@ -243,8 +329,10 @@ const saveNewRow = () => {
     responsibleDept: authStore.userDepartment || '未分配',
     responsiblePerson: authStore.userName || '未分配',
     status: 'active',
-    isStrategic: true
+    isStrategic: true,
+    taskContent: newRow.value.taskContent
   })
+  ElMessage.success('指标添加成功')
   cancelAdd()
 }
 
@@ -425,26 +513,25 @@ const handleTableScroll = (e: Event) => {
       <div class="filter-card card-base card-animate">
         <div class="card-body">
           <el-form :inline="true" class="filter-form">
-            <el-form-item label="指标类型">
-              <el-select placeholder="全部类型" clearable style="width: 140px;">
+            <el-form-item label="任务类型">
+              <el-select v-model="filterType2" placeholder="全部类型" clearable style="width: 140px;">
                 <el-option label="发展性" value="发展性" />
                 <el-option label="基础性" value="基础性" />
               </el-select>
             </el-form-item>
-            <el-form-item label="指标性质">
-              <el-select placeholder="全部性质" clearable style="width: 140px;">
+            <el-form-item label="指标类型">
+              <el-select v-model="filterType1" placeholder="全部类型" clearable style="width: 140px;">
                 <el-option label="定性" value="定性" />
                 <el-option label="定量" value="定量" />
               </el-select>
             </el-form-item>
             <el-form-item label="责任部门">
-              <el-select placeholder="全部部门" clearable style="width: 200px;">
+              <el-select v-model="filterDept" placeholder="全部部门" clearable style="width: 200px;">
                 <el-option v-for="dept in functionalDepartments" :key="dept" :label="dept" :value="dept" />
               </el-select>
             </el-form-item>
             <el-form-item>
-              <el-button type="primary">查询</el-button>
-              <el-button>重置</el-button>
+              <el-button @click="resetFilters">重置</el-button>
             </el-form-item>
           </el-form>
         </div>
@@ -461,38 +548,56 @@ const handleTableScroll = (e: Event) => {
             <el-table
               ref="tableRef"
               :data="indicators"
-              stripe
+              :span-method="getSpanMethod"
+              border
               highlight-current-row
               @selection-change="handleSelectionChange"
               class="unified-table"
             >
               <el-table-column type="selection" width="50" />
-              <el-table-column prop="name" label="指标名称" min-width="200">
+              <el-table-column prop="taskContent" label="战略任务" min-width="200">
                 <template #default="{ row }">
-                  <span class="indicator-name" @dblclick="handleIndicatorDblClick(row, 'name')">
+                  <el-tooltip :content="row.type2 === '发展性' ? '发展性任务' : '基础性任务'" placement="top">
+                    <span
+                      class="task-content-colored"
+                      :style="{ color: getTaskTypeColor(row.type2) }"
+                    >{{ row.taskContent || '未关联任务' }}</span>
+                  </el-tooltip>
+                </template>
+              </el-table-column>
+              <el-table-column prop="name" label="核心指标" min-width="280">
+                <template #default="{ row }">
+                  <div class="indicator-name-cell" @dblclick="handleIndicatorDblClick(row, 'name')">
                     <el-input
                       v-if="editingIndicatorId === row.id && editingIndicatorField === 'name'"
                       v-model="editingIndicatorValue"
                       v-focus
-                      size="small"
+                      type="textarea"
+                      :autosize="{ minRows: 2, maxRows: 6 }"
                       @blur="saveIndicatorEdit(row, 'name')"
                     />
-                    <span v-else>{{ row.name }}</span>
+                    <span v-else class="indicator-name-text">{{ row.name }}</span>
+                  </div>
+                </template>
+              </el-table-column>
+              <el-table-column prop="type1" label="指标类型" width="120" align="center">
+                <template #default="{ row }">
+                  <span @dblclick="handleIndicatorDblClick(row, 'type1')">
+                    <el-select
+                      v-if="editingIndicatorId === row.id && editingIndicatorField === 'type1'"
+                      v-model="editingIndicatorValue"
+                      size="small"
+                      style="width: 90px"
+                      @change="saveIndicatorEdit(row, 'type1')"
+                      @visible-change="(visible: boolean) => !visible && saveIndicatorEdit(row, 'type1')"
+                    >
+                      <el-option label="定性" value="定性" />
+                      <el-option label="定量" value="定量" />
+                    </el-select>
+                    <el-tag v-else :type="row.type1 === '定量' ? 'primary' : 'warning'" size="small" effect="plain">
+                      {{ row.type1 }}
+                    </el-tag>
                   </span>
-                </template>
-              </el-table-column>
-              <el-table-column prop="type2" label="指标类型" width="100" align="center">
-                <template #default="{ row }">
-                  <el-tag :type="row.type2 === '发展性' ? 'primary' : 'success'" size="small">
-                    {{ row.type2 }}
-                  </el-tag>
-                </template>
-              </el-table-column>
-              <el-table-column prop="type1" label="指标性质" width="100" align="center">
-                <template #default="{ row }">
-                  <el-tag :type="row.type1 === '定性' ? 'info' : 'warning'" size="small">
-                    {{ row.type1 }}
-                  </el-tag>
                 </template>
               </el-table-column>
               <el-table-column prop="weight" label="权重" width="80" align="center">
@@ -573,16 +678,26 @@ const handleTableScroll = (e: Event) => {
       :close-on-click-modal="false"
     >
       <el-form label-width="100px" class="add-form">
+        <el-form-item label="战略任务" required>
+          <el-select v-model="newRow.taskContent" placeholder="请选择所属战略任务" style="width: 100%;">
+            <el-option
+              v-for="task in taskOptions"
+              :key="task.value"
+              :label="task.label"
+              :value="task.value"
+            />
+          </el-select>
+        </el-form-item>
         <el-form-item label="指标名称" required>
           <el-input v-model="newRow.name" placeholder="请输入指标名称" />
         </el-form-item>
-        <el-form-item label="指标类型">
+        <el-form-item label="任务类型">
           <el-select v-model="newRow.type2" style="width: 100%;">
             <el-option label="发展性" value="发展性" />
             <el-option label="基础性" value="基础性" />
           </el-select>
         </el-form-item>
-        <el-form-item label="指标性质">
+        <el-form-item label="指标类型">
           <el-select v-model="newRow.type1" style="width: 100%;">
             <el-option label="定性" value="定性" />
             <el-option label="定量" value="定量" />
@@ -795,6 +910,23 @@ const handleTableScroll = (e: Event) => {
   width: 100%;
 }
 
+/* 禁用省略号 */
+.unified-table :deep(.no-ellipsis) .cell {
+  overflow: visible !important;
+  text-overflow: unset !important;
+  white-space: nowrap !important;
+}
+
+.unified-table :deep(td.no-ellipsis) {
+  overflow: visible !important;
+}
+
+.unified-table :deep(td.no-ellipsis .cell) {
+  overflow: visible !important;
+  text-overflow: unset !important;
+  white-space: nowrap !important;
+}
+
 .unified-table :deep(.el-table__header th) {
   background: var(--bg-light) !important;
   color: var(--text-main);
@@ -817,9 +949,40 @@ const handleTableScroll = (e: Event) => {
   background: rgba(64, 158, 255, 0.08) !important;
 }
 
-.indicator-name {
+.task-content-text {
+  color: var(--text-main);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* 合并单元格样式 */
+.unified-table :deep(td[rowspan]) {
+  vertical-align: middle;
+  background-color: var(--bg-light) !important;
+}
+
+.unified-table :deep(.el-table__body td) {
+  border-right: 1px solid var(--border-color);
+}
+
+.unified-table :deep(.el-table__body td:last-child) {
+  border-right: none;
+}
+
+.indicator-name-cell {
+  width: 100%;
+}
+
+.indicator-name-text {
   font-weight: 500;
   color: var(--text-main);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  display: block;
 }
 
 .dept-text {
@@ -926,6 +1089,16 @@ const handleTableScroll = (e: Event) => {
   height: 1px;
   background: var(--border-color);
   margin: var(--spacing-xl) 0;
+}
+
+/* 战略任务带颜色样式 */
+.task-content-colored {
+  font-weight: 500;
+  cursor: default;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+  display: block;
 }
 
 .progress-detail {

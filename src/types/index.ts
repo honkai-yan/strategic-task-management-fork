@@ -68,6 +68,7 @@ export interface StrategicIndicator {
   isStrategic: boolean
   approvalStatus?: ApprovalStatus
   alertLevel?: AlertLevel
+  taskContent?: string // 关联的战略任务内容
 }
 
 // 里程碑类型

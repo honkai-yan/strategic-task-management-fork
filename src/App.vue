@@ -324,8 +324,9 @@ onMounted(() => {
 
 .viewing-tag {
   margin-left: 4px;
-  background: var(--accent);
-  border-color: var(--accent);
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(255, 255, 255, 0.9);
+  color: var(--primary);
 }
 
 /* 用户信息 */

@@ -18,6 +18,9 @@ const props = withDefaults(defineProps<{
   maxDevelopmentScore: 20
 })
 
+const totalScore = computed(() => props.basicScore + props.developmentScore)
+const maxTotalScore = computed(() => props.maxBasicScore + props.maxDevelopmentScore)
+
 const chartOption = computed(() => ({
   tooltip: {
     trigger: 'item',
@@ -27,47 +30,35 @@ const chartOption = computed(() => ({
     }
   },
   legend: {
-    orient: 'horizontal',
-    bottom: 0,
-    itemWidth: 12,
-    itemHeight: 12,
+    orient: 'vertical',
+    right: 10,
+    top: 'center',
+    itemWidth: 10,
+    itemHeight: 10,
     textStyle: { fontSize: 12 }
   },
   series: [
     {
       name: '得分构成',
       type: 'pie',
-      radius: ['45%', '70%'],
-      center: ['50%', '45%'],
+      radius: ['40%', '65%'],
+      center: ['35%', '50%'],
       avoidLabelOverlap: false,
       itemStyle: {
-        borderRadius: 6,
+        borderRadius: 4,
         borderColor: '#fff',
         borderWidth: 2
       },
-      label: {
-        show: true,
-        position: 'center',
-        formatter: () => {
-          const total = props.basicScore + props.developmentScore
-          return `{value|${total}}\n{label|总分}`
-        },
-        rich: {
-          value: { fontSize: 24, fontWeight: 'bold', color: '#303133' },
-          label: { fontSize: 12, color: '#909399', padding: [4, 0, 0, 0] }
-        }
-      },
+      label: { show: false },
       emphasis: {
-        label: { show: true, fontSize: 14, fontWeight: 'bold' }
+        label: { show: true, fontSize: 12, fontWeight: 'bold' },
+        itemStyle: { shadowBlur: 10, shadowOffsetX: 0, shadowColor: 'rgba(0, 0, 0, 0.2)' }
       },
       labelLine: { show: false },
       data: [
         { value: props.basicScore, name: '基础性指标', itemStyle: { color: '#409EFF' } },
         { value: props.developmentScore, name: '发展性指标', itemStyle: { color: '#67C23A' } }
-      ],
-      animationType: 'scale',
-      animationEasing: 'elasticOut',
-      animationDelay: () => Math.random() * 200
+      ]
     }
   ]
 }))
@@ -75,12 +66,26 @@ const chartOption = computed(() => ({
 
 <template>
   <div class="score-composition-chart">
-    <v-chart :option="chartOption" autoresize style="height: 240px" />
+    <v-chart :option="chartOption" autoresize style="height: 200px" />
+    <div class="chart-summary">
+      <span class="total-label">总得分 {{ totalScore }} / {{ maxTotalScore }} 分</span>
+    </div>
   </div>
 </template>
 
 <style scoped>
 .score-composition-chart {
   width: 100%;
+  position: relative;
+}
+
+.chart-summary {
+  text-align: center;
+  margin-top: -8px;
+}
+
+.total-label {
+  font-size: 12px;
+  color: var(--text-secondary);
 }
 </style>

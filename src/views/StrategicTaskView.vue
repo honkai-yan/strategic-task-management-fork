@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { Plus, View, Download, Delete, ArrowDown, Promotion, RefreshLeft } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { ElTable } from 'element-plus'
@@ -84,11 +84,51 @@ const currentTask = computed(() => taskList.value[currentTaskIndex.value] || {
   cycle: ''
 })
 
-// 从 Store 获取指标列表（带里程碑）
-const indicators = computed(() => strategicStore.indicators.map(i => ({
-  ...i,
-  id: Number(i.id)
-})))
+// 从 Store 获取指标列表（带里程碑），按任务类型和战略任务分组排序
+const indicators = computed(() => {
+  const list = strategicStore.indicators.map(i => ({
+    ...i,
+    id: Number(i.id)
+  }))
+  // 先按 type2（任务类型）排序，再按 taskContent（战略任务）排序
+  return list.sort((a, b) => {
+    const type2A = a.type2 || ''
+    const type2B = b.type2 || ''
+    if (type2A !== type2B) {
+      // 发展性排在前面
+      return type2A === '发展性' ? -1 : 1
+    }
+    const taskA = a.taskContent || ''
+    const taskB = b.taskContent || ''
+    return taskA.localeCompare(taskB)
+  })
+})
+
+// 计算单元格合并信息
+const getSpanMethod = ({ row, column, rowIndex, columnIndex }: { row: any; column: any; rowIndex: number; columnIndex: number }) => {
+  const dataList = indicators.value
+
+  // 战略任务列（第1列，index=1，选择框后面）合并
+  if (columnIndex === 1) {
+    const currentTask = row.taskContent || '未关联任务'
+
+    let startIndex = rowIndex
+    while (startIndex > 0 && (dataList[startIndex - 1].taskContent || '未关联任务') === currentTask) {
+      startIndex--
+    }
+
+    if (startIndex === rowIndex) {
+      let count = 1
+      while (rowIndex + count < dataList.length && (dataList[rowIndex + count].taskContent || '未关联任务') === currentTask) {
+        count++
+      }
+      return { rowspan: count, colspan: 1 }
+    } else {
+      return { rowspan: 0, colspan: 0 }
+    }
+  }
+  return { rowspan: 1, colspan: 1 }
+}
 
 // 按类别筛选指标
 const developmentIndicators = computed(() => indicators.value.filter(i => i.type2 === '发展性'))
@@ -244,6 +284,33 @@ const cancelIndicatorEdit = () => {
   editingIndicatorField.value = null
   editingIndicatorValue.value = null
 }
+
+// 全局点击事件处理 - 点击编辑区域外退出编辑
+const handleGlobalClick = (event: MouseEvent) => {
+  // 如果没有正在编辑的字段，直接返回
+  if (editingIndicatorId.value === null) return
+
+  const target = event.target as HTMLElement
+
+  // 检查点击是否在 el-select 或其下拉菜单内
+  const isInSelect = target.closest('.el-select') || target.closest('.el-select-dropdown')
+  // 检查点击是否在 el-input 内
+  const isInInput = target.closest('.el-input') || target.closest('.el-textarea')
+
+  // 如果点击不在编辑组件内，则退出编辑
+  if (!isInSelect && !isInInput) {
+    cancelIndicatorEdit()
+  }
+}
+
+// 挂载和卸载全局点击监听
+onMounted(() => {
+  document.addEventListener('click', handleGlobalClick, true)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleGlobalClick, true)
+})
 
 // 方法
 const addNewRow = () => {
@@ -612,9 +679,9 @@ const getProgressStatus = (progress: number): 'success' | 'warning' | 'exception
 </script>
 
 <template>
-  <div class="strategic-task-container">
+  <div class="strategic-task-container page-fade-enter">
     <!-- 左侧任务列表 -->
-    <aside class="task-sidebar">
+    <aside class="task-sidebar card-animate">
       <div class="task-list-title">部门列表</div>
 
       <ul class="task-list">
@@ -630,7 +697,7 @@ const getProgressStatus = (progress: number): 'success' | 'warning' | 'exception
     </aside>
 
     <!-- 右侧详情区域 - Excel风格 -->
-    <section class="task-detail excel-style">
+    <section class="task-detail excel-style card-animate" style="animation-delay: 0.1s;">
       <!-- Excel标题头 -->
       <div class="excel-header">
         <h2 class="excel-title">战略任务指标总表</h2>
@@ -656,276 +723,139 @@ const getProgressStatus = (progress: number): 'success' | 'warning' | 'exception
       <!-- Excel表格 -->
       <div class="excel-table-wrapper">
         <div ref="tableScrollRef" class="table-scroll" :class="{ 'is-scrolling': isTableScrolling }" @scroll="handleTableScroll">
-          <table class="excel-table">
-            <thead>
-              <tr>
-                <th style="width: 50px;">序号</th>
-                <th style="width: 140px;">任务类型</th>
-                <th style="min-width: 200px;">战略任务</th>
-                <th style="min-width: 300px;">核心指标</th>
-                <th style="width: 100px;">指标类型</th>
-                <th style="width: 80px;">权重</th>
-                <th style="width: 150px;">里程碑进度</th>
-                <th style="min-width: 200px;">说明</th>
-                <th class="sticky-col sticky-col-first sticky-col-last cell-center" style="width: 280px;" colspan="2">操作</th>
-              </tr>
-            </thead>
-            <tbody>
-              <!-- 发展性指标 -->
-              <template v-for="(group, groupIndex) in groupedDevelopmentIndicators" :key="'dev-group-' + groupIndex">
-                <template v-for="(row, index) in group.rows" :key="'dev-' + row.id">
-                  <tr class="hover-row">
-                    <!-- 序号：第一行合并 -->
-                    <td v-if="groupIndex === 0 && index === 0" class="cell-center" :rowspan="developmentIndicators.length">1</td>
-                    <!-- 指标类别：第一行合并 -->
-                    <td 
-                      v-if="groupIndex === 0 && index === 0" 
-                      class="cell-center" 
-                      :rowspan="developmentIndicators.length"
-                      @dblclick="handleIndicatorDblClick(row, 'type2')"
-                    >
-                      <el-select
-                        v-if="editingIndicatorId === row.id && editingIndicatorField === 'type2'"
-                        v-model="editingIndicatorValue"
-                        size="small"
-                        style="width: 140px"
-                        @change="saveIndicatorEdit(row, 'type2')"
-                        @blur="saveIndicatorEdit(row, 'type2')"
-                      >
-                        <el-option label="发展性" value="发展性" />
-                        <el-option label="基础性" value="基础性" />
-                      </el-select>
-                      <span v-else>{{ row.type2 }}任务</span>
-                    </td>
-                    <!-- 战略任务（相同任务合并单元格） -->
-                    <td v-if="index === 0" @dblclick="handleIndicatorDblClick(row, 'taskContent')" :rowspan="group.rows.length">
-                      <el-input
-                        v-if="editingIndicatorId === row.id && editingIndicatorField === 'taskContent'"
-                        v-model="editingIndicatorValue"
-                        v-focus
-                        size="small"
-                        @blur="saveIndicatorEdit(row, 'taskContent')"
-                        @keyup.esc="cancelIndicatorEdit"
-                      />
-                      <span v-else>{{ group.taskContent }}</span>
-                    </td>
-                    <!-- 核心指标 -->
-                    <td @dblclick="handleIndicatorDblClick(row, 'name')">
-                      <el-input
-                        v-if="editingIndicatorId === row.id && editingIndicatorField === 'name'"
-                        v-model="editingIndicatorValue"
-                        v-focus
-                        size="small"
-                        type="textarea"
-                        :autosize="{ minRows: 1, maxRows: 3 }"
-                        @blur="saveIndicatorEdit(row, 'name')"
-                      />
-                      <span v-else>{{ row.name }}</span>
-                    </td>
-                    <td class="cell-center" @dblclick="handleIndicatorDblClick(row, 'type1')">
-                      <el-select
-                        v-if="editingIndicatorId === row.id && editingIndicatorField === 'type1'"
-                        v-model="editingIndicatorValue"
-                        size="small"
-                        style="width: 90px"
-                        @change="saveIndicatorEdit(row, 'type1')"
-                        @blur="saveIndicatorEdit(row, 'type1')"
-                      >
-                        <el-option label="定性" value="定性" />
-                        <el-option label="定量" value="定量" />
-                      </el-select>
-                      <el-tag v-else size="small" effect="plain" :type="row.type1 === '定量' ? 'primary' : 'warning'">{{ row.type1 }}</el-tag>
-                    </td>
-                    <!-- 权重 -->
-                    <td class="cell-center" @dblclick="handleIndicatorDblClick(row, 'weight')">
-                      <el-input
-                        v-if="editingIndicatorId === row.id && editingIndicatorField === 'weight'"
-                        v-model="editingIndicatorValue"
-                        v-focus
-                        size="small"
-                        style="width: 50px"
-                        @blur="saveIndicatorEdit(row, 'weight')"
-                      />
-                      <span v-else>{{ row.weight }}</span>
-                    </td>
-                    <!-- 里程碑进度 -->
-                    <td class="cell-center" @dblclick="handleIndicatorDblClick(row, 'progress')">
-                      <el-input
-                        v-if="editingIndicatorId === row.id && editingIndicatorField === 'progress'"
-                        v-model="editingIndicatorValue"
-                        v-focus
-                        size="small"
-                        type="number"
-                        :min="0"
-                        :max="100"
-                        style="width: 60px"
-                        @blur="saveIndicatorEdit(row, 'progress')"
-                      />
-                      <div v-else class="progress-cell">
-                        <el-progress
-                          :percentage="row.progress || 0"
-                          :stroke-width="10"
-                          :color="getProgressColor(row)"
-                          :show-text="false"
-                          style="width: 80px;"
-                        />
-                        <span class="progress-text">{{ row.progress || 0 }}%</span>
-                      </div>
-                    </td>
-                    <!-- 说明 -->
-                    <td @dblclick="handleIndicatorDblClick(row, 'remark')">
-                      <el-input
-                        v-if="editingIndicatorId === row.id && editingIndicatorField === 'remark'"
-                        v-model="editingIndicatorValue"
-                        v-focus
-                        size="small"
-                        @blur="saveIndicatorEdit(row, 'remark')"
-                      />
-                      <span v-else>{{ row.remark }}</span>
-                    </td>
-                    <!-- 操作 -->
-                    <td class="cell-center sticky-col sticky-col-first">
-                      <el-button link type="primary" @click="handleViewDetail(row)">查看</el-button>
-                      <el-button v-if="row.canWithdraw" link type="warning" @click="openDistributeDialog(row)">下发</el-button>
-                      <el-button v-else link type="info" @click="handleWithdraw(row)">撤回</el-button>
-                      <el-button link type="danger" @click="handleDeleteIndicator(row)">删除</el-button>
-                    </td>
-                    <!-- 整体下发：每个任务组第一行合并 -->
-                    <td v-if="index === 0" class="cell-center sticky-col sticky-col-last" :rowspan="group.rows.length">
-                      <el-button type="warning" link @click="handleBatchDistributeByTask(group)">整体下发</el-button>
-                    </td>
-                  </tr>
-                </template>
+          <el-table
+            ref="tableRef"
+            :data="indicators"
+            :span-method="getSpanMethod"
+            border
+            highlight-current-row
+            @selection-change="handleSelectionChange"
+            class="unified-table"
+          >
+            <el-table-column type="selection" width="50" />
+            <el-table-column prop="taskContent" label="战略任务" min-width="200">
+              <template #default="{ row }">
+                <div class="indicator-name-cell" @dblclick="handleIndicatorDblClick(row, 'taskContent')">
+                  <el-input
+                    v-if="editingIndicatorId === row.id && editingIndicatorField === 'taskContent'"
+                    v-model="editingIndicatorValue"
+                    v-focus
+                    type="textarea"
+                    :autosize="{ minRows: 2, maxRows: 6 }"
+                    @blur="saveIndicatorEdit(row, 'taskContent')"
+                    @keyup.esc="cancelIndicatorEdit"
+                  />
+                  <el-tooltip v-else :content="row.type2 === '发展性' ? '发展性任务' : '基础性任务'" placement="top">
+                    <span
+                      class="indicator-name-text task-content-colored"
+                      :style="{ color: row.type2 === '发展性' ? '#409EFF' : '#67C23A' }"
+                    >{{ row.taskContent || '未关联任务' }}</span>
+                  </el-tooltip>
+                </div>
               </template>
-
-              <!-- 基础性指标 -->
-              <template v-for="(group, groupIndex) in groupedBasicIndicators" :key="'basic-group-' + groupIndex">
-                <template v-for="(row, index) in group.rows" :key="'basic-' + row.id">
-                  <tr class="hover-row">
-                    <!-- 序号：第一行合并 -->
-                    <td v-if="groupIndex === 0 && index === 0" class="cell-center" :rowspan="basicIndicators.length">2</td>
-                    <!-- 指标类别：第一行合并 -->
-                    <td 
-                      v-if="groupIndex === 0 && index === 0" 
-                      class="cell-center" 
-                      :rowspan="basicIndicators.length"
-                      @dblclick="handleIndicatorDblClick(row, 'type2')"
-                    >
-                      <el-select
-                        v-if="editingIndicatorId === row.id && editingIndicatorField === 'type2'"
-                        v-model="editingIndicatorValue"
-                        size="small"
-                        style="width: 140px"
-                        @change="saveIndicatorEdit(row, 'type2')"
-                        @blur="saveIndicatorEdit(row, 'type2')"
-                      >
-                        <el-option label="发展性" value="发展性" />
-                        <el-option label="基础性" value="基础性" />
-                      </el-select>
-                      <span v-else>{{ row.type2 }}任务</span>
-                    </td>
-                    <!-- 战略任务（相同任务合并单元格） -->
-                    <td v-if="index === 0" @dblclick="handleIndicatorDblClick(row, 'taskContent')" :rowspan="group.rows.length">
-                      <el-input
-                        v-if="editingIndicatorId === row.id && editingIndicatorField === 'taskContent'"
-                        v-model="editingIndicatorValue"
-                        v-focus
-                        size="small"
-                        @blur="saveIndicatorEdit(row, 'taskContent')"
-                        @keyup.esc="cancelIndicatorEdit"
-                      />
-                      <span v-else>{{ group.taskContent }}</span>
-                    </td>
-                    <!-- 核心指标 -->
-                    <td @dblclick="handleIndicatorDblClick(row, 'name')">
-                      <el-input
-                        v-if="editingIndicatorId === row.id && editingIndicatorField === 'name'"
-                        v-model="editingIndicatorValue"
-                        v-focus
-                        size="small"
-                        type="textarea"
-                        :autosize="{ minRows: 1, maxRows: 3 }"
-                        @blur="saveIndicatorEdit(row, 'name')"
-                      />
-                      <span v-else>{{ row.name }}</span>
-                    </td>
-                    <td class="cell-center" @dblclick="handleIndicatorDblClick(row, 'type1')">
-                      <el-select
-                        v-if="editingIndicatorId === row.id && editingIndicatorField === 'type1'"
-                        v-model="editingIndicatorValue"
-                        size="small"
-                        style="width: 90px"
-                        @change="saveIndicatorEdit(row, 'type1')"
-                        @blur="saveIndicatorEdit(row, 'type1')"
-                      >
-                        <el-option label="定性" value="定性" />
-                        <el-option label="定量" value="定量" />
-                      </el-select>
-                      <el-tag v-else size="small" effect="plain" :type="row.type1 === '定量' ? 'primary' : 'warning'">{{ row.type1 }}</el-tag>
-                    </td>
-                    <!-- 权重 -->
-                    <td class="cell-center" @dblclick="handleIndicatorDblClick(row, 'weight')">
-                      <el-input
-                        v-if="editingIndicatorId === row.id && editingIndicatorField === 'weight'"
-                        v-model="editingIndicatorValue"
-                        v-focus
-                        size="small"
-                        style="width: 50px"
-                        @blur="saveIndicatorEdit(row, 'weight')"
-                      />
-                      <span v-else>{{ row.weight }}</span>
-                    </td>
-                    <!-- 里程碑进度 -->
-                    <td class="cell-center" @dblclick="handleIndicatorDblClick(row, 'progress')">
-                      <el-input
-                        v-if="editingIndicatorId === row.id && editingIndicatorField === 'progress'"
-                        v-model="editingIndicatorValue"
-                        v-focus
-                        size="small"
-                        type="number"
-                        :min="0"
-                        :max="100"
-                        style="width: 60px"
-                        @blur="saveIndicatorEdit(row, 'progress')"
-                      />
-                      <div v-else class="progress-cell">
-                        <el-progress
-                          :percentage="row.progress || 0"
-                          :stroke-width="10"
-                          :color="getProgressColor(row)"
-                          :show-text="false"
-                          style="width: 80px;"
-                        />
-                        <span class="progress-text">{{ row.progress || 0 }}%</span>
-                      </div>
-                    </td>
-                    <!-- 说明 -->
-                    <td @dblclick="handleIndicatorDblClick(row, 'remark')">
-                      <el-input
-                        v-if="editingIndicatorId === row.id && editingIndicatorField === 'remark'"
-                        v-model="editingIndicatorValue"
-                        v-focus
-                        size="small"
-                        @blur="saveIndicatorEdit(row, 'remark')"
-                      />
-                      <span v-else>{{ row.remark }}</span>
-                    </td>
-                    <!-- 操作 -->
-                    <td class="cell-center sticky-col sticky-col-first">
-                      <el-button link type="primary" @click="handleViewDetail(row)">查看</el-button>
-                      <el-button v-if="row.canWithdraw" link type="warning" @click="openDistributeDialog(row)">下发</el-button>
-                      <el-button v-else link type="info" @click="handleWithdraw(row)">撤回</el-button>
-                      <el-button link type="danger" @click="handleDeleteIndicator(row)">删除</el-button>
-                    </td>
-                    <!-- 整体下发：每个任务组第一行合并 -->
-                    <td v-if="index === 0" class="cell-center sticky-col sticky-col-last" :rowspan="group.rows.length">
-                      <el-button type="warning" link @click="handleBatchDistributeByTask(group)">整体下发</el-button>
-                    </td>
-                  </tr>
-                </template>
+            </el-table-column>
+            <el-table-column prop="name" label="核心指标" min-width="280">
+              <template #default="{ row }">
+                <div class="indicator-name-cell" @dblclick="handleIndicatorDblClick(row, 'name')">
+                  <el-input
+                    v-if="editingIndicatorId === row.id && editingIndicatorField === 'name'"
+                    v-model="editingIndicatorValue"
+                    v-focus
+                    type="textarea"
+                    :autosize="{ minRows: 2, maxRows: 6 }"
+                    @blur="saveIndicatorEdit(row, 'name')"
+                  />
+                  <span v-else class="indicator-name-text">{{ row.name }}</span>
+                </div>
               </template>
-            </tbody>
-          </table>
+            </el-table-column>
+            <el-table-column prop="type1" label="指标类型" width="100" align="center">
+              <template #default="{ row }">
+                <span @dblclick="handleIndicatorDblClick(row, 'type1')">
+                  <el-select
+                    v-if="editingIndicatorId === row.id && editingIndicatorField === 'type1'"
+                    v-model="editingIndicatorValue"
+                    size="small"
+                    style="width: 90px"
+                    @change="saveIndicatorEdit(row, 'type1')"
+                    @visible-change="(visible: boolean) => !visible && saveIndicatorEdit(row, 'type1')"
+                  >
+                    <el-option label="定性" value="定性" />
+                    <el-option label="定量" value="定量" />
+                  </el-select>
+                  <el-tag v-else :type="row.type1 === '定量' ? 'primary' : 'warning'" size="small" effect="plain">
+                    {{ row.type1 }}
+                  </el-tag>
+                </span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="weight" label="权重" width="80" align="center">
+              <template #default="{ row }">
+                <span @dblclick="handleIndicatorDblClick(row, 'weight')">
+                  <el-input
+                    v-if="editingIndicatorId === row.id && editingIndicatorField === 'weight'"
+                    v-model="editingIndicatorValue"
+                    v-focus
+                    size="small"
+                    style="width: 50px"
+                    @blur="saveIndicatorEdit(row, 'weight')"
+                  />
+                  <span v-else>{{ row.weight }}</span>
+                </span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="progress" label="里程碑进度" width="150" align="center">
+              <template #default="{ row }">
+                <span @dblclick="handleIndicatorDblClick(row, 'progress')">
+                  <el-input
+                    v-if="editingIndicatorId === row.id && editingIndicatorField === 'progress'"
+                    v-model="editingIndicatorValue"
+                    v-focus
+                    size="small"
+                    type="number"
+                    :min="0"
+                    :max="100"
+                    style="width: 60px"
+                    @blur="saveIndicatorEdit(row, 'progress')"
+                  />
+                  <div v-else class="progress-cell">
+                    <el-progress
+                      :percentage="row.progress || 0"
+                      :stroke-width="10"
+                      :color="getProgressColor(row)"
+                      :show-text="false"
+                      style="width: 80px;"
+                    />
+                    <span class="progress-text">{{ row.progress || 0 }}%</span>
+                  </div>
+                </span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="remark" label="说明" min-width="180">
+              <template #default="{ row }">
+                <div class="indicator-name-cell" @dblclick="handleIndicatorDblClick(row, 'remark')">
+                  <el-input
+                    v-if="editingIndicatorId === row.id && editingIndicatorField === 'remark'"
+                    v-model="editingIndicatorValue"
+                    v-focus
+                    type="textarea"
+                    :autosize="{ minRows: 2, maxRows: 6 }"
+                    @blur="saveIndicatorEdit(row, 'remark')"
+                    @keyup.esc="cancelIndicatorEdit"
+                  />
+                  <span v-else class="indicator-name-text">{{ row.remark }}</span>
+                </div>
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="200" fixed="right" align="center">
+              <template #default="{ row }">
+                <el-button link type="primary" @click="handleViewDetail(row)">查看</el-button>
+                <el-button v-if="row.canWithdraw" link type="warning" @click="openDistributeDialog(row)">下发</el-button>
+                <el-button v-else link type="info" @click="handleWithdraw(row)">撤回</el-button>
+                <el-button link type="danger" @click="handleDeleteIndicator(row)">删除</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
         </div>
 
         <!-- 新增行表单 -->
@@ -1586,6 +1516,76 @@ const getProgressStatus = (progress: number): 'success' | 'warning' | 'exception
   overflow: auto;
 }
 
+/* ========================================
+   统一表格样式 (el-table)
+   Requirements: 4.1, 4.2, 4.3, 4.4
+   ======================================== */
+.unified-table {
+  width: 100%;
+}
+
+/* 禁用省略号 */
+.unified-table :deep(.no-ellipsis) .cell {
+  overflow: visible !important;
+  text-overflow: unset !important;
+  white-space: nowrap !important;
+}
+
+.unified-table :deep(td.no-ellipsis) {
+  overflow: visible !important;
+}
+
+.unified-table :deep(td.no-ellipsis .cell) {
+  overflow: visible !important;
+  text-overflow: unset !important;
+  white-space: nowrap !important;
+}
+
+.unified-table :deep(.el-table__header th) {
+  background: var(--bg-light) !important;
+  color: var(--text-main);
+  font-weight: 600;
+  padding: var(--spacing-md) var(--spacing-lg);
+}
+
+.unified-table :deep(.el-table__body td) {
+  padding: var(--spacing-md) var(--spacing-lg);
+  color: var(--text-regular);
+}
+
+/* 斑马纹 */
+.unified-table :deep(.el-table__row--striped td) {
+  background: var(--bg-page) !important;
+}
+
+/* 悬停效果 */
+.unified-table :deep(.el-table__body tr:hover > td) {
+  background: rgba(64, 158, 255, 0.08) !important;
+}
+
+/* 合并单元格样式 */
+.unified-table :deep(td[rowspan]) {
+  vertical-align: middle;
+  background-color: var(--bg-light) !important;
+}
+
+.unified-table :deep(.el-table__body td) {
+  border-right: 1px solid var(--border-color);
+}
+
+.unified-table :deep(.el-table__body td:last-child) {
+  border-right: none;
+}
+
+.task-content-text {
+  color: var(--text-main);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 /* Excel表格 - 统一表格样式 */
 .excel-table {
   width: 100%;
@@ -1916,11 +1916,27 @@ const getProgressStatus = (progress: number): 'success' | 'warning' | 'exception
 }
 
 /* ========================================
-   动画效果 - 统一过渡动画
-   Requirements: 6.1, 6.2
+   页面加载动画 - 统一动画效果
+   Requirements: 6.1, 6.2, 6.3
    ======================================== */
+.page-fade-enter {
+  animation: fadeIn var(--transition-slow) ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .card-animate {
   animation: slideUp 0.4s ease-out;
+  animation-fill-mode: both;
 }
 
 @keyframes slideUp {
@@ -1932,5 +1948,25 @@ const getProgressStatus = (progress: number): 'success' | 'warning' | 'exception
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* ========================================
+   核心指标单元格样式 - 完整显示内容
+   ======================================== */
+.indicator-name-cell {
+  vertical-align: top;
+}
+
+.indicator-name-text {
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+  display: block;
+}
+
+/* 战略任务带颜色样式 */
+.task-content-colored {
+  font-weight: 500;
+  cursor: default;
 }
 </style>

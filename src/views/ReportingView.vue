@@ -244,7 +244,7 @@ watch(monthList, () => saveToLocal(), { deep: true })
 </script>
 
 <template>
-  <div class="dashboard-container">
+  <div class="dashboard-container page-fade-enter">
 
     <!-- VIEW 1: 月份选择概览 -->
     <div v-if="currentView === 'list'" class="month-overview">
@@ -253,7 +253,7 @@ watch(monthList, () => saveToLocal(), { deep: true })
         <p class="desc">请选择对应的考核周期进行填报</p>
       </div>
       <div class="month-grid">
-        <div v-for="month in monthList" :key="month.id" class="month-card" @click="enterMonth(month)">
+        <div v-for="(month, index) in monthList" :key="month.id" class="month-card card-animate" :style="{ animationDelay: index * 0.1 + 's' }" @click="enterMonth(month)">
           <div class="month-icon-box"><el-icon :size="32"><Calendar /></el-icon></div>
           <div class="month-info">
             <h4>{{ month.name }}</h4>
@@ -273,7 +273,7 @@ watch(monthList, () => saveToLocal(), { deep: true })
     <!-- VIEW 2: 详情填报视图 -->
     <div v-else class="detail-view">
       <!-- 头部导航 -->
-      <div class="page-header detail-header">
+      <div class="page-header detail-header card-animate">
         <div class="header-left">
           <el-button link :icon="ArrowLeft" @click="backToList" class="back-btn">返回列表</el-button>
           <el-divider direction="vertical" />
@@ -1035,20 +1035,55 @@ watch(monthList, () => saveToLocal(), { deep: true })
   .dashboard-container {
     padding: var(--spacing-md);
   }
-  
+
   .month-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .detail-header {
     flex-direction: column;
     gap: var(--spacing-md);
     align-items: flex-start;
   }
-  
+
   .batch-tools {
     width: 100%;
     justify-content: space-between;
+  }
+}
+
+/* ========================================
+   页面加载动画 - 统一动画效果
+   Requirements: 6.1, 6.2, 6.3
+   ======================================== */
+.page-fade-enter {
+  animation: fadeIn var(--transition-slow) ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.card-animate {
+  animation: slideUp 0.4s ease-out;
+  animation-fill-mode: both;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 </style>
