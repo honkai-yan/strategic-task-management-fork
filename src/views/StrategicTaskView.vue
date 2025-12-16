@@ -108,8 +108,8 @@ const indicators = computed(() => {
 const getSpanMethod = ({ row, column, rowIndex, columnIndex }: { row: any; column: any; rowIndex: number; columnIndex: number }) => {
   const dataList = indicators.value
 
-  // 战略任务列（第1列，index=1，选择框后面）合并
-  if (columnIndex === 1) {
+  // 战略任务列（第1列，index=1，选择框后面）和批量操作列（最后一列，index=8）合并
+  if (columnIndex === 1 || columnIndex === 8) {
     const currentTask = row.taskContent || '未关联任务'
 
     let startIndex = rowIndex
@@ -128,6 +128,13 @@ const getSpanMethod = ({ row, column, rowIndex, columnIndex }: { row: any; colum
     }
   }
   return { rowspan: 1, colspan: 1 }
+}
+
+// 获取当前行所属的任务组
+const getTaskGroup = (row: StrategicIndicator) => {
+  const taskContent = row.taskContent || '未命名任务'
+  const rows = indicators.value.filter(i => (i.taskContent || '未命名任务') === taskContent)
+  return { taskContent, rows }
 }
 
 // 按类别筛选指标
@@ -722,7 +729,7 @@ const getProgressStatus = (progress: number): 'success' | 'warning' | 'exception
 
       <!-- Excel表格 -->
       <div class="excel-table-wrapper">
-        <div ref="tableScrollRef" class="table-scroll" :class="{ 'is-scrolling': isTableScrolling }" @scroll="handleTableScroll">
+        <div class="table-container">
           <el-table
             ref="tableRef"
             :data="indicators"
@@ -732,8 +739,8 @@ const getProgressStatus = (progress: number): 'success' | 'warning' | 'exception
             @selection-change="handleSelectionChange"
             class="unified-table"
           >
-            <el-table-column type="selection" width="50" />
-            <el-table-column prop="taskContent" label="战略任务" min-width="200">
+            <el-table-column type="selection" width="36" />
+            <el-table-column prop="taskContent" label="战略任务" min-width="140">
               <template #default="{ row }">
                 <div class="indicator-name-cell" @dblclick="handleIndicatorDblClick(row, 'taskContent')">
                   <el-input
@@ -754,7 +761,7 @@ const getProgressStatus = (progress: number): 'success' | 'warning' | 'exception
                 </div>
               </template>
             </el-table-column>
-            <el-table-column prop="name" label="核心指标" min-width="280">
+            <el-table-column prop="name" label="核心指标">
               <template #default="{ row }">
                 <div class="indicator-name-cell" @dblclick="handleIndicatorDblClick(row, 'name')">
                   <el-input
@@ -769,14 +776,14 @@ const getProgressStatus = (progress: number): 'success' | 'warning' | 'exception
                 </div>
               </template>
             </el-table-column>
-            <el-table-column prop="type1" label="指标类型" width="100" align="center">
+            <el-table-column prop="type1" label="类型" width="80" align="center">
               <template #default="{ row }">
                 <span @dblclick="handleIndicatorDblClick(row, 'type1')">
                   <el-select
                     v-if="editingIndicatorId === row.id && editingIndicatorField === 'type1'"
                     v-model="editingIndicatorValue"
                     size="small"
-                    style="width: 90px"
+                    style="width: 70px"
                     @change="saveIndicatorEdit(row, 'type1')"
                     @visible-change="(visible: boolean) => !visible && saveIndicatorEdit(row, 'type1')"
                   >
@@ -789,7 +796,7 @@ const getProgressStatus = (progress: number): 'success' | 'warning' | 'exception
                 </span>
               </template>
             </el-table-column>
-            <el-table-column prop="weight" label="权重" width="80" align="center">
+            <el-table-column prop="weight" label="权重" width="70" align="center">
               <template #default="{ row }">
                 <span @dblclick="handleIndicatorDblClick(row, 'weight')">
                   <el-input
@@ -797,14 +804,14 @@ const getProgressStatus = (progress: number): 'success' | 'warning' | 'exception
                     v-model="editingIndicatorValue"
                     v-focus
                     size="small"
-                    style="width: 50px"
+                    style="width: 40px"
                     @blur="saveIndicatorEdit(row, 'weight')"
                   />
                   <span v-else>{{ row.weight }}</span>
                 </span>
               </template>
             </el-table-column>
-            <el-table-column prop="progress" label="里程碑进度" width="150" align="center">
+            <el-table-column prop="progress" label="进度" width="120" align="center">
               <template #default="{ row }">
                 <span @dblclick="handleIndicatorDblClick(row, 'progress')">
                   <el-input
@@ -815,23 +822,23 @@ const getProgressStatus = (progress: number): 'success' | 'warning' | 'exception
                     type="number"
                     :min="0"
                     :max="100"
-                    style="width: 60px"
+                    style="width: 50px"
                     @blur="saveIndicatorEdit(row, 'progress')"
                   />
                   <div v-else class="progress-cell">
                     <el-progress
                       :percentage="row.progress || 0"
-                      :stroke-width="10"
+                      :stroke-width="8"
                       :color="getProgressColor(row)"
                       :show-text="false"
-                      style="width: 80px;"
+                      style="width: 60px;"
                     />
                     <span class="progress-text">{{ row.progress || 0 }}%</span>
                   </div>
                 </span>
               </template>
             </el-table-column>
-            <el-table-column prop="remark" label="说明" min-width="180">
+            <el-table-column prop="remark" label="说明" min-width="120">
               <template #default="{ row }">
                 <div class="indicator-name-cell" @dblclick="handleIndicatorDblClick(row, 'remark')">
                   <el-input
@@ -843,16 +850,23 @@ const getProgressStatus = (progress: number): 'success' | 'warning' | 'exception
                     @blur="saveIndicatorEdit(row, 'remark')"
                     @keyup.esc="cancelIndicatorEdit"
                   />
-                  <span v-else class="indicator-name-text">{{ row.remark }}</span>
+                  <span v-else class="indicator-name-text remark-text-wrap">{{ row.remark }}</span>
                 </div>
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="200" fixed="right" align="center">
+            <el-table-column label="操作" width="120" align="center">
               <template #default="{ row }">
-                <el-button link type="primary" @click="handleViewDetail(row)">查看</el-button>
-                <el-button v-if="row.canWithdraw" link type="warning" @click="openDistributeDialog(row)">下发</el-button>
-                <el-button v-else link type="info" @click="handleWithdraw(row)">撤回</el-button>
-                <el-button link type="danger" @click="handleDeleteIndicator(row)">删除</el-button>
+                <div class="action-buttons">
+                  <el-button link type="primary" size="small" @click="handleViewDetail(row)">查看</el-button>
+                  <el-button v-if="row.canWithdraw" link type="warning" size="small" @click="openDistributeDialog(row)">下发</el-button>
+                  <el-button v-else link type="info" size="small" @click="handleWithdraw(row)">撤回</el-button>
+                  <el-button link type="danger" size="small" @click="handleDeleteIndicator(row)">删除</el-button>
+                </div>
+              </template>
+            </el-table-column>
+            <el-table-column label="批量" width="80" align="center" class-name="batch-column">
+              <template #default="{ row }">
+                <el-button type="primary" size="small" @click="handleBatchDistributeByTask(getTaskGroup(row))">下发</el-button>
               </template>
             </el-table-column>
           </el-table>
@@ -1511,9 +1525,45 @@ const getProgressStatus = (progress: number): 'success' | 'warning' | 'exception
   flex-direction: column;
 }
 
-.table-scroll {
+.table-container {
   flex: 1;
   overflow: auto;
+}
+
+/* 确保表格有最小宽度，防止列被压缩 */
+.excel-table-wrapper .unified-table {
+  min-width: 1100px;
+}
+
+/* 说明列文字换行 */
+.remark-text-wrap {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
+
+/* 操作按钮容器 */
+.action-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 2px;
+}
+
+.action-buttons .el-button {
+  padding: 4px 6px;
+  font-size: 12px;
+}
+
+/* 批量操作列样式 */
+.unified-table :deep(.batch-column) {
+  background-color: var(--bg-page) !important;
+}
+
+.unified-table :deep(.batch-column) .el-button {
+  font-size: 12px;
 }
 
 /* ========================================

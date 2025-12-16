@@ -131,8 +131,8 @@ const indicators = computed(() => {
 const getSpanMethod = ({ row, column, rowIndex, columnIndex }: { row: any; column: any; rowIndex: number; columnIndex: number }) => {
   const dataList = indicators.value
 
-  // 战略任务列（第1列，index=1，选择框后面）合并
-  if (columnIndex === 1) {
+  // 战略任务列（第1列，index=1，选择框后面）和批量操作列（最后一列，index=9）合并
+  if (columnIndex === 1 || columnIndex === 9) {
     const currentTask = row.taskContent || '未关联任务'
 
     // 计算当前任务在列表中的起始位置
@@ -154,6 +154,31 @@ const getSpanMethod = ({ row, column, rowIndex, columnIndex }: { row: any; colum
     }
   }
   return { rowspan: 1, colspan: 1 }
+}
+
+// 获取当前行所属的任务组
+const getTaskGroup = (row: StrategicIndicator) => {
+  const taskContent = row.taskContent || '未命名任务'
+  const rows = indicators.value.filter(i => (i.taskContent || '未命名任务') === taskContent)
+  return { taskContent, rows }
+}
+
+// 按任务组批量分解
+const handleBatchDistributeByTask = (group: { taskContent: string; rows: StrategicIndicator[] }) => {
+  const departments = ['教务处', '科研处', '人事处']
+  const indicatorNames = group.rows.map(ind => ind.name).join('、')
+
+  ElMessageBox.confirm(
+    `确认将任务 "${group.taskContent}" 下的 ${group.rows.length} 个指标分解到各职能部门？\n\n${indicatorNames}\n\n目标部门：${departments.join('、')}`,
+    '批量分解确认',
+    {
+      confirmButtonText: '确定分解',
+      cancelButtonText: '取消',
+      type: 'warning'
+    }
+  ).then(() => {
+    ElMessage.success(`成功分解${group.rows.length}项指标到职能部门`)
+  })
 }
 
 // 获取任务类型对应的颜色
@@ -544,7 +569,7 @@ const handleTableScroll = (e: Event) => {
           <span class="indicator-count">共 {{ indicators.length }} 条记录</span>
         </div>
         <div class="card-body table-body">
-          <div ref="tableScrollRef" class="table-scroll" :class="{ 'is-scrolling': isTableScrolling }" @scroll="handleTableScroll">
+          <div class="table-container">
             <el-table
               ref="tableRef"
               :data="indicators"
@@ -554,8 +579,8 @@ const handleTableScroll = (e: Event) => {
               @selection-change="handleSelectionChange"
               class="unified-table"
             >
-              <el-table-column type="selection" width="50" />
-              <el-table-column prop="taskContent" label="战略任务" min-width="200">
+              <el-table-column type="selection" width="36" />
+              <el-table-column prop="taskContent" label="战略任务" min-width="140">
                 <template #default="{ row }">
                   <el-tooltip :content="row.type2 === '发展性' ? '发展性任务' : '基础性任务'" placement="top">
                     <span
@@ -565,7 +590,7 @@ const handleTableScroll = (e: Event) => {
                   </el-tooltip>
                 </template>
               </el-table-column>
-              <el-table-column prop="name" label="核心指标" min-width="280">
+              <el-table-column prop="name" label="核心指标" min-width="180">
                 <template #default="{ row }">
                   <div class="indicator-name-cell" @dblclick="handleIndicatorDblClick(row, 'name')">
                     <el-input
@@ -580,14 +605,14 @@ const handleTableScroll = (e: Event) => {
                   </div>
                 </template>
               </el-table-column>
-              <el-table-column prop="type1" label="指标类型" width="120" align="center">
+              <el-table-column prop="type1" label="类型" width="80" align="center">
                 <template #default="{ row }">
                   <span @dblclick="handleIndicatorDblClick(row, 'type1')">
                     <el-select
                       v-if="editingIndicatorId === row.id && editingIndicatorField === 'type1'"
                       v-model="editingIndicatorValue"
                       size="small"
-                      style="width: 90px"
+                      style="width: 60px"
                       @change="saveIndicatorEdit(row, 'type1')"
                       @visible-change="(visible: boolean) => !visible && saveIndicatorEdit(row, 'type1')"
                     >
@@ -600,7 +625,7 @@ const handleTableScroll = (e: Event) => {
                   </span>
                 </template>
               </el-table-column>
-              <el-table-column prop="weight" label="权重" width="80" align="center">
+              <el-table-column prop="weight" label="权重" width="70" align="center">
                 <template #default="{ row }">
                   <span @dblclick="handleIndicatorDblClick(row, 'weight')">
                     <el-input
@@ -608,7 +633,7 @@ const handleTableScroll = (e: Event) => {
                       v-model="editingIndicatorValue"
                       v-focus
                       size="small"
-                      style="width: 50px"
+                      style="width: 40px"
                       @blur="saveIndicatorEdit(row, 'weight')"
                     />
                     <span v-else>{{ row.weight }}</span>
@@ -616,42 +641,41 @@ const handleTableScroll = (e: Event) => {
                 </template>
               </el-table-column>
               <!-- 进度条 - 统一进度条样式 (Requirements: 10.1, 10.2) -->
-              <el-table-column prop="progress" label="完成进度" width="180" align="center">
+              <el-table-column prop="progress" label="进度" width="120" align="center">
                 <template #default="{ row }">
                   <div class="progress-cell">
                     <el-progress
                       :percentage="row.progress || 0"
-                      :stroke-width="10"
+                      :stroke-width="8"
                       :status="getProgressStatus(row.progress || 0)"
                       :show-text="false"
-                      style="width: 100px;"
+                      style="width: 55px;"
                     />
                     <span class="progress-text">{{ row.progress || 0 }}%</span>
                   </div>
                 </template>
               </el-table-column>
-              <el-table-column prop="responsibleDept" label="责任部门" min-width="150">
+              <el-table-column prop="responsibleDept" label="责任部门" min-width="100">
                 <template #default="{ row }">
                   <span class="dept-text">{{ row.responsibleDept || '未分配' }}</span>
                 </template>
               </el-table-column>
-              <el-table-column prop="status" label="状态" width="100" align="center">
+              <el-table-column prop="status" label="状态" width="80" align="center">
                 <template #default="{ row }">
                   <el-tag :type="getStatusTagType(row.status)" size="small">
                     {{ row.status === 'active' ? '进行中' : row.status }}
                   </el-tag>
                 </template>
               </el-table-column>
-              <el-table-column label="操作" width="180" fixed="right" align="center">
+              <el-table-column label="操作" width="90" align="center">
                 <template #default="{ row }">
-                  <el-button link type="primary" @click="handleViewDetail(row)">
-                    <el-icon><View /></el-icon>
-                    查看
-                  </el-button>
-                  <el-button link type="danger" @click="handleDeleteIndicator(row)" v-if="canEdit">
-                    <el-icon><Delete /></el-icon>
-                    删除
-                  </el-button>
+                  <el-button link type="primary" size="small" @click="handleViewDetail(row)">查看</el-button>
+                  <el-button link type="danger" size="small" @click="handleDeleteIndicator(row)" v-if="canEdit">删除</el-button>
+                </template>
+              </el-table-column>
+              <el-table-column label="批量" width="80" align="center" class-name="batch-column">
+                <template #default="{ row }">
+                  <el-button type="primary" size="small" @click="handleBatchDistributeByTask(getTaskGroup(row))">分解</el-button>
                 </template>
               </el-table-column>
             </el-table>
@@ -898,8 +922,23 @@ const handleTableScroll = (e: Event) => {
   padding: 0;
 }
 
-.table-scroll {
-  overflow-x: auto;
+.table-container {
+  width: 100%;
+  overflow: auto;
+}
+
+/* 确保表格有最小宽度，防止列被压缩 */
+.table-container .unified-table {
+  min-width: 1100px;
+}
+
+/* 批量操作列样式 */
+.unified-table :deep(.batch-column) {
+  background-color: var(--bg-page) !important;
+}
+
+.unified-table :deep(.batch-column) .el-button {
+  font-size: 12px;
 }
 
 /* ========================================

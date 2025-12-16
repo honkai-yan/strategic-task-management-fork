@@ -412,19 +412,18 @@ const handleBatchApprove = (group: { strategicTask: string; rows: ApprovalItem[]
       </div>
 
       <!-- 待审批表格（带单元格合并） -->
-      <div v-else ref="pendingTableScrollRef" class="approval-table-wrapper" :class="{ 'is-scrolling': isPendingTableScrolling }" @scroll="handlePendingTableScroll">
+      <div v-else class="approval-table-wrapper">
         <table class="approval-table">
           <thead>
             <tr>
-              <th style="width: 60px;">序号</th>
-              <th style="min-width: 200px;">战略任务</th>
-              <th style="min-width: 220px;">核心指标</th>
-              <th style="width: 100px;">指标类型</th>
-              <th style="width: 80px;">权重</th>
-              <th style="width: 150px;">里程碑进度</th>
-              <th style="min-width: 180px;">说明</th>
-              <th style="width: 160px;">提交信息</th>
-              <th class="sticky-col sticky-col-first sticky-col-last cell-center" style="width: 280px;" colspan="2">操作</th>
+              <th style="width: 15%;">战略任务</th>
+              <th style="width: 26%;">核心指标</th>
+              <th style="width: 6%;">类型</th>
+              <th style="width: 5%;">权重</th>
+              <th style="width: 11%;">进度</th>
+              <th style="width: 14%;">说明/提交人</th>
+              <th style="width: 15%;">操作</th>
+              <th style="width: 8%;">批量</th>
             </tr>
           </thead>
           <tbody>
@@ -432,10 +431,8 @@ const handleBatchApprove = (group: { strategicTask: string; rows: ApprovalItem[]
             <template v-for="(group, groupIndex) in groupedPendingList.development" :key="'dev-group-' + groupIndex">
               <template v-for="(row, index) in group.rows" :key="'dev-' + row.id">
                 <tr class="hover-row">
-                  <!-- 序号 -->
-                  <td class="cell-center">{{ pendingList.indexOf(row) + 1 }}</td>
                   <!-- 战略任务（相同任务合并单元格，带颜色和提示） -->
-                  <td v-if="index === 0" :rowspan="group.rows.length">
+                  <td v-if="index === 0" :rowspan="group.rows.length" class="task-cell">
                     <el-tooltip :content="row.indicatorCategory" placement="top">
                       <span class="task-content-colored" :style="{ color: getCategoryColor(row.indicatorCategory) }">{{ group.strategicTask }}</span>
                     </el-tooltip>
@@ -451,28 +448,28 @@ const handleBatchApprove = (group: { strategicTask: string; rows: ApprovalItem[]
                   <!-- 里程碑进度 -->
                   <td class="cell-center">
                     <div class="progress-cell">
-                      <el-progress :percentage="row.progress || 0" :stroke-width="10" :color="getProgressColor(row)" :show-text="false" style="width: 80px;" />
+                      <el-progress :percentage="row.progress || 0" :stroke-width="8" :color="getProgressColor(row)" :show-text="false" style="width: 60px;" />
                       <span class="progress-text">{{ row.progress || 0 }}%</span>
                     </div>
                   </td>
-                  <!-- 说明 -->
-                  <td>{{ row.remark }}</td>
-                  <!-- 提交信息 -->
-                  <td>
-                    <div class="submitter-info">
-                      <span><el-icon><User /></el-icon> {{ row.submitter }}</span>
-                      <span class="dept-name">{{ row.dept }}</span>
+                  <!-- 说明/提交人（合并） -->
+                  <td class="info-cell">
+                    <div class="info-combined">
+                      <span class="remark-text">{{ row.remark }}</span>
+                      <span class="submitter-text">{{ row.submitter }} · {{ row.dept }}</span>
                     </div>
                   </td>
-                  <!-- 操作 -->
-                  <td class="cell-center sticky-col sticky-col-first">
-                    <el-button link type="primary" @click="handleViewDetail(row)">查看</el-button>
-                    <el-button link type="danger" @click="openRejectDialog(row)">驳回</el-button>
-                    <el-button link type="success" @click="handleApprove(row)">通过</el-button>
+                  <!-- 单条操作 -->
+                  <td class="cell-center action-cell">
+                    <div class="action-buttons">
+                      <el-button link type="primary" size="small" @click="handleViewDetail(row)">查看</el-button>
+                      <el-button link type="danger" size="small" @click="openRejectDialog(row)">驳回</el-button>
+                      <el-button link type="success" size="small" @click="handleApprove(row)">通过</el-button>
+                    </div>
                   </td>
-                  <!-- 批量处理：每个任务组第一行合并 -->
-                  <td v-if="index === 0" class="cell-center sticky-col sticky-col-last" :rowspan="group.rows.length">
-                    <el-button type="success" link size="small" @click="handleBatchApprove(group)">批量通过</el-button>
+                  <!-- 批量操作（按任务组合并） -->
+                  <td v-if="index === 0" :rowspan="group.rows.length" class="cell-center batch-cell">
+                    <el-button type="success" size="small" @click="handleBatchApprove(group)">批量通过</el-button>
                   </td>
                 </tr>
               </template>
@@ -481,10 +478,8 @@ const handleBatchApprove = (group: { strategicTask: string; rows: ApprovalItem[]
             <template v-for="(group, groupIndex) in groupedPendingList.basic" :key="'basic-group-' + groupIndex">
               <template v-for="(row, index) in group.rows" :key="'basic-' + row.id">
                 <tr class="hover-row">
-                  <!-- 序号 -->
-                  <td class="cell-center">{{ pendingList.indexOf(row) + 1 }}</td>
                   <!-- 战略任务（相同任务合并单元格，带颜色和提示） -->
-                  <td v-if="index === 0" :rowspan="group.rows.length">
+                  <td v-if="index === 0" :rowspan="group.rows.length" class="task-cell">
                     <el-tooltip :content="row.indicatorCategory" placement="top">
                       <span class="task-content-colored" :style="{ color: getCategoryColor(row.indicatorCategory) }">{{ group.strategicTask }}</span>
                     </el-tooltip>
@@ -500,28 +495,28 @@ const handleBatchApprove = (group: { strategicTask: string; rows: ApprovalItem[]
                   <!-- 里程碑进度 -->
                   <td class="cell-center">
                     <div class="progress-cell">
-                      <el-progress :percentage="row.progress || 0" :stroke-width="10" :color="getProgressColor(row)" :show-text="false" style="width: 80px;" />
+                      <el-progress :percentage="row.progress || 0" :stroke-width="8" :color="getProgressColor(row)" :show-text="false" style="width: 60px;" />
                       <span class="progress-text">{{ row.progress || 0 }}%</span>
                     </div>
                   </td>
-                  <!-- 说明 -->
-                  <td>{{ row.remark }}</td>
-                  <!-- 提交信息 -->
-                  <td>
-                    <div class="submitter-info">
-                      <span><el-icon><User /></el-icon> {{ row.submitter }}</span>
-                      <span class="dept-name">{{ row.dept }}</span>
+                  <!-- 说明/提交人（合并） -->
+                  <td class="info-cell">
+                    <div class="info-combined">
+                      <span class="remark-text">{{ row.remark }}</span>
+                      <span class="submitter-text">{{ row.submitter }} · {{ row.dept }}</span>
                     </div>
                   </td>
-                  <!-- 操作 -->
-                  <td class="cell-center sticky-col sticky-col-first">
-                    <el-button link type="primary" @click="handleViewDetail(row)">查看</el-button>
-                    <el-button link type="danger" @click="openRejectDialog(row)">驳回</el-button>
-                    <el-button link type="success" @click="handleApprove(row)">通过</el-button>
+                  <!-- 单条操作 -->
+                  <td class="cell-center action-cell">
+                    <div class="action-buttons">
+                      <el-button link type="primary" size="small" @click="handleViewDetail(row)">查看</el-button>
+                      <el-button link type="danger" size="small" @click="openRejectDialog(row)">驳回</el-button>
+                      <el-button link type="success" size="small" @click="handleApprove(row)">通过</el-button>
+                    </div>
                   </td>
-                  <!-- 批量处理：每个任务组第一行合并 -->
-                  <td v-if="index === 0" class="cell-center sticky-col sticky-col-last" :rowspan="group.rows.length">
-                    <el-button type="success" link size="small" @click="handleBatchApprove(group)">批量通过</el-button>
+                  <!-- 批量操作（按任务组合并） -->
+                  <td v-if="index === 0" :rowspan="group.rows.length" class="cell-center batch-cell">
+                    <el-button type="success" size="small" @click="handleBatchApprove(group)">批量通过</el-button>
                   </td>
                 </tr>
               </template>
@@ -547,19 +542,18 @@ const handleBatchApprove = (group: { strategicTask: string; rows: ApprovalItem[]
       </div>
 
       <!-- 历史审批表格（带单元格合并） -->
-      <div ref="historyTableScrollRef" class="approval-table-wrapper" :class="{ 'is-scrolling': isHistoryTableScrolling }" @scroll="handleHistoryTableScroll">
+      <div class="approval-table-wrapper">
         <table class="approval-table">
           <thead>
             <tr>
-              <th style="width: 60px;">序号</th>
-              <th style="min-width: 180px;">战略任务</th>
-              <th style="min-width: 200px;">核心指标</th>
-              <th style="width: 100px;">指标类型</th>
-              <th style="width: 80px;">权重</th>
-              <th style="width: 150px;">里程碑进度</th>
-              <th style="width: 100px;">提交人</th>
-              <th style="width: 100px;">最终状态</th>
-              <th class="sticky-col sticky-col-only" style="width: 200px;">操作</th>
+              <th style="width: 18%;">战略任务</th>
+              <th style="width: 28%;">核心指标</th>
+              <th style="width: 6%;">类型</th>
+              <th style="width: 5%;">权重</th>
+              <th style="width: 12%;">进度</th>
+              <th style="width: 10%;">提交人</th>
+              <th style="width: 8%;">状态</th>
+              <th style="width: 13%;">操作</th>
             </tr>
           </thead>
           <tbody v-if="filteredHistory.length > 0">
@@ -567,22 +561,20 @@ const handleBatchApprove = (group: { strategicTask: string; rows: ApprovalItem[]
             <template v-for="(group, groupIndex) in groupedHistoryList.development" :key="'hist-dev-group-' + groupIndex">
               <template v-for="(row, index) in group.rows" :key="'hist-dev-' + row.id">
                 <tr class="hover-row">
-                  <!-- 序号 -->
-                  <td class="cell-center">{{ filteredHistory.indexOf(row) + 1 }}</td>
                   <!-- 战略任务（带颜色和提示） -->
-                  <td v-if="index === 0" :rowspan="group.rows.length">
+                  <td v-if="index === 0" :rowspan="group.rows.length" class="task-cell">
                     <el-tooltip :content="row.indicatorCategory" placement="top">
                       <span class="task-content-colored" :style="{ color: getCategoryColor(row.indicatorCategory) }">{{ group.strategicTask }}</span>
                     </el-tooltip>
                   </td>
-                  <td>{{ row.coreIndicator }}</td>
+                  <td class="indicator-name-cell"><span class="indicator-name-text">{{ row.coreIndicator }}</span></td>
                   <td class="cell-center">
                     <el-tag :type="row.type === '定量' ? 'primary' : 'warning'" size="small" effect="plain">{{ row.type }}</el-tag>
                   </td>
                   <td class="cell-center"><span class="weight-value">{{ row.weight }}</span></td>
                   <td class="cell-center">
                     <div class="progress-cell">
-                      <el-progress :percentage="row.progress || 0" :stroke-width="10" :color="getProgressColor(row)" :show-text="false" style="width: 80px;" />
+                      <el-progress :percentage="row.progress || 0" :stroke-width="8" :color="getProgressColor(row)" :show-text="false" style="width: 60px;" />
                       <span class="progress-text">{{ row.progress || 0 }}%</span>
                     </div>
                   </td>
@@ -590,10 +582,12 @@ const handleBatchApprove = (group: { strategicTask: string; rows: ApprovalItem[]
                   <td class="cell-center">
                     <el-tag :type="getStatusTag(row.status)" size="small" effect="dark">{{ getStatusLabel(row.status) }}</el-tag>
                   </td>
-                  <td class="cell-center sticky-col sticky-col-only">
-                    <el-button link type="primary" @click="handleViewDetail(row)">查看</el-button>
-                    <el-button link type="warning" @click="handleRevoke(row)">撤回</el-button>
-                    <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
+                  <td class="cell-center action-cell">
+                    <div class="action-buttons">
+                      <el-button link type="primary" size="small" @click="handleViewDetail(row)">查看</el-button>
+                      <el-button link type="warning" size="small" @click="handleRevoke(row)">撤回</el-button>
+                      <el-button link type="danger" size="small" @click="handleDelete(row)">删除</el-button>
+                    </div>
                   </td>
                 </tr>
               </template>
@@ -602,22 +596,20 @@ const handleBatchApprove = (group: { strategicTask: string; rows: ApprovalItem[]
             <template v-for="(group, groupIndex) in groupedHistoryList.basic" :key="'hist-basic-group-' + groupIndex">
               <template v-for="(row, index) in group.rows" :key="'hist-basic-' + row.id">
                 <tr class="hover-row">
-                  <!-- 序号 -->
-                  <td class="cell-center">{{ filteredHistory.indexOf(row) + 1 }}</td>
                   <!-- 战略任务（带颜色和提示） -->
-                  <td v-if="index === 0" :rowspan="group.rows.length">
+                  <td v-if="index === 0" :rowspan="group.rows.length" class="task-cell">
                     <el-tooltip :content="row.indicatorCategory" placement="top">
                       <span class="task-content-colored" :style="{ color: getCategoryColor(row.indicatorCategory) }">{{ group.strategicTask }}</span>
                     </el-tooltip>
                   </td>
-                  <td>{{ row.coreIndicator }}</td>
+                  <td class="indicator-name-cell"><span class="indicator-name-text">{{ row.coreIndicator }}</span></td>
                   <td class="cell-center">
                     <el-tag :type="row.type === '定量' ? 'primary' : 'warning'" size="small" effect="plain">{{ row.type }}</el-tag>
                   </td>
                   <td class="cell-center"><span class="weight-value">{{ row.weight }}</span></td>
                   <td class="cell-center">
                     <div class="progress-cell">
-                      <el-progress :percentage="row.progress || 0" :stroke-width="10" :color="getProgressColor(row)" :show-text="false" style="width: 80px;" />
+                      <el-progress :percentage="row.progress || 0" :stroke-width="8" :color="getProgressColor(row)" :show-text="false" style="width: 60px;" />
                       <span class="progress-text">{{ row.progress || 0 }}%</span>
                     </div>
                   </td>
@@ -625,10 +617,12 @@ const handleBatchApprove = (group: { strategicTask: string; rows: ApprovalItem[]
                   <td class="cell-center">
                     <el-tag :type="getStatusTag(row.status)" size="small" effect="dark">{{ getStatusLabel(row.status) }}</el-tag>
                   </td>
-                  <td class="cell-center sticky-col sticky-col-only">
-                    <el-button link type="primary" @click="handleViewDetail(row)">查看</el-button>
-                    <el-button link type="warning" @click="handleRevoke(row)">撤回</el-button>
-                    <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
+                  <td class="cell-center action-cell">
+                    <div class="action-buttons">
+                      <el-button link type="primary" size="small" @click="handleViewDetail(row)">查看</el-button>
+                      <el-button link type="warning" size="small" @click="handleRevoke(row)">撤回</el-button>
+                      <el-button link type="danger" size="small" @click="handleDelete(row)">删除</el-button>
+                    </div>
                   </td>
                 </tr>
               </template>
@@ -636,7 +630,7 @@ const handleBatchApprove = (group: { strategicTask: string; rows: ApprovalItem[]
           </tbody>
           <tbody v-else>
             <tr>
-              <td colspan="9" class="empty-cell">
+              <td colspan="8" class="empty-cell">
                 <div class="empty-state">
                   <el-icon :size="48" class="empty-icon"><Document /></el-icon>
                   <p>暂无历史审批记录</p>
@@ -958,11 +952,10 @@ const handleBatchApprove = (group: { strategicTask: string; rows: ApprovalItem[]
 }
 
 /* ========================================
-   审批表格样式 - 统一表格规范
+   审批表格样式 - 统一表格规范（无滚动）
    Requirements: 4.1, 4.2, 4.3, 4.4
    ======================================== */
 .approval-table-wrapper {
-  overflow-x: auto;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
 }
@@ -971,15 +964,16 @@ const handleBatchApprove = (group: { strategicTask: string; rows: ApprovalItem[]
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
-  font-size: 14px;
+  font-size: 13px;
+  table-layout: fixed;
 }
 
 .approval-table th,
 .approval-table td {
   border: 1px solid var(--border-color);
-  padding: var(--spacing-md) var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-sm);
   text-align: left;
-  vertical-align: middle;
+  vertical-align: top;
 }
 
 /* 表头样式 - 使用统一背景色 */
@@ -988,16 +982,17 @@ const handleBatchApprove = (group: { strategicTask: string; rows: ApprovalItem[]
   color: var(--text-regular);
   font-weight: 600;
   white-space: nowrap;
+  text-align: center;
 }
 
 /* 表格行悬停效果 */
 .approval-table .hover-row:hover {
-  background: #fff;
+  background: #f5f7fa;
 }
 
 .approval-table .cell-center {
   text-align: center;
-  white-space: nowrap;
+  vertical-align: middle;
 }
 
 .approval-table .empty-cell {
@@ -1005,70 +1000,63 @@ const handleBatchApprove = (group: { strategicTask: string; rows: ApprovalItem[]
   padding: calc(var(--spacing-2xl) * 2) 0;
 }
 
-/* ========================================
-   Sticky 列样式
-   ======================================== */
-.approval-table .sticky-col {
-  position: sticky;
-  background: #fff;
-  z-index: 2;
-}
-
-.approval-table .sticky-col-first {
-  right: 100px;
-  min-width: 150px;
-}
-
-.approval-table .sticky-col-last {
-  right: 0;
-  min-width: 100px;
-}
-
-.approval-table .sticky-col-only {
-  right: 0;
-}
-
-.approval-table thead .sticky-col {
-  background: var(--bg-light);
-  z-index: 11;
-}
-
-/* 滚动时显示阴影和边框 */
-.approval-table-wrapper.is-scrolling .sticky-col-first {
-  box-shadow: -4px 0 8px rgba(0, 0, 0, 0.1);
-  border-left: 1px solid var(--border-color);
-}
-
-.approval-table-wrapper.is-scrolling .sticky-col-only {
-  box-shadow: -4px 0 8px rgba(0, 0, 0, 0.1);
-  border-left: 1px solid var(--border-color);
-}
-
-/* hover 时固定列背景 */
-.approval-table .hover-row:hover .sticky-col {
-  background: #fff;
+/* 战略任务单元格 */
+.approval-table .task-cell {
+  vertical-align: middle;
+  background-color: var(--bg-page);
 }
 
 /* ========================================
-   操作按钮样式
+   合并字段样式 - 说明/提交人
    ======================================== */
-.approval-table td .el-button {
-  margin: 0 2px;
+.info-cell {
+  vertical-align: top;
 }
 
-.approval-table .cell-center .el-button + .el-button {
-  margin-left: var(--spacing-xs);
+.info-combined {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
-/* 操作列按钮容器 */
-.approval-table .sticky-col-first,
-.approval-table .sticky-col-only {
-  white-space: nowrap;
+.info-combined .remark-text {
+  font-size: 13px;
+  color: var(--text-regular);
+  line-height: 1.4;
 }
 
-/* 批量处理按钮样式 */
-.approval-table .sticky-col-last .el-button {
-  font-weight: 500;
+.info-combined .submitter-text {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* ========================================
+   操作按钮样式 - 紧凑布局
+   ======================================== */
+.action-cell {
+  vertical-align: middle;
+}
+
+.action-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 2px;
+}
+
+.action-buttons .el-button {
+  padding: 4px 6px;
+  font-size: 12px;
+}
+
+/* 批量操作单元格 - 按任务组合并 */
+.batch-cell {
+  vertical-align: middle;
+  background-color: var(--bg-page);
+}
+
+.batch-cell .el-button {
+  font-size: 12px;
 }
 
 /* ========================================
