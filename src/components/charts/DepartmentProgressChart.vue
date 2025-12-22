@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { ArrowDown, ArrowUp } from '@element-plus/icons-vue'
 import type { DepartmentProgress } from '@/types'
 
 const props = defineProps<{
@@ -7,10 +8,28 @@ const props = defineProps<{
 }>()
 
 const progressValues = ref<Record<string, number>>({})
+const showAll = ref(false) // 是否显示全部
+const defaultShowCount = 5 // 默认显示数量
 
-const sortedDepartments = computed(() => 
+const sortedDepartments = computed(() =>
   [...props.departments].sort((a, b) => b.progress - a.progress)
 )
+
+// 显示的部门列表（默认前5个，可展开）
+const displayedDepartments = computed(() => {
+  if (showAll.value || sortedDepartments.value.length <= defaultShowCount) {
+    return sortedDepartments.value
+  }
+  return sortedDepartments.value.slice(0, defaultShowCount)
+})
+
+// 是否需要显示"显示更多"按钮
+const needShowMore = computed(() => sortedDepartments.value.length > defaultShowCount)
+
+// 切换显示全部/收起
+const toggleShowAll = () => {
+  showAll.value = !showAll.value
+}
 
 watch(() => props.departments, (newVal) => {
   // Initialize new items to 0 if not present
@@ -49,9 +68,20 @@ const getStatusColor = (status: string) => {
 
 <template>
   <div class="department-progress-chart">
-    <div 
-      v-for="item in sortedDepartments" 
-      :key="item.dept" 
+    <!-- 部门统计摘要 -->
+    <div v-if="sortedDepartments.length > 0" class="chart-summary">
+      <span class="summary-text">
+        共 <strong>{{ sortedDepartments.length }}</strong> 个部门
+        <template v-if="!showAll && needShowMore">
+          ，显示前 <strong>{{ defaultShowCount }}</strong> 个
+        </template>
+      </span>
+    </div>
+
+    <!-- 部门进度列表 -->
+    <div
+      v-for="item in displayedDepartments"
+      :key="item.dept"
       class="dept-item"
     >
       <div class="dept-header">
@@ -73,7 +103,27 @@ const getStatusColor = (status: string) => {
         :format="() => `${progressValues[item.dept] || 0}%`"
       />
     </div>
-    
+
+    <!-- 显示更多/收起按钮 -->
+    <div v-if="needShowMore" class="show-more-section">
+      <el-button
+        text
+        type="primary"
+        @click="toggleShowAll"
+        class="show-more-btn"
+      >
+        <template v-if="!showAll">
+          显示全部 ({{ sortedDepartments.length - defaultShowCount }} 个)
+          <el-icon class="el-icon--right"><ArrowDown /></el-icon>
+        </template>
+        <template v-else>
+          收起
+          <el-icon class="el-icon--right"><ArrowUp /></el-icon>
+        </template>
+      </el-button>
+    </div>
+
+    <!-- 空状态 -->
     <el-empty v-if="sortedDepartments.length === 0" description="暂无部门数据" :image-size="80" />
   </div>
 </template>
@@ -85,6 +135,25 @@ const getStatusColor = (status: string) => {
   gap: 20px;
 }
 
+/* 统计摘要 */
+.chart-summary {
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);
+  border-radius: 8px;
+  border-left: 4px solid var(--color-primary);
+}
+
+.summary-text {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.summary-text strong {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+/* 部门项 */
 .dept-item {
   padding: 12px;
   border-radius: 8px;
@@ -115,6 +184,23 @@ const getStatusColor = (status: string) => {
   font-weight: 600;
   min-width: 50px;
   text-align: right;
+}
+
+/* 显示更多按钮区域 */
+.show-more-section {
+  display: flex;
+  justify-content: center;
+  padding: 16px 0 8px;
+}
+
+.show-more-btn {
+  font-size: 14px;
+  padding: 8px 24px;
+  transition: all 0.3s ease;
+}
+
+.show-more-btn:hover {
+  transform: translateY(-2px);
 }
 
 :deep(.el-progress-bar__outer) {

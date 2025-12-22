@@ -69,6 +69,8 @@ export interface StrategicIndicator {
   approvalStatus?: ApprovalStatus
   alertLevel?: AlertLevel
   taskContent?: string // 关联的战略任务内容
+  ownerDept?: string // 发布方部门 (对应数据库 owner_org_id)
+  parentIndicatorId?: string // 父指标ID (对应数据库 parent_indicator_id)
 }
 
 // 里程碑类型
@@ -345,6 +347,8 @@ export interface FilterState {
   indicatorType?: '定性' | '定量'
   alertLevel?: AlertLevel
   dateRange?: [Date, Date]
+  sourceOwner?: string // 任务来源过滤 (发布方部门)
+  collegeFilter?: string // 学院过滤
 }
 
 // 审计日志
@@ -415,3 +419,45 @@ export interface AlertSummary {
   normal: number
   total: number
 }
+
+// Dashboard Three-tier Drilldown Types
+
+// 进度对比数据 (用于 ComparisonChart)
+export interface ComparisonItem {
+  dept: string // 部门名称
+  progress: number // 平均进度 (0-100)
+  score: number // 综合得分
+  completionRate: number // 完成率 (0-100)
+  totalIndicators: number // 指标总数
+  completedIndicators: number // 已完成指标数
+  alertCount: number // 预警数量
+  status: 'success' | 'warning' | 'danger' // 状态
+  rank: number // 排名
+}
+
+// 桑基图数据 (用于 TaskSankeyChart)
+export interface SankeyLink {
+  source: string // 源节点名称
+  target: string // 目标节点名称
+  value: number // 流量值 (任务数量)
+}
+
+export interface SankeyNode {
+  name: string // 节点名称
+  depth?: number // 深度 (层级)
+}
+
+export interface SankeyData {
+  nodes: SankeyNode[] // 节点列表
+  links: SankeyLink[] // 链接列表
+}
+
+// 任务来源分布 (用于 SourcePieChart)
+export interface SourcePieData {
+  name: string // 来源部门名称
+  value: number // 任务数量
+  percentage: number // 占比 (0-100)
+}
+
+// 扩展下钻层级类型
+export type OrgLevel = 'strategy' | 'functional' | 'college'

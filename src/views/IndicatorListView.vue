@@ -929,7 +929,12 @@ const handleTableScroll = (e: Event) => {
 
 /* 确保表格有最小宽度，防止列被压缩 */
 .table-container .unified-table {
-  min-width: 1100px;
+  min-width: 1200px;
+}
+
+/* 确保表头不换行 */
+.table-container .unified-table :deep(.el-table__header) th .cell {
+  white-space: nowrap;
 }
 
 /* 批量操作列样式 */

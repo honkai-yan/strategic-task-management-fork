@@ -739,8 +739,8 @@ const getProgressStatus = (progress: number): 'success' | 'warning' | 'exception
             @selection-change="handleSelectionChange"
             class="unified-table"
           >
-            <el-table-column type="selection" width="36" />
-            <el-table-column prop="taskContent" label="战略任务" min-width="140">
+            <el-table-column type="selection" width="50" />
+            <el-table-column prop="taskContent" label="战略任务" width="150">
               <template #default="{ row }">
                 <div class="indicator-name-cell" @dblclick="handleIndicatorDblClick(row, 'taskContent')">
                   <el-input
@@ -761,7 +761,7 @@ const getProgressStatus = (progress: number): 'success' | 'warning' | 'exception
                 </div>
               </template>
             </el-table-column>
-            <el-table-column prop="name" label="核心指标">
+            <el-table-column prop="name" label="核心指标" min-width="200">
               <template #default="{ row }">
                 <div class="indicator-name-cell" @dblclick="handleIndicatorDblClick(row, 'name')">
                   <el-input
@@ -776,7 +776,7 @@ const getProgressStatus = (progress: number): 'success' | 'warning' | 'exception
                 </div>
               </template>
             </el-table-column>
-            <el-table-column prop="type1" label="类型" width="80" align="center">
+            <el-table-column prop="type1" label="类型" width="90" align="center">
               <template #default="{ row }">
                 <span @dblclick="handleIndicatorDblClick(row, 'type1')">
                   <el-select
@@ -796,7 +796,7 @@ const getProgressStatus = (progress: number): 'success' | 'warning' | 'exception
                 </span>
               </template>
             </el-table-column>
-            <el-table-column prop="weight" label="权重" width="70" align="center">
+            <el-table-column prop="weight" label="权重" width="90" align="center">
               <template #default="{ row }">
                 <span @dblclick="handleIndicatorDblClick(row, 'weight')">
                   <el-input
@@ -804,14 +804,14 @@ const getProgressStatus = (progress: number): 'success' | 'warning' | 'exception
                     v-model="editingIndicatorValue"
                     v-focus
                     size="small"
-                    style="width: 40px"
+                    style="width: 50px"
                     @blur="saveIndicatorEdit(row, 'weight')"
                   />
                   <span v-else>{{ row.weight }}</span>
                 </span>
               </template>
             </el-table-column>
-            <el-table-column prop="progress" label="进度" width="120" align="center">
+            <el-table-column prop="progress" label="进度" width="100" align="center">
               <template #default="{ row }">
                 <span @dblclick="handleIndicatorDblClick(row, 'progress')">
                   <el-input
@@ -825,20 +825,19 @@ const getProgressStatus = (progress: number): 'success' | 'warning' | 'exception
                     style="width: 50px"
                     @blur="saveIndicatorEdit(row, 'progress')"
                   />
-                  <div v-else class="progress-cell">
+                  <el-tooltip v-else :content="`当前进度: ${row.progress || 0}%`" placement="top">
                     <el-progress
                       :percentage="row.progress || 0"
                       :stroke-width="8"
                       :color="getProgressColor(row)"
                       :show-text="false"
-                      style="width: 60px;"
+                      style="width: 80px;"
                     />
-                    <span class="progress-text">{{ row.progress || 0 }}%</span>
-                  </div>
+                  </el-tooltip>
                 </span>
               </template>
             </el-table-column>
-            <el-table-column prop="remark" label="说明" min-width="120">
+            <el-table-column prop="remark" label="说明" width="130">
               <template #default="{ row }">
                 <div class="indicator-name-cell" @dblclick="handleIndicatorDblClick(row, 'remark')">
                   <el-input
@@ -854,7 +853,7 @@ const getProgressStatus = (progress: number): 'success' | 'warning' | 'exception
                 </div>
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="120" align="center">
+            <el-table-column label="操作" width="130" align="center">
               <template #default="{ row }">
                 <div class="action-buttons">
                   <el-button link type="primary" size="small" @click="handleViewDetail(row)">查看</el-button>
@@ -864,7 +863,7 @@ const getProgressStatus = (progress: number): 'success' | 'warning' | 'exception
                 </div>
               </template>
             </el-table-column>
-            <el-table-column label="批量" width="80" align="center" class-name="batch-column">
+            <el-table-column label="批量" width="90" align="center" class-name="batch-column">
               <template #default="{ row }">
                 <el-button type="primary" size="small" @click="handleBatchDistributeByTask(getTaskGroup(row))">下发</el-button>
               </template>
@@ -1532,7 +1531,12 @@ const getProgressStatus = (progress: number): 'success' | 'warning' | 'exception
 
 /* 确保表格有最小宽度，防止列被压缩 */
 .excel-table-wrapper .unified-table {
-  min-width: 1100px;
+  min-width: 1200px;
+}
+
+/* 确保表头不换行 */
+.excel-table-wrapper .unified-table :deep(.el-table__header) th .cell {
+  white-space: nowrap;
 }
 
 /* 说明列文字换行 */

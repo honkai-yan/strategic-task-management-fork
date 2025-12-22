@@ -45,6 +45,7 @@ export const useStrategicStore = defineStore('strategic', () => {
 
   const indicators = ref<StrategicIndicator[]>([
     // ============ 发展性指标 - 战略任务1：全力促进毕业生多元化高质量就业创业 ============
+    // 一级指标：职能部门
     {
       id: '101',
       name: '优质就业比例不低于15%',
@@ -68,7 +69,8 @@ export const useStrategicStore = defineStore('strategic', () => {
       responsibleDept: '就业创业指导中心',
       responsiblePerson: '张老师',
       status: 'active',
-      isStrategic: true
+      isStrategic: true,
+      ownerDept: '战略发展部' // 新增：发布方部门
     },
     {
       id: '102',
@@ -93,7 +95,8 @@ export const useStrategicStore = defineStore('strategic', () => {
       responsibleDept: '就业创业指导中心',
       responsiblePerson: '李老师',
       status: 'active',
-      isStrategic: true
+      isStrategic: true,
+      ownerDept: '战略发展部'
     },
     {
       id: '103',
@@ -118,7 +121,253 @@ export const useStrategicStore = defineStore('strategic', () => {
       responsibleDept: '招生工作处',
       responsiblePerson: '王主任',
       status: 'active',
-      isStrategic: true
+      isStrategic: true,
+      ownerDept: '战略发展部'
+    },
+
+    // 二级指标：学院级（下发自职能部门）
+    {
+      id: '101-1',
+      name: '计算机学院优质就业比例不低于18%',
+      isQualitative: false,
+      type1: '定量',
+      type2: '发展性',
+      progress: 72,
+      createTime: '2025年12月14日',
+      weight: 25,
+      remark: '工科学院就业质量要求更高',
+      canWithdraw: false,
+      taskContent: '全力促进毕业生多元化高质量就业创业',
+      milestones: [
+        { id: '10111', name: 'Q1: 优质就业企业对接', targetProgress: 25, deadline: '2025-03-31', status: 'completed' },
+        { id: '10112', name: 'Q2: 学生能力提升培训', targetProgress: 50, deadline: '2025-06-30', status: 'completed' },
+        { id: '10113', name: 'Q3: 就业质量跟踪调查', targetProgress: 75, deadline: '2025-09-30', status: 'completed' },
+        { id: '10114', name: 'Q4: 目标达成验收', targetProgress: 100, deadline: '2025-12-31', status: 'pending' }
+      ],
+      targetValue: 18,
+      unit: '%',
+      responsibleDept: '计算机学院',
+      responsiblePerson: '赵院长',
+      status: 'active',
+      isStrategic: false,
+      ownerDept: '就业创业指导中心',
+      parentIndicatorId: '101'
+    },
+    {
+      id: '101-2',
+      name: '商学院优质就业比例不低于12%',
+      isQualitative: false,
+      type1: '定量',
+      type2: '发展性',
+      progress: 58,
+      createTime: '2025年12月14日',
+      weight: 20,
+      remark: '商科专业就业质量稳步提升',
+      canWithdraw: false,
+      taskContent: '全力促进毕业生多元化高质量就业创业',
+      milestones: [
+        { id: '10121', name: 'Q1: 校企合作洽谈', targetProgress: 25, deadline: '2025-03-31', status: 'completed' },
+        { id: '10122', name: 'Q2: 实习基地建设', targetProgress: 50, deadline: '2025-06-30', status: 'completed' },
+        { id: '10123', name: 'Q3: 就业推荐与跟进', targetProgress: 75, deadline: '2025-09-30', status: 'pending' },
+        { id: '10124', name: 'Q4: 达标验收', targetProgress: 100, deadline: '2025-12-31', status: 'pending' }
+      ],
+      targetValue: 12,
+      unit: '%',
+      responsibleDept: '商学院',
+      responsiblePerson: '钱院长',
+      status: 'active',
+      isStrategic: false,
+      ownerDept: '就业创业指导中心',
+      parentIndicatorId: '101'
+    },
+    {
+      id: '101-3',
+      name: '艺术与科技学院优质就业比例不低于10%',
+      isQualitative: false,
+      type1: '定量',
+      type2: '发展性',
+      progress: 35,
+      createTime: '2025年12月14日',
+      weight: 15,
+      remark: '艺术类专业就业质量提升',
+      canWithdraw: false,
+      taskContent: '全力促进毕业生多元化高质量就业创业',
+      milestones: [
+        { id: '10131', name: 'Q1: 就业市场调研', targetProgress: 25, deadline: '2025-03-31', status: 'completed' },
+        { id: '10132', name: 'Q2: 企业对接与洽谈', targetProgress: 50, deadline: '2025-06-30', status: 'pending' },
+        { id: '10133', name: 'Q3: 学生作品展示推介', targetProgress: 75, deadline: '2025-09-30', status: 'pending' },
+        { id: '10134', name: 'Q4: 目标达成', targetProgress: 100, deadline: '2025-12-31', status: 'pending' }
+      ],
+      targetValue: 10,
+      unit: '%',
+      responsibleDept: '艺术与科技学院',
+      responsiblePerson: '孙院长',
+      status: 'active',
+      isStrategic: false,
+      ownerDept: '就业创业指导中心',
+      parentIndicatorId: '101'
+    },
+    {
+      id: '101-4',
+      name: '工学院优质就业比例不低于16%',
+      isQualitative: false,
+      type1: '定量',
+      type2: '发展性',
+      progress: 68,
+      createTime: '2025年12月14日',
+      weight: 22,
+      remark: '工科类专业就业质量要求高',
+      canWithdraw: false,
+      taskContent: '全力促进毕业生多元化高质量就业创业',
+      milestones: [
+        { id: '10141', name: 'Q1: 优质企业对接', targetProgress: 25, deadline: '2025-03-31', status: 'completed' },
+        { id: '10142', name: 'Q2: 学生技能培训', targetProgress: 50, deadline: '2025-06-30', status: 'completed' },
+        { id: '10143', name: 'Q3: 就业质量跟踪', targetProgress: 75, deadline: '2025-09-30', status: 'completed' },
+        { id: '10144', name: 'Q4: 目标达成验收', targetProgress: 100, deadline: '2025-12-31', status: 'pending' }
+      ],
+      targetValue: 16,
+      unit: '%',
+      responsibleDept: '工学院',
+      responsiblePerson: '李院长',
+      status: 'active',
+      isStrategic: false,
+      ownerDept: '就业创业指导中心',
+      parentIndicatorId: '101'
+    },
+    {
+      id: '101-5',
+      name: '航空学院优质就业比例不低于17%',
+      isQualitative: false,
+      type1: '定量',
+      type2: '发展性',
+      progress: 82,
+      createTime: '2025年12月14日',
+      weight: 25,
+      remark: '航空专业就业质量优势明显',
+      canWithdraw: false,
+      taskContent: '全力促进毕业生多元化高质量就业创业',
+      milestones: [
+        { id: '10151', name: 'Q1: 航空企业洽谈', targetProgress: 25, deadline: '2025-03-31', status: 'completed' },
+        { id: '10152', name: 'Q2: 专业技能培训', targetProgress: 50, deadline: '2025-06-30', status: 'completed' },
+        { id: '10153', name: 'Q3: 就业质量评估', targetProgress: 75, deadline: '2025-09-30', status: 'completed' },
+        { id: '10154', name: 'Q4: 目标达成', targetProgress: 100, deadline: '2025-12-31', status: 'pending' }
+      ],
+      targetValue: 17,
+      unit: '%',
+      responsibleDept: '航空学院',
+      responsiblePerson: '周院长',
+      status: 'active',
+      isStrategic: false,
+      ownerDept: '就业创业指导中心',
+      parentIndicatorId: '101'
+    },
+    {
+      id: '102-1',
+      name: '计算机学院就业率达92%以上',
+      isQualitative: false,
+      type1: '定量',
+      type2: '发展性',
+      progress: 78,
+      createTime: '2025年12月14日',
+      weight: 30,
+      remark: '工科就业率目标更高',
+      canWithdraw: false,
+      taskContent: '全力促进毕业生多元化高质量就业创业',
+      milestones: [
+        { id: '10211', name: 'Q1: 就业数据统计', targetProgress: 25, deadline: '2025-03-31', status: 'completed' },
+        { id: '10212', name: 'Q2: 就业困难学生帮扶', targetProgress: 50, deadline: '2025-06-30', status: 'completed' },
+        { id: '10213', name: 'Q3: 就业率提升专项行动', targetProgress: 75, deadline: '2025-09-30', status: 'completed' },
+        { id: '10214', name: 'Q4: 最终达标率92%', targetProgress: 100, deadline: '2025-12-31', status: 'pending' }
+      ],
+      targetValue: 92,
+      unit: '%',
+      responsibleDept: '计算机学院',
+      responsiblePerson: '赵院长',
+      status: 'active',
+      isStrategic: false,
+      ownerDept: '就业创业指导中心',
+      parentIndicatorId: '102'
+    },
+    {
+      id: '102-2',
+      name: '商学院就业率达90%以上',
+      isQualitative: false,
+      type1: '定量',
+      type2: '发展性',
+      progress: 65,
+      createTime: '2025年12月14日',
+      weight: 25,
+      remark: '商科就业率稳步提升',
+      canWithdraw: false,
+      taskContent: '全力促进毕业生多元化高质量就业创业',
+      milestones: [
+        { id: '10221', name: 'Q1: 就业数据收集', targetProgress: 25, deadline: '2025-03-31', status: 'completed' },
+        { id: '10222', name: 'Q2: 就业困难帮扶', targetProgress: 50, deadline: '2025-06-30', status: 'completed' },
+        { id: '10223', name: 'Q3: 就业推进', targetProgress: 75, deadline: '2025-09-30', status: 'pending' },
+        { id: '10224', name: 'Q4: 达标验收', targetProgress: 100, deadline: '2025-12-31', status: 'pending' }
+      ],
+      targetValue: 90,
+      unit: '%',
+      responsibleDept: '商学院',
+      responsiblePerson: '钱院长',
+      status: 'active',
+      isStrategic: false,
+      ownerDept: '就业创业指导中心',
+      parentIndicatorId: '102'
+    },
+    {
+      id: '102-3',
+      name: '文理学院就业率达88%以上',
+      isQualitative: false,
+      type1: '定量',
+      type2: '发展性',
+      progress: 55,
+      createTime: '2025年12月14日',
+      weight: 20,
+      remark: '文理综合类专业就业稳步提升',
+      canWithdraw: false,
+      taskContent: '全力促进毕业生多元化高质量就业创业',
+      milestones: [
+        { id: '10231', name: 'Q1: 就业调研', targetProgress: 25, deadline: '2025-03-31', status: 'completed' },
+        { id: '10232', name: 'Q2: 帮扶推进', targetProgress: 50, deadline: '2025-06-30', status: 'completed' },
+        { id: '10233', name: 'Q3: 就业率提升', targetProgress: 75, deadline: '2025-09-30', status: 'pending' },
+        { id: '10234', name: 'Q4: 达标验收', targetProgress: 100, deadline: '2025-12-31', status: 'pending' }
+      ],
+      targetValue: 88,
+      unit: '%',
+      responsibleDept: '文理学院',
+      responsiblePerson: '吴院长',
+      status: 'active',
+      isStrategic: false,
+      ownerDept: '就业创业指导中心',
+      parentIndicatorId: '102'
+    },
+    {
+      id: '102-4',
+      name: '国际教育学院就业率达85%以上',
+      isQualitative: false,
+      type1: '定量',
+      type2: '发展性',
+      progress: 72,
+      createTime: '2025年12月14日',
+      weight: 18,
+      remark: '国际化专业就业多元化',
+      canWithdraw: false,
+      taskContent: '全力促进毕业生多元化高质量就业创业',
+      milestones: [
+        { id: '10241', name: 'Q1: 就业渠道拓展', targetProgress: 25, deadline: '2025-03-31', status: 'completed' },
+        { id: '10242', name: 'Q2: 双语就业指导', targetProgress: 50, deadline: '2025-06-30', status: 'completed' },
+        { id: '10243', name: 'Q3: 就业率评估', targetProgress: 75, deadline: '2025-09-30', status: 'completed' },
+        { id: '10244', name: 'Q4: 目标达成', targetProgress: 100, deadline: '2025-12-31', status: 'pending' }
+      ],
+      targetValue: 85,
+      unit: '%',
+      responsibleDept: '国际教育学院',
+      responsiblePerson: '郑院长',
+      status: 'active',
+      isStrategic: false,
+      ownerDept: '就业创业指导中心',
+      parentIndicatorId: '102'
     },
     // ============ 基础性指标 - 战略任务2：推进校友工作提质增效，赋能校友成长 ============
     {
@@ -137,15 +386,73 @@ export const useStrategicStore = defineStore('strategic', () => {
         { id: '2011', name: 'Q1: 校友工作机制建立', targetProgress: 20, deadline: '2025-03-31', status: 'completed' },
         { id: '2012', name: 'Q2: 地区校友会筹建', targetProgress: 40, deadline: '2025-06-30', status: 'completed' },
         { id: '2013', name: 'Q3: 校友发展计划启动', targetProgress: 70, deadline: '2025-09-30', status: 'pending' },
-        { id: '2014', name: 'Q4: 校友数据信息化', targetProgress: 100, deadline: '2025-12-31', status: 'pending' }
+        { id: '2014', name: 'Q4: 校友数据全面信息化', targetProgress: 100, deadline: '2025-12-31', status: 'pending' }
       ],
       targetValue: 100,
       unit: '%',
       responsibleDept: '学校综合办公室',
       responsiblePerson: '陈主任',
       status: 'active',
-      isStrategic: true
+      isStrategic: true,
+      ownerDept: '战略发展部'
     },
+
+    // 二级学院指标：校友工作（由学校综合办公室下发）
+    {
+      id: '201-1',
+      name: '计算机学院完善校友信息库，建立本学院校友联络机制',
+      isQualitative: true,
+      type1: '定性',
+      type2: '基础性',
+      progress: 48,
+      createTime: '2025年12月14日',
+      weight: 20,
+      remark: '工科学院校友资源丰富',
+      canWithdraw: false,
+      taskContent: '推进校友工作提质增效，赋能校友成长',
+      milestones: [
+        { id: '20111', name: 'Q1: 校友信息收集', targetProgress: 25, deadline: '2025-03-31', status: 'completed' },
+        { id: '20112', name: 'Q2: 校友联络机制建立', targetProgress: 50, deadline: '2025-06-30', status: 'completed' },
+        { id: '20113', name: 'Q3: 校友活动组织', targetProgress: 75, deadline: '2025-09-30', status: 'pending' },
+        { id: '20114', name: 'Q4: 数据入库完成', targetProgress: 100, deadline: '2025-12-31', status: 'pending' }
+      ],
+      targetValue: 100,
+      unit: '%',
+      responsibleDept: '计算机学院',
+      responsiblePerson: '赵院长',
+      status: 'active',
+      isStrategic: false,
+      ownerDept: '学校综合办公室',
+      parentIndicatorId: '201'
+    },
+    {
+      id: '201-2',
+      name: '商学院建立区域校友会，开展校友返校日活动',
+      isQualitative: true,
+      type1: '定性',
+      type2: '基础性',
+      progress: 38,
+      createTime: '2025年12月14日',
+      weight: 18,
+      remark: '商科校友资源广泛',
+      canWithdraw: false,
+      taskContent: '推进校友工作提质增效，赋能校友成长',
+      milestones: [
+        { id: '20121', name: 'Q1: 区域校友摸底', targetProgress: 25, deadline: '2025-03-31', status: 'completed' },
+        { id: '20122', name: 'Q2: 校友会筹备', targetProgress: 50, deadline: '2025-06-30', status: 'pending' },
+        { id: '20123', name: 'Q3: 校友返校日活动', targetProgress: 75, deadline: '2025-09-30', status: 'pending' },
+        { id: '20124', name: 'Q4: 校友会正式成立', targetProgress: 100, deadline: '2025-12-31', status: 'pending' }
+      ],
+      targetValue: 100,
+      unit: '%',
+      responsibleDept: '商学院',
+      responsiblePerson: '钱院长',
+      status: 'active',
+      isStrategic: false,
+      ownerDept: '学校综合办公室',
+      parentIndicatorId: '201'
+    },
+
     // ============ 基础性指标 - 战略任务3：根据学校整体部署 ============
     {
       id: '202',
@@ -170,7 +477,313 @@ export const useStrategicStore = defineStore('strategic', () => {
       responsibleDept: '数字校园建设办公室',
       responsiblePerson: '刘工',
       status: 'active',
-      isStrategic: true
+      isStrategic: true,
+      ownerDept: '战略发展部'
+    },
+
+    // 二级学院指标：信息化数据报送（由数字校园建设办公室下发）
+    {
+      id: '202-1',
+      name: '计算机学院按时准确报送教学、科研相关数据',
+      isQualitative: true,
+      type1: '定性',
+      type2: '基础性',
+      progress: 68,
+      createTime: '2025年12月14日',
+      weight: 10,
+      remark: '工科学院数据化意识强',
+      canWithdraw: false,
+      taskContent: '根据学校整体部署',
+      milestones: [
+        { id: '20211', name: 'Q1: 数据报送规范培训', targetProgress: 25, deadline: '2025-03-31', status: 'completed' },
+        { id: '20212', name: 'Q2: 系统对接调试', targetProgress: 50, deadline: '2025-06-30', status: 'completed' },
+        { id: '20213', name: 'Q3: 数据质量提升', targetProgress: 75, deadline: '2025-09-30', status: 'completed' },
+        { id: '20214', name: 'Q4: 全面合格验收', targetProgress: 100, deadline: '2025-12-31', status: 'pending' }
+      ],
+      targetValue: 100,
+      unit: '%',
+      responsibleDept: '计算机学院',
+      responsiblePerson: '赵院长',
+      status: 'active',
+      isStrategic: false,
+      ownerDept: '数字校园建设办公室',
+      parentIndicatorId: '202'
+    },
+    {
+      id: '202-2',
+      name: '商学院建立数据报送责任人制度，确保数据准确',
+      isQualitative: true,
+      type1: '定性',
+      type2: '基础性',
+      progress: 52,
+      createTime: '2025年12月14日',
+      weight: 8,
+      remark: '建立数据报送规范',
+      canWithdraw: false,
+      taskContent: '根据学校整体部署',
+      milestones: [
+        { id: '20221', name: 'Q1: 责任人明确', targetProgress: 25, deadline: '2025-03-31', status: 'completed' },
+        { id: '20222', name: 'Q2: 报送制度建立', targetProgress: 50, deadline: '2025-06-30', status: 'completed' },
+        { id: '20223', name: 'Q3: 数据质量监控', targetProgress: 75, deadline: '2025-09-30', status: 'pending' },
+        { id: '20224', name: 'Q4: 验收达标', targetProgress: 100, deadline: '2025-12-31', status: 'pending' }
+      ],
+      targetValue: 100,
+      unit: '%',
+      responsibleDept: '商学院',
+      responsiblePerson: '钱院长',
+      status: 'active',
+      isStrategic: false,
+      ownerDept: '数字校园建设办公室',
+      parentIndicatorId: '202'
+    },
+    {
+      id: '202-3',
+      name: '艺术学院完善数据采集流程，提升数据时效性',
+      isQualitative: true,
+      type1: '定性',
+      type2: '基础性',
+      progress: 42,
+      createTime: '2025年12月14日',
+      weight: 6,
+      remark: '提升数据报送及时性',
+      canWithdraw: false,
+      taskContent: '根据学校整体部署',
+      milestones: [
+        { id: '20231', name: 'Q1: 数据采集流程梳理', targetProgress: 25, deadline: '2025-03-31', status: 'completed' },
+        { id: '20232', name: 'Q2: 流程优化实施', targetProgress: 50, deadline: '2025-06-30', status: 'pending' },
+        { id: '20233', name: 'Q3: 时效性提升', targetProgress: 75, deadline: '2025-09-30', status: 'pending' },
+        { id: '20234', name: 'Q4: 达标验收', targetProgress: 100, deadline: '2025-12-31', status: 'pending' }
+      ],
+      targetValue: 100,
+      unit: '%',
+      responsibleDept: '艺术与科技学院',
+      responsiblePerson: '孙院长',
+      status: 'active',
+      isStrategic: false,
+      ownerDept: '数字校园建设办公室',
+      parentIndicatorId: '202'
+    },
+
+    // ============ 新增职能部门指标 ============
+
+    // 教务处 - 教学质量提升
+    {
+      id: '301',
+      name: '提升教学质量，课程优良率达85%以上',
+      isQualitative: false,
+      type1: '定量',
+      type2: '基础性',
+      progress: 76,
+      createTime: '2025年12月14日',
+      weight: 30,
+      remark: '中长期发展规划核心内容',
+      canWithdraw: false,
+      taskContent: '提升教学质量，深化教学改革',
+      milestones: [
+        { id: '3011', name: 'Q1: 教学质量调研', targetProgress: 25, deadline: '2025-03-31', status: 'completed' },
+        { id: '3012', name: 'Q2: 课程改革试点', targetProgress: 50, deadline: '2025-06-30', status: 'completed' },
+        { id: '3013', name: 'Q3: 教学质量提升', targetProgress: 75, deadline: '2025-09-30', status: 'completed' },
+        { id: '3014', name: 'Q4: 达标验收', targetProgress: 100, deadline: '2025-12-31', status: 'pending' }
+      ],
+      targetValue: 85,
+      unit: '%',
+      responsibleDept: '教务处',
+      responsiblePerson: '陈处长',
+      status: 'active',
+      isStrategic: true,
+      ownerDept: '战略发展部'
+    },
+    {
+      id: '301-1',
+      name: '计算机学院课程优良率达88%',
+      isQualitative: false,
+      type1: '定量',
+      type2: '基础性',
+      progress: 85,
+      createTime: '2025年12月14日',
+      weight: 25,
+      remark: '工科专业教学质量领先',
+      canWithdraw: false,
+      taskContent: '提升教学质量，深化教学改革',
+      milestones: [
+        { id: '30111', name: 'Q1: 课程质量评估', targetProgress: 25, deadline: '2025-03-31', status: 'completed' },
+        { id: '30112', name: 'Q2: 教学方法改进', targetProgress: 50, deadline: '2025-06-30', status: 'completed' },
+        { id: '30113', name: 'Q3: 质量持续提升', targetProgress: 75, deadline: '2025-09-30', status: 'completed' },
+        { id: '30114', name: 'Q4: 目标达成', targetProgress: 100, deadline: '2025-12-31', status: 'completed' }
+      ],
+      targetValue: 88,
+      unit: '%',
+      responsibleDept: '计算机学院',
+      responsiblePerson: '赵院长',
+      status: 'active',
+      isStrategic: false,
+      ownerDept: '教务处',
+      parentIndicatorId: '301'
+    },
+    {
+      id: '301-2',
+      name: '工学院课程优良率达86%',
+      isQualitative: false,
+      type1: '定量',
+      type2: '基础性',
+      progress: 82,
+      createTime: '2025年12月14日',
+      weight: 24,
+      remark: '工科教学质量稳步提升',
+      canWithdraw: false,
+      taskContent: '提升教学质量，深化教学改革',
+      milestones: [
+        { id: '30121', name: 'Q1: 质量分析', targetProgress: 25, deadline: '2025-03-31', status: 'completed' },
+        { id: '30122', name: 'Q2: 改革实施', targetProgress: 50, deadline: '2025-06-30', status: 'completed' },
+        { id: '30123', name: 'Q3: 质量跟踪', targetProgress: 75, deadline: '2025-09-30', status: 'completed' },
+        { id: '30124', name: 'Q4: 达标验收', targetProgress: 100, deadline: '2025-12-31', status: 'pending' }
+      ],
+      targetValue: 86,
+      unit: '%',
+      responsibleDept: '工学院',
+      responsiblePerson: '李院长',
+      status: 'active',
+      isStrategic: false,
+      ownerDept: '教务处',
+      parentIndicatorId: '301'
+    },
+
+    // 科技处 - 科研成果提升
+    {
+      id: '302',
+      name: '提升科研水平，年度发表高水平论文不少于50篇',
+      isQualitative: false,
+      type1: '定量',
+      type2: '发展性',
+      progress: 62,
+      createTime: '2025年12月14日',
+      weight: 25,
+      remark: '科研水平提升关键指标',
+      canWithdraw: false,
+      taskContent: '提升科研水平，增强学术影响力',
+      milestones: [
+        { id: '3021', name: 'Q1: 科研项目立项', targetProgress: 25, deadline: '2025-03-31', status: 'completed' },
+        { id: '3022', name: 'Q2: 科研成果培育', targetProgress: 50, deadline: '2025-06-30', status: 'completed' },
+        { id: '3023', name: 'Q3: 论文撰写指导', targetProgress: 75, deadline: '2025-09-30', status: 'pending' },
+        { id: '3024', name: 'Q4: 目标达成', targetProgress: 100, deadline: '2025-12-31', status: 'pending' }
+      ],
+      targetValue: 50,
+      unit: '篇',
+      responsibleDept: '科技处',
+      responsiblePerson: '林处长',
+      status: 'active',
+      isStrategic: true,
+      ownerDept: '战略发展部'
+    },
+    {
+      id: '302-1',
+      name: '计算机学院发表高水平论文不少于15篇',
+      isQualitative: false,
+      type1: '定量',
+      type2: '发展性',
+      progress: 73,
+      createTime: '2025年12月14日',
+      weight: 30,
+      remark: '理工科科研优势明显',
+      canWithdraw: false,
+      taskContent: '提升科研水平，增强学术影响力',
+      milestones: [
+        { id: '30211', name: 'Q1: 科研项目推进', targetProgress: 25, deadline: '2025-03-31', status: 'completed' },
+        { id: '30212', name: 'Q2: 成果积累', targetProgress: 50, deadline: '2025-06-30', status: 'completed' },
+        { id: '30213', name: 'Q3: 论文发表', targetProgress: 75, deadline: '2025-09-30', status: 'completed' },
+        { id: '30214', name: 'Q4: 目标达成', targetProgress: 100, deadline: '2025-12-31', status: 'pending' }
+      ],
+      targetValue: 15,
+      unit: '篇',
+      responsibleDept: '计算机学院',
+      responsiblePerson: '赵院长',
+      status: 'active',
+      isStrategic: false,
+      ownerDept: '科技处',
+      parentIndicatorId: '302'
+    },
+
+    // 党委学工部 - 学生工作
+    {
+      id: '303',
+      name: '加强学生思想政治教育，学生满意度达90%以上',
+      isQualitative: false,
+      type1: '定量',
+      type2: '基础性',
+      progress: 88,
+      createTime: '2025年12月14日',
+      weight: 20,
+      remark: '立德树人根本任务',
+      canWithdraw: false,
+      taskContent: '加强学生工作，提升育人质量',
+      milestones: [
+        { id: '3031', name: 'Q1: 学生调研摸底', targetProgress: 25, deadline: '2025-03-31', status: 'completed' },
+        { id: '3032', name: 'Q2: 思政活动开展', targetProgress: 50, deadline: '2025-06-30', status: 'completed' },
+        { id: '3033', name: 'Q3: 效果评估', targetProgress: 75, deadline: '2025-09-30', status: 'completed' },
+        { id: '3034', name: 'Q4: 满意度调查', targetProgress: 100, deadline: '2025-12-31', status: 'completed' }
+      ],
+      targetValue: 90,
+      unit: '%',
+      responsibleDept: '党委学工部 | 学生工作处',
+      responsiblePerson: '王部长',
+      status: 'active',
+      isStrategic: true,
+      ownerDept: '战略发展部'
+    },
+    {
+      id: '303-1',
+      name: '马克思主义学院思政教育满意度达95%',
+      isQualitative: false,
+      type1: '定量',
+      type2: '基础性',
+      progress: 94,
+      createTime: '2025年12月14日',
+      weight: 30,
+      remark: '思政教育专业优势',
+      canWithdraw: false,
+      taskContent: '加强学生工作，提升育人质量',
+      milestones: [
+        { id: '30311', name: 'Q1: 教学质量提升', targetProgress: 25, deadline: '2025-03-31', status: 'completed' },
+        { id: '30312', name: 'Q2: 实践活动开展', targetProgress: 50, deadline: '2025-06-30', status: 'completed' },
+        { id: '30313', name: 'Q3: 效果巩固', targetProgress: 75, deadline: '2025-09-30', status: 'completed' },
+        { id: '30314', name: 'Q4: 满意度调查', targetProgress: 100, deadline: '2025-12-31', status: 'completed' }
+      ],
+      targetValue: 95,
+      unit: '%',
+      responsibleDept: '马克思主义学院',
+      responsiblePerson: '张院长',
+      status: 'active',
+      isStrategic: false,
+      ownerDept: '党委学工部 | 学生工作处',
+      parentIndicatorId: '303'
+    },
+
+    // 招生工作处 - 招生质量
+    {
+      id: '304',
+      name: '提升生源质量，一志愿录取率达75%以上',
+      isQualitative: false,
+      type1: '定量',
+      type2: '发展性',
+      progress: 68,
+      createTime: '2025年12月14日',
+      weight: 22,
+      remark: '生源质量提升关键',
+      canWithdraw: false,
+      taskContent: '提升招生质量，扩大办学影响力',
+      milestones: [
+        { id: '3041', name: 'Q1: 招生宣传策划', targetProgress: 25, deadline: '2025-03-31', status: 'completed' },
+        { id: '3042', name: 'Q2: 招生宣传实施', targetProgress: 50, deadline: '2025-06-30', status: 'completed' },
+        { id: '3043', name: 'Q3: 招生录取', targetProgress: 75, deadline: '2025-09-30', status: 'completed' },
+        { id: '3044', name: 'Q4: 数据统计分析', targetProgress: 100, deadline: '2025-12-31', status: 'pending' }
+      ],
+      targetValue: 75,
+      unit: '%',
+      responsibleDept: '招生工作处',
+      responsiblePerson: '刘处长',
+      status: 'active',
+      isStrategic: true,
+      ownerDept: '战略发展部'
     }
   ])
 

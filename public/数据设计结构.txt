@@ -1,0 +1,237 @@
+SISM 数据表与业务规则规范（V0.5）
+版本号：V0.5
+作者：系统设计组 / Tony Wei
+更新日期：2025-11-08
+适用数据库：OpenTenBase（兼容 PostgreSQL）
+一、总则
+1.1 项目背景
+本规范适用于《基于 OpenTenBase 的战略指标管理系统》（SISM）数据库与核心业务逻辑设计，覆盖指标任务管理、进度汇报、里程碑追踪、预警计算、临时统计任务及操作日志审计等模块。
+1.2 设计原则
+分层清晰：战略发展部→职能部门→二级学院三级管理逻辑明确。
+结构稳定：指标表自引用分层，无需 assignment 表。
+可追溯性：通过审计日志记录所有关键对象的变更。
+软删除优先：归档与删除分离，防止误操作。
+扩展弹性：支持跨年度复刻、未来扩展到系部层级。
+二、数据表说明
+org（组织表）
+字段名	Type	Description
+org_id	PK	唯一标识
+org_name	varchar	组织名称
+org_type	enum	STRATEGY_DEPT / FUNCTION_DEPT / COLLEGE / DIVISION
+parent_org_id	FK→org	上级组织
+is_active	bool	是否有效
+sort_order	int	排序值
+app_user（用户表）
+字段名	Type	Description
+user_id	PK	用户ID
+username	varchar	登录账号
+real_name	varchar	姓名
+org_id	FK→org	所属组织
+password_hash	varchar	密码哈希
+sso_id	varchar	单点登录ID（预留）
+is_active	bool	启用状态
+assessment_cycle（考核周期表）
+字段名	Type	Description
+cycle_id	PK	唯一标识
+cycle_name	varchar	名称（如“2025年度”）
+year	int	年度
+start_date	date	起始日期
+end_date	date	截止日期
+description	text	描述说明
+strategic_task（战略任务表）
+字段名	Type	Description
+task_id	PK	唯一标识
+cycle_id	FK→assessment_cycle	所属考核周期
+task_name	varchar	任务名称
+task_desc	text	任务说明
+task_type	enum	BASIC / DEVELOPMENT
+org_id	FK→org	承接任务部门
+created_by_org_id	FK→org	创建方（通常为战略发展部）
+sort_order	int	排序值
+remark	text	备注
+indicator（指标表）
+字段名	Type	Description
+indicator_id	PK	主键
+task_id	FK→strategic_task	所属任务
+parent_indicator_id	FK→indicator	上级指标
+level	enum	STRAT_TO_FUNC / FUNC_TO_COLLEGE
+owner_org_id	FK→org	发布方组织
+target_org_id	FK→org	承接方组织
+indicator_desc	text	指标说明
+weight_percent	numeric	权重（%）
+sort_order	int	排序值
+year	int	考核年份
+status	enum	ACTIVE / ARCHIVED
+remark	text	备注
+milestone（里程碑表）
+字段名	Type	Description
+milestone_id	PK	唯一标识
+indicator_id	FK→indicator	所属指标
+milestone_name	varchar	名称
+milestone_desc	text	说明
+due_date	date	到期时间
+weight_percent	numeric	权重
+status	enum	NOT_STARTED / IN_PROGRESS / COMPLETED / DELAYED / CANCELED
+sort_order	int	排序
+inherited_from	FK→milestone	继承来源
+progress_report（进度汇报表）
+字段名	Type	Description
+report_id	PK	主键
+indicator_id	FK→indicator	对应指标
+milestone_id	FK→milestone	关联里程碑
+adhoc_task_id	FK→adhoc_task	关联临时任务
+percent_complete	numeric	完成百分比
+achieved_milestone	bool	是否达成里程碑
+narrative	text	汇报说明
+reporter_id	FK→app_user	填报人
+status	enum	DRAFT / SUBMITTED / RETURNED / APPROVED / REJECTED
+is_final	bool	是否最终版
+version_no	int	版本号
+reported_at	timestamp	提交时间
+approval_record（审批记录表）
+字段名	Type	Description
+approval_id	PK	主键
+report_id	FK→progress_report	汇报ID
+approver_id	FK→app_user	审批人
+action	enum	APPROVE / REJECT / RETURN
+comment	text	审批意见
+acted_at	timestamp	审批时间
+alert_window（预警窗口表）
+字段名	Type	Description
+window_id	PK	主键
+cycle_id	FK→assessment_cycle	考核周期
+name	varchar	窗口名称
+cutoff_date	date	截止时间
+is_default	bool	是否默认窗口
+alert_rule（预警规则表）
+字段名	Type	Description
+rule_id	PK	主键
+cycle_id	FK→assessment_cycle	考核周期
+name	varchar	规则名称
+severity	enum	INFO / WARNING / CRITICAL
+gap_threshold	numeric	预警阈值
+is_enabled	bool	是否启用
+alert_event（预警事件表）
+字段名	Type	Description
+event_id	PK	主键
+indicator_id	FK→indicator	指标ID
+window_id	FK→alert_window	窗口ID
+rule_id	FK→alert_rule	规则ID
+expected_percent	numeric	应完成比例
+actual_percent	numeric	实际比例
+gap_percent	numeric	差值
+severity	enum	INFO / WARNING / CRITICAL
+status	enum	OPEN / CLOSED
+handled_by	FK→app_user	处理人
+handled_note	text	处理说明
+detail_json	json	数据快照
+adhoc_task（临时任务表）
+字段名	Type	Description
+adhoc_task_id	PK	主键
+cycle_id	FK→assessment_cycle	所属考核周期
+creator_org_id	FK→org	发起部门
+scope_type	enum	ALL_ORGS / BY_DEPT_ISSUED_INDICATORS / CUSTOM
+indicator_id	FK→indicator	关联指标（可空）
+task_title	varchar	任务标题
+task_desc	text	任务说明
+open_at	date	开放时间
+due_at	date	截止时间
+include_in_alert	bool	是否纳入预警
+require_indicator_report	bool	是否强制挂指标
+status	enum	DRAFT / OPEN / CLOSED / ARCHIVED
+adhoc_task_target（临时任务-目标组织表）
+字段名	Type	Description
+adhoc_task_id	FK→adhoc_task	任务ID
+target_org_id	FK→org	目标组织ID
+adhoc_task_indicator_map（临时任务-指标映射表）
+字段名	Type	Description
+adhoc_task_id	FK→adhoc_task	任务ID
+indicator_id	FK→indicator	指标ID
+audit_log（操作日志表）
+字段名	Type	Description
+log_id	PK	主键
+entity_type	enum	对象类型
+entity_id	bigint	对象ID
+action	enum	CREATE / UPDATE / DELETE / APPROVE / ARCHIVE / RESTORE
+before_json	json	修改前快照
+after_json	json	修改后快照
+changed_fields	json	差异字段
+reason	text	操作原因
+actor_user_id	FK→app_user	操作人
+actor_org_id	FK→org	操作部门
+created_at	timestamp	操作时间
+
+
+
+---
+
+三、业务规则清单（R1–R15）
+
+1. 一级指标修改不自动联动二级，由人工决定同步方式。  
+2. 同一 indicator 的所有里程碑 weight_percent 总和应为 100%。  
+3. 汇报表中 milestone_id 与 adhoc_task_id 不可同时存在。  
+4. 同一里程碑仅允许 1 条 APPROVED & is_final=true 的报告。  
+5. 预警执行顺序：先二级（职能→学院），再一级（战略→职能）。  
+6. 实际% 取窗口前最近一次有效报告；应完成% 累计截止日期前里程碑权重。  
+7. 无报告且过期触发“缺报预警”。  
+8. 删除指标/里程碑时必须记录日志；如有下属对象则禁止删除。  
+9. 所有软删除通过 status=ARCHIVED 标识。  
+10. 临时任务 scope_type 默认按发起部门自动选择范围。  
+11. ALL_ORGS 模式：每个被圈定组织提交 1 份汇报。  
+12. BY_DEPT_ISSUED_INDICATORS 模式：系统自动提取该职能部门发出的二级指标。  
+13. CUSTOM 模式：可手动选择组织或指标集合。  
+14. 所有关键操作均写入 audit_log。  
+15. 每个任务与指标按 sort_order 排序。
+
+---
+
+四、删除与归档策略
+- 默认软删除（status=ARCHIVED）。  
+- 删除前置检查：  
+  - 指标：无子指标、无里程碑、无报告、无预警事件；  
+  - 里程碑：无报告方可删除。  
+- 硬删除必须写入 audit_log（完整快照）。  
+- 允许归档恢复（RESTORE）。
+
+---
+
+## 五、状态流转与触发逻辑
+5.1 汇报审批流
+```
+DRAFT → SUBMITTED → (RETURNED / APPROVED / REJECTED)
+```
+- 审批通过：标记 is_final=true，并更新里程碑状态。  
+- 若存在旧版最终报告，旧版 is_final=false。
+
+### 5.2 里程碑状态联动
+```
+NOT_STARTED → IN_PROGRESS → COMPLETED
+```
+当汇报 achieved_milestone=true 且审批通过时自动完成。
+
+---
+
+六、附录
+
+### 6.1 命名规范
+- 表名小写，下划线分词；
+- 主键统一为 *_id；
+- 状态字段命名为 status；
+- 外键命名格式 `<table>_id`。
+
+### 6.2 枚举清单
+- task_type: BASIC / DEVELOPMENT  
+- level: STRAT_TO_FUNC / FUNC_TO_COLLEGE  
+- status (milestone): NOT_STARTED / IN_PROGRESS / COMPLETED / DELAYED / CANCELED  
+- report.status: DRAFT / SUBMITTED / RETURNED / APPROVED / REJECTED  
+- alert.status: OPEN / CLOSED  
+
+### 6.3 常用校验视图
+- **v_milestone_weight_sum**：校验每指标下里程碑权重合计=100%。  
+- **v_indicator_latest_report**：获取各指标最新最终报告完成度。
+
+---
+
+**版本号**：V0.5
+**作者**：系统设计组 / Tony Wei  
+**发布日期**：2025-11-08

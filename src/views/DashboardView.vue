@@ -9,8 +9,14 @@ import BreadcrumbNav from '@/components/dashboard/BreadcrumbNav.vue'
 import ScoreCompositionChart from '@/components/charts/ScoreCompositionChart.vue'
 import AlertDistributionChart from '@/components/charts/AlertDistributionChart.vue'
 import DepartmentProgressChart from '@/components/charts/DepartmentProgressChart.vue'
+// 新增图表组件
+import TaskSankeyChart from '@/components/charts/TaskSankeyChart.vue'
+import SourcePieChart from '@/components/charts/SourcePieChart.vue'
+import DashboardFilters from '@/components/dashboard/DashboardFilters.vue'
 import * as XLSX from 'xlsx'
 import { ElMessage } from 'element-plus'
+import { isSecondaryCollege } from '@/utils/colors'
+import { getAllFunctionalDepartments, getAllColleges, getAllDepartments } from '@/config/departments'
 
 // 帮助提示内容
 const helpTexts = {
@@ -45,6 +51,14 @@ const showFilterFeature = computed(() => currentRole.value !== 'secondary_colleg
 // 是否可以查看所有部门（只有战略发展部可以）
 const canViewAllDepartments = computed(() => currentRole.value === 'strategic_dept')
 
+// 部门完成情况卡片标题（根据下钻状态动态显示）
+const getDepartmentCardTitle = computed(() => {
+  if (dashboardStore.currentOrgLevel === 'functional' && dashboardStore.selectedFunctionalDept) {
+    return `${dashboardStore.selectedFunctionalDept} 任务下发情况`
+  }
+  return canViewAllDepartments.value ? '各部门完成情况' : '下属单位完成情况'
+})
+
 // 筛选面板
 const showFilterPanel = ref(false)
 const filterForm = ref({
@@ -53,22 +67,18 @@ const filterForm = ref({
   alertLevel: '' as '' | 'severe' | 'moderate' | 'normal'
 })
 
-// 部门选项（根据角色权限过滤）
+// 部门选项（使用完整配置，根据角色权限过滤）
 const departmentOptions = computed(() => {
-  const allDepts = new Set(strategicStore.indicators.map(i => i.responsibleDept))
-  const depts = Array.from(allDepts).filter(Boolean)
-  
   // 战略发展部可以看所有部门
   if (currentRole.value === 'strategic_dept') {
-    return depts
+    return getAllDepartments()
   }
-  
-  // 职能部门只能看自己和下发的二级学院
+
+  // 职能部门能看自己和所有二级学院
   if (currentRole.value === 'functional_dept') {
-    // 这里简化处理，实际应该根据下发关系过滤
-    return depts.filter(d => d === currentDepartment.value || d.includes('学院'))
+    return [currentDepartment.value, ...getAllColleges()]
   }
-  
+
   // 二级学院只能看自己
   return [currentDepartment.value]
 })
@@ -134,7 +144,7 @@ const handleAlertClick = (level: 'severe' | 'moderate' | 'normal') => {
 
 // 面包屑导航
 const handleBreadcrumbNavigate = (index: number) => {
-  dashboardStore.navigateToBreadcrumb(index)
+  dashboardStore.navigateToBreadcrumbEnhanced(index)
 }
 
 // 判断是否有活跃筛选
@@ -144,53 +154,115 @@ const hasActiveFilters = computed(() => {
          dashboardStore.filters.alertLevel
 })
 
-// 导出功能
+// 导出功能 - 根据角色差异化导出
 const handleExport = () => {
   try {
-    const indicators = dashboardStore.filteredIndicators.length > 0 
-      ? dashboardStore.filteredIndicators 
-      : strategicStore.indicators
-    
-    if (indicators.length === 0) {
-      ElMessage.warning('没有可导出的数据')
-      return
+    const role = authStore.user?.role
+    let exportData: any[]
+    let fileName: string
+    let sheetName: string
+
+    if (role === 'strategic_dept') {
+      // 战略发展部：导出职能部门对比报表
+      const comparison = dashboardStore.departmentComparison
+
+      if (comparison.length === 0) {
+        ElMessage.warning('没有可导出的数据')
+        return
+      }
+
+      exportData = comparison.map((item) => ({
+        '排名': item.rank,
+        '部门': item.dept,
+        '平均进度': `${item.progress}%`,
+        '得分': item.score,
+        '完成率': `${item.completionRate}%`,
+        '指标总数': item.totalIndicators,
+        '已完成': item.completedIndicators,
+        '进行中': item.totalIndicators - item.completedIndicators,
+        '预警数': item.alertCount,
+        '状态': item.status === 'success' ? '优秀' : item.status === 'warning' ? '良好' : '需改进'
+      }))
+
+      fileName = `职能部门进度对比报表_${new Date().toLocaleDateString()}.xlsx`
+      sheetName = '部门对比'
+
+    } else if (role === 'functional_dept') {
+      // 职能部门：导出学院任务分配表
+      const indicators = dashboardStore.filteredIndicators.length > 0
+        ? dashboardStore.filteredIndicators
+        : strategicStore.indicators
+
+      const collegeIndicators = indicators.filter(i => isSecondaryCollege(i.responsibleDept))
+
+      if (collegeIndicators.length === 0) {
+        ElMessage.warning('没有可导出的数据')
+        return
+      }
+
+      exportData = collegeIndicators.map((item, index) => ({
+        '序号': index + 1,
+        '学院': item.responsibleDept,
+        '核心指标': item.indicator,
+        '指标类型': item.type,
+        '权重': item.weight,
+        '完成进度': `${item.progress}%`,
+        '里程碑进度': item.milestoneProgress,
+        '审批状态': item.approvalStatus === 'approved' ? '已通过' :
+                     item.approvalStatus === 'pending' ? '待审批' :
+                     item.approvalStatus === 'rejected' ? '已驳回' : '草稿',
+        '说明': item.description || ''
+      }))
+
+      fileName = `学院任务分配表_${authStore.user?.department}_${new Date().toLocaleDateString()}.xlsx`
+      sheetName = '学院任务'
+
+    } else {
+      // 二级学院：导出承接任务汇总
+      const indicators = dashboardStore.filteredIndicators.length > 0
+        ? dashboardStore.filteredIndicators
+        : strategicStore.indicators
+
+      if (indicators.length === 0) {
+        ElMessage.warning('没有可导出的数据')
+        return
+      }
+
+      exportData = indicators.map((item, index) => ({
+        '序号': index + 1,
+        '任务来源': item.ownerDept || '战略发展部',
+        '战略任务': item.task,
+        '核心指标': item.indicator,
+        '指标类型': item.type,
+        '指标类别': item.type2,
+        '权重': item.weight,
+        '完成进度': `${item.progress}%`,
+        '里程碑进度': item.milestoneProgress,
+        '审批状态': item.approvalStatus === 'approved' ? '已通过' :
+                     item.approvalStatus === 'pending' ? '待审批' :
+                     item.approvalStatus === 'rejected' ? '已驳回' : '草稿',
+        '说明': item.description || ''
+      }))
+
+      fileName = `承接任务汇总_${authStore.user?.department}_${new Date().toLocaleDateString()}.xlsx`
+      sheetName = '承接任务'
     }
-    
-    const exportData = indicators.map((item, index) => ({
-      '序号': index + 1,
-      '战略任务': item.task,
-      '核心指标': item.indicator,
-      '指标类型': item.type,
-      '指标类别': item.type2,
-      '权重': item.weight,
-      '负责部门': item.responsibleDept,
-      '完成进度': `${item.progress}%`,
-      '里程碑进度': item.milestoneProgress,
-      '说明': item.description || ''
-    }))
-    
+
     const worksheet = XLSX.utils.json_to_sheet(exportData)
     const workbook = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(workbook, worksheet, '指标数据')
-    
-    // 设置列宽
-    const colWidths = [
-      { wch: 6 },  // 序号
-      { wch: 20 }, // 战略任务
-      { wch: 30 }, // 核心指标
-      { wch: 10 }, // 指标类型
-      { wch: 10 }, // 指标类别
-      { wch: 8 },  // 权重
-      { wch: 15 }, // 负责部门
-      { wch: 10 }, // 完成进度
-      { wch: 15 }, // 里程碑进度
-      { wch: 30 }  // 说明
-    ]
+    XLSX.utils.book_append_sheet(workbook, worksheet, sheetName)
+
+    // 自动列宽
+    const colWidths = Object.keys(exportData[0] || {}).map(key => ({
+      wch: Math.max(
+        key.length + 2,
+        ...exportData.map(row => String(row[key] || '').length)
+      )
+    }))
     worksheet['!cols'] = colWidths
-    
-    const fileName = `指标数据_${new Date().toLocaleDateString()}.xlsx`
+
     XLSX.writeFile(workbook, fileName)
-    
+
     ElMessage.success('导出成功')
   } catch (error) {
     console.error('导出失败:', error)
@@ -198,56 +270,47 @@ const handleExport = () => {
   }
 }
 
-// 移除未使用的函数
+// 三级联动交互处理函数
+
+// 桑基图节点点击
+const handleSankeyNodeClick = (nodeName: string) => {
+  const isCollege = isSecondaryCollege(nodeName)
+  dashboardStore.drillDownToDepartment(nodeName, isCollege ? 'college' : 'functional')
+}
+
+// 桑基图链接点击
+const handleSankeyLinkClick = (source: string, target: string) => {
+  const isCollege = isSecondaryCollege(target)
+  dashboardStore.drillDownToDepartment(target, isCollege ? 'college' : 'functional')
+}
+
+// 任务来源点击筛选
+const handleSourceClick = (source: string) => {
+  dashboardStore.applyFilter({ sourceOwner: source })
+  ElMessage.info(`已筛选来源：${source}`)
+}
+
+// 应用筛选（集成新筛选组件）
+const handleFilterApply = () => {
+  ElMessage.success('筛选已应用')
+}
 </script>
 
 <template>
   <div class="dashboard-view">
-    <!-- 顶部工具栏（二级学院不显示筛选功能） -->
-    <div v-if="showFilterFeature" class="dashboard-toolbar">
+    <!-- 顶部工具栏 -->
+    <div class="dashboard-toolbar">
       <div class="toolbar-right">
-        <el-button 
-          :icon="Filter" 
-          :type="hasActiveFilters ? 'primary' : 'default'"
-          @click="showFilterPanel = !showFilterPanel"
-        >
-          筛选
-        </el-button>
-        <el-button :icon="Refresh" @click="resetFilters">重置</el-button>
         <el-button type="primary" :icon="Download" @click="handleExport">导出报表</el-button>
       </div>
     </div>
 
-    <!-- 筛选面板（根据角色权限显示不同选项） -->
-    <el-collapse-transition>
-      <div v-show="showFilterPanel && showFilterFeature" class="filter-panel">
-        <el-form :model="filterForm" inline>
-          <!-- 部门筛选：战略发展部显示所有，职能部门显示自己和下属 -->
-          <el-form-item v-if="departmentOptions.length > 1" label="部门">
-            <el-select v-model="filterForm.department" placeholder="全部部门" clearable style="min-width: 140px; width: auto">
-              <el-option v-for="dept in departmentOptions" :key="dept" :label="dept" :value="dept" />
-            </el-select>
-          </el-form-item>
-          <el-form-item label="指标类型">
-            <el-select v-model="filterForm.indicatorType" placeholder="全部类型" clearable style="min-width: 120px; width: auto">
-              <el-option label="定性" value="定性" />
-              <el-option label="定量" value="定量" />
-            </el-select>
-          </el-form-item>
-          <el-form-item label="预警级别">
-            <el-select v-model="filterForm.alertLevel" placeholder="全部级别" clearable style="min-width: 120px; width: auto">
-              <el-option label="严重" value="severe" />
-              <el-option label="中度" value="moderate" />
-              <el-option label="正常" value="normal" />
-            </el-select>
-          </el-form-item>
-          <el-form-item>
-            <el-button type="primary" @click="applyFilters">应用</el-button>
-            <el-button @click="resetFilters">清除</el-button>
-          </el-form-item>
-        </el-form>
-      </div>
-    </el-collapse-transition>
+    <!-- 新的联动筛选组件（集成筛选和重置功能） -->
+    <DashboardFilters
+      v-if="showFilterFeature"
+      v-model="dashboardStore.filters"
+      @apply="handleFilterApply"
+    />
 
     <!-- 面包屑导航 -->
     <BreadcrumbNav 
@@ -417,11 +480,11 @@ const handleExport = () => {
       </el-col>
     </el-row>
 
-    <!-- 各部门完成情况（战略发展部和职能部门可见） -->
-    <el-card v-if="showFilterFeature" shadow="hover" class="department-card card-animate">
+    <!-- 各部门完成情况（战略发展部和职能部门可见，二级学院层级不显示） -->
+    <el-card v-if="showFilterFeature && dashboardStore.currentOrgLevel !== 'college'" shadow="hover" class="department-card card-animate">
       <template #header>
         <div class="card-header">
-          <span class="card-title">{{ canViewAllDepartments ? '各部门完成情况' : '下属单位完成情况' }}</span>
+          <span class="card-title">{{ getDepartmentCardTitle }}</span>
           <el-tooltip :content="helpTexts.departmentProgress" placement="top" effect="light">
             <el-icon class="help-icon"><QuestionFilled /></el-icon>
           </el-tooltip>
@@ -429,6 +492,96 @@ const handleExport = () => {
       </template>
       <DepartmentProgressChart :departments="dashboardStore.departmentSummary" />
     </el-card>
+
+    <!-- 三级联动图表区域 -->
+
+    <!-- 战略发展部 - 组织级视图 -->
+    <template v-if="currentRole === 'strategic_dept' && dashboardStore.currentOrgLevel === 'strategy'">
+      <el-row :gutter="16" style="margin-top: 16px;">
+        <!-- 全校任务流转图 -->
+        <el-col :span="24">
+          <el-card shadow="hover" class="chart-card card-animate">
+            <template #header>
+              <div class="card-header">
+                <span class="card-title">全校任务流转图</span>
+                <el-tooltip content="显示战略处到职能部门到学院的任务分发情况，点击节点可下钻" placement="top" effect="light">
+                  <el-icon class="help-icon"><QuestionFilled /></el-icon>
+                </el-tooltip>
+              </div>
+            </template>
+            <TaskSankeyChart
+              :data="dashboardStore.sankeyData"
+              title=""
+              @node-click="handleSankeyNodeClick"
+              @link-click="handleSankeyLinkClick"
+            />
+          </el-card>
+        </el-col>
+      </el-row>
+    </template>
+
+    <!-- 职能部门视图 -->
+    <template v-if="currentRole === 'functional_dept'">
+      <el-row :gutter="16" style="margin-top: 16px;">
+        <!-- 本部门任务下发流向 -->
+        <el-col :span="24">
+          <el-card shadow="hover" class="chart-card card-animate">
+            <template #header>
+              <div class="card-header">
+                <span class="card-title">本部门任务下发流向</span>
+                <el-tooltip content="显示本部门向各学院分发的任务情况" placement="top" effect="light">
+                  <el-icon class="help-icon"><QuestionFilled /></el-icon>
+                </el-tooltip>
+              </div>
+            </template>
+            <TaskSankeyChart
+              :data="dashboardStore.sankeyData"
+              title=""
+              @node-click="handleSankeyNodeClick"
+            />
+          </el-card>
+        </el-col>
+      </el-row>
+    </template>
+
+    <!-- 二级学院视图 -->
+    <template v-if="currentRole === 'secondary_college'">
+      <el-row :gutter="16" style="margin-top: 16px;">
+        <!-- 任务来源分布 -->
+        <el-col :xs="24" :md="10">
+          <el-card shadow="hover" class="chart-card card-animate">
+            <template #header>
+              <div class="card-header">
+                <span class="card-title">任务来源分布</span>
+                <el-tooltip content="显示本学院承接的任务来自哪些职能部门，点击可筛选" placement="top" effect="light">
+                  <el-icon class="help-icon"><QuestionFilled /></el-icon>
+                </el-tooltip>
+              </div>
+            </template>
+            <SourcePieChart
+              :data="dashboardStore.taskSourceDistribution"
+              title=""
+              @click="handleSourceClick"
+            />
+          </el-card>
+        </el-col>
+
+        <!-- 承接任务汇总 -->
+        <el-col :xs="24" :md="14">
+          <el-card shadow="hover" class="chart-card card-animate">
+            <template #header>
+              <div class="card-header">
+                <span class="card-title">承接任务汇总</span>
+                <el-tooltip content="本学院承接的所有任务进度汇总" placement="top" effect="light">
+                  <el-icon class="help-icon"><QuestionFilled /></el-icon>
+                </el-tooltip>
+              </div>
+            </template>
+            <DepartmentProgressChart :departments="dashboardStore.departmentSummary" />
+          </el-card>
+        </el-col>
+      </el-row>
+    </template>
   </div>
 </template>
 

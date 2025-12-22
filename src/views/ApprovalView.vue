@@ -360,7 +360,7 @@ const handleBatchApprove = (group: { strategicTask: string; rows: ApprovalItem[]
     ElMessage.warning('该任务下所有指标已审批')
     return
   }
-  
+
   ElMessageBox.confirm(
     `确认批量通过任务 "${group.strategicTask}" 下的 ${pendingRows.length} 个指标？`,
     '批量审批确认',
@@ -390,6 +390,56 @@ const handleBatchApprove = (group: { strategicTask: string; rows: ApprovalItem[]
     })
     ElMessage.success(`已批量通过 ${pendingRows.length} 个指标`)
   })
+}
+
+// 批量驳回（按任务组）
+const batchRejectDialogVisible = ref(false)
+const batchRejectReason = ref('')
+const currentBatchRejectGroup = ref<{ strategicTask: string; rows: ApprovalItem[] } | null>(null)
+
+const openBatchRejectDialog = (group: { strategicTask: string; rows: ApprovalItem[] }) => {
+  const pendingRows = group.rows.filter(r => r.status === 'pending')
+  if (pendingRows.length === 0) {
+    ElMessage.warning('该任务下所有指标已审批')
+    return
+  }
+
+  currentBatchRejectGroup.value = { ...group, rows: pendingRows }
+  batchRejectReason.value = ''
+  batchRejectDialogVisible.value = true
+}
+
+const confirmBatchReject = () => {
+  if (!batchRejectReason.value.trim()) {
+    ElMessage.warning('请输入驳回原因，严谨的考核需要反馈依据')
+    return
+  }
+
+  if (currentBatchRejectGroup.value) {
+    const { strategicTask, rows } = currentBatchRejectGroup.value
+
+    rows.forEach(row => {
+      strategicStore.updateIndicator(row.indicatorId, { approvalStatus: 'rejected' })
+      // 添加到历史记录
+      const historyItem: ApprovalItem = {
+        ...row,
+        status: 'rejected',
+        auditLogs: [
+          ...row.auditLogs,
+          {
+            timestamp: new Date().toLocaleString(),
+            action: '批量审批驳回',
+            operator: currentUser.value,
+            comment: batchRejectReason.value
+          }
+        ]
+      }
+      historyList.value.unshift(historyItem)
+    })
+
+    batchRejectDialogVisible.value = false
+    ElMessage.warning(`已批量驳回任务 "${strategicTask}" 下的 ${rows.length} 个指标`)
+  }
 }
 </script>
 
@@ -469,7 +519,12 @@ const handleBatchApprove = (group: { strategicTask: string; rows: ApprovalItem[]
                   </td>
                   <!-- 批量操作（按任务组合并） -->
                   <td v-if="index === 0" :rowspan="group.rows.length" class="cell-center batch-cell">
-                    <el-button type="success" size="small" @click="handleBatchApprove(group)">批量通过</el-button>
+                    <div class="batch-operations">
+                      <div class="batch-buttons">
+                        <el-button type="success" size="small" @click="handleBatchApprove(group)">批量通过</el-button>
+                        <el-button type="danger" size="small" @click="openBatchRejectDialog(group)">批量驳回</el-button>
+                      </div>
+                    </div>
                   </td>
                 </tr>
               </template>
@@ -516,7 +571,12 @@ const handleBatchApprove = (group: { strategicTask: string; rows: ApprovalItem[]
                   </td>
                   <!-- 批量操作（按任务组合并） -->
                   <td v-if="index === 0" :rowspan="group.rows.length" class="cell-center batch-cell">
-                    <el-button type="success" size="small" @click="handleBatchApprove(group)">批量通过</el-button>
+                    <div class="batch-operations">
+                      <div class="batch-buttons">
+                        <el-button type="success" size="small" @click="handleBatchApprove(group)">批量通过</el-button>
+                        <el-button type="danger" size="small" @click="openBatchRejectDialog(group)">批量驳回</el-button>
+                      </div>
+                    </div>
                   </td>
                 </tr>
               </template>
@@ -546,14 +606,14 @@ const handleBatchApprove = (group: { strategicTask: string; rows: ApprovalItem[]
         <table class="approval-table">
           <thead>
             <tr>
-              <th style="width: 18%;">战略任务</th>
-              <th style="width: 28%;">核心指标</th>
+              <th style="width: 15%;">战略任务</th>
+              <th style="width: 26%;">核心指标</th>
               <th style="width: 6%;">类型</th>
               <th style="width: 5%;">权重</th>
-              <th style="width: 12%;">进度</th>
-              <th style="width: 10%;">提交人</th>
+              <th style="width: 11%;">进度</th>
+              <th style="width: 14%;">说明/提交人</th>
               <th style="width: 8%;">状态</th>
-              <th style="width: 13%;">操作</th>
+              <th style="width: 15%;">操作</th>
             </tr>
           </thead>
           <tbody v-if="filteredHistory.length > 0">
@@ -567,21 +627,33 @@ const handleBatchApprove = (group: { strategicTask: string; rows: ApprovalItem[]
                       <span class="task-content-colored" :style="{ color: getCategoryColor(row.indicatorCategory) }">{{ group.strategicTask }}</span>
                     </el-tooltip>
                   </td>
+                  <!-- 核心指标 -->
                   <td class="indicator-name-cell"><span class="indicator-name-text">{{ row.coreIndicator }}</span></td>
+                  <!-- 指标类型 -->
                   <td class="cell-center">
                     <el-tag :type="row.type === '定量' ? 'primary' : 'warning'" size="small" effect="plain">{{ row.type }}</el-tag>
                   </td>
+                  <!-- 权重 -->
                   <td class="cell-center"><span class="weight-value">{{ row.weight }}</span></td>
+                  <!-- 里程碑进度 -->
                   <td class="cell-center">
                     <div class="progress-cell">
                       <el-progress :percentage="row.progress || 0" :stroke-width="8" :color="getProgressColor(row)" :show-text="false" style="width: 60px;" />
                       <span class="progress-text">{{ row.progress || 0 }}%</span>
                     </div>
                   </td>
-                  <td class="cell-center">{{ row.submitter }}</td>
+                  <!-- 说明/提交人（合并） -->
+                  <td class="info-cell">
+                    <div class="info-combined">
+                      <span class="remark-text">{{ row.remark }}</span>
+                      <span class="submitter-text">{{ row.submitter }} · {{ row.dept }}</span>
+                    </div>
+                  </td>
+                  <!-- 审批状态 -->
                   <td class="cell-center">
                     <el-tag :type="getStatusTag(row.status)" size="small" effect="dark">{{ getStatusLabel(row.status) }}</el-tag>
                   </td>
+                  <!-- 操作 -->
                   <td class="cell-center action-cell">
                     <div class="action-buttons">
                       <el-button link type="primary" size="small" @click="handleViewDetail(row)">查看</el-button>
@@ -602,21 +674,33 @@ const handleBatchApprove = (group: { strategicTask: string; rows: ApprovalItem[]
                       <span class="task-content-colored" :style="{ color: getCategoryColor(row.indicatorCategory) }">{{ group.strategicTask }}</span>
                     </el-tooltip>
                   </td>
+                  <!-- 核心指标 -->
                   <td class="indicator-name-cell"><span class="indicator-name-text">{{ row.coreIndicator }}</span></td>
+                  <!-- 指标类型 -->
                   <td class="cell-center">
                     <el-tag :type="row.type === '定量' ? 'primary' : 'warning'" size="small" effect="plain">{{ row.type }}</el-tag>
                   </td>
+                  <!-- 权重 -->
                   <td class="cell-center"><span class="weight-value">{{ row.weight }}</span></td>
+                  <!-- 里程碑进度 -->
                   <td class="cell-center">
                     <div class="progress-cell">
                       <el-progress :percentage="row.progress || 0" :stroke-width="8" :color="getProgressColor(row)" :show-text="false" style="width: 60px;" />
                       <span class="progress-text">{{ row.progress || 0 }}%</span>
                     </div>
                   </td>
-                  <td class="cell-center">{{ row.submitter }}</td>
+                  <!-- 说明/提交人（合并） -->
+                  <td class="info-cell">
+                    <div class="info-combined">
+                      <span class="remark-text">{{ row.remark }}</span>
+                      <span class="submitter-text">{{ row.submitter }} · {{ row.dept }}</span>
+                    </div>
+                  </td>
+                  <!-- 审批状态 -->
                   <td class="cell-center">
                     <el-tag :type="getStatusTag(row.status)" size="small" effect="dark">{{ getStatusLabel(row.status) }}</el-tag>
                   </td>
+                  <!-- 操作 -->
                   <td class="cell-center action-cell">
                     <div class="action-buttons">
                       <el-button link type="primary" size="small" @click="handleViewDetail(row)">查看</el-button>
@@ -657,6 +741,25 @@ const handleBatchApprove = (group: { strategicTask: string; rows: ApprovalItem[]
         <span class="dialog-footer">
           <el-button @click="rejectDialogVisible = false">取消</el-button>
           <el-button type="danger" @click="confirmReject">确认驳回</el-button>
+        </span>
+      </template>
+    </el-dialog>
+
+    <!-- 弹窗：批量驳回原因 -->
+    <el-dialog v-model="batchRejectDialogVisible" title="批量审批驳回" width="400px">
+      <div class="dialog-content">
+        <p style="margin-bottom: 10px; color: #606266;">请填写批量驳回原因，该内容将反馈给所有提交人：</p>
+        <el-input
+          v-model="batchRejectReason"
+          type="textarea"
+          rows="3"
+          placeholder="例如：数据佐证不足，请补充附件后重新提交..."
+        />
+      </div>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="batchRejectDialogVisible = false">取消</el-button>
+          <el-button type="danger" @click="confirmBatchReject">确认批量驳回</el-button>
         </span>
       </template>
     </el-dialog>
@@ -1057,6 +1160,55 @@ const handleBatchApprove = (group: { strategicTask: string; rows: ApprovalItem[]
 
 .batch-cell .el-button {
   font-size: 12px;
+}
+
+/* 批量操作容器 - 悬停显示按钮 */
+.batch-operations {
+  position: relative;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.batch-operations::before {
+  content: '批量';
+  font-size: 13px;
+  color: var(--text-regular);
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity var(--transition-fast);
+}
+
+.batch-buttons {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  opacity: 0;
+  visibility: hidden;
+  transition: all var(--transition-fast);
+  pointer-events: none;
+  background: var(--bg-white);
+  padding: var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-card);
+  z-index: 10;
+}
+
+.batch-operations:hover::before {
+  opacity: 0;
+}
+
+.batch-operations:hover .batch-buttons {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.batch-buttons .el-button {
+  width: 100%;
+  margin: 0;
 }
 
 /* ========================================
