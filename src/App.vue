@@ -1,17 +1,25 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { DataAnalysis, Document, Edit, CircleCheck, Bell, Aim, List, Switch } from '@element-plus/icons-vue'
+import { DataAnalysis, Document, Edit, Bell, Aim, List, Switch, Promotion } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
+import { useTimeContextStore } from '@/stores/timeContext'
+import {
+  STRATEGIC_DEPT,
+  getAllFunctionalDepartments,
+  getAllColleges
+} from '@/config/departments'
+import YearSelector from '@/components/common/YearSelector.vue'
 import DashboardView from './views/DashboardView.vue'
 import IndicatorListView from './views/IndicatorListView.vue'
 import ReportingView from './views/ReportingView.vue'
-import ApprovalView from './views/ApprovalView.vue'
 import StrategicTaskView from './views/StrategicTaskView.vue'
+import IndicatorDistributionView from './views/IndicatorDistributionView.vue'
 import LoginView from './views/LoginView.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const timeContext = useTimeContextStore()
 
 const activeTab = ref('dashboard')
 const isLoggedIn = computed(() => authStore.isAuthenticated)
@@ -21,50 +29,73 @@ const currentUser = computed(() => authStore.user)
 const isStrategicDept = computed(() => authStore.userRole === 'strategic_dept')
 
 // 当前查看的视角（战略发展部可以切换）
-const viewingDept = ref<string>('strategic_dept')
+const viewingDept = ref<string>(STRATEGIC_DEPT)
+
+// 暴露常量供模板使用
+const strategicDeptName = STRATEGIC_DEPT
 
 // 部门选项（战略发展部用户可以切换查看其他部门视角）
-const deptOptions = [
-  { value: 'strategic_dept', label: '战略发展部', role: 'strategic_dept' },
-  { value: 'jiaowu', label: '教务处', role: 'functional_dept' },
-  { value: 'keyan', label: '科研处', role: 'functional_dept' },
-  { value: 'renshi', label: '人事处', role: 'functional_dept' },
-  { value: 'jisuanji', label: '计算机学院', role: 'secondary_college' },
-  { value: 'yishu', label: '艺术与科技学院', role: 'secondary_college' }
-]
+// 从统一配置生成：战略发展部 + 职能部门 + 二级学院
+const deptOptions = computed(() => {
+  const options: { value: string; label: string; role: 'strategic_dept' | 'functional_dept' | 'secondary_college' }[] = []
+
+  // 1. 战略发展部（系统管理员）
+  options.push({
+    value: STRATEGIC_DEPT,
+    label: STRATEGIC_DEPT,
+    role: 'strategic_dept'
+  })
+
+  // 2. 职能部门
+  getAllFunctionalDepartments().forEach(dept => {
+    options.push({
+      value: dept,
+      label: dept,
+      role: 'functional_dept'
+    })
+  })
+
+  // 3. 二级学院
+  getAllColleges().forEach(college => {
+    options.push({
+      value: college,
+      label: college,
+      role: 'secondary_college'
+    })
+  })
+
+  return options
+})
 
 // 当前视角对应的角色类型
 const viewingRole = computed(() => {
   if (!isStrategicDept.value) {
     return authStore.userRole
   }
-  const dept = deptOptions.find(d => d.value === viewingDept.value)
+  const dept = deptOptions.value.find(d => d.value === viewingDept.value)
   return dept?.role || 'strategic_dept'
 })
 
 // 当前视角对应的部门名称
 const viewingDeptName = computed(() => {
-  const dept = deptOptions.find(d => d.value === viewingDept.value)
-  return dept?.label || '战略发展部'
+  const dept = deptOptions.value.find(d => d.value === viewingDept.value)
+  return dept?.label || STRATEGIC_DEPT
 })
 
-// 基于角色的页面配置
+// 基于角色的页面配置（审批功能已融入业务页面）
 const roleBasedTabs = {
   'strategic_dept': [
     { id: 'dashboard', label: '数据看板', icon: DataAnalysis },
-    { id: 'strategic', label: '战略任务管理', icon: List },
-    { id: 'approval', label: '审批中心', icon: CircleCheck }
+    { id: 'strategic', label: '战略任务管理', icon: List }
   ],
   'functional_dept': [
     { id: 'dashboard', label: '数据看板', icon: DataAnalysis },
-    { id: 'indicators', label: '指标管理', icon: Document },
-    { id: 'reporting', label: '进度填报', icon: Edit },
-    { id: 'approval', label: '审批中心', icon: CircleCheck }
+    { id: 'indicators', label: '指标填报', icon: Edit },
+    { id: 'distribution', label: '指标下发与审批', icon: Promotion }
   ],
   'secondary_college': [
     { id: 'dashboard', label: '数据看板', icon: DataAnalysis },
-    { id: 'indicators', label: '指标管理', icon: Document },
-    { id: 'reporting', label: '进度填报', icon: Edit }
+    { id: 'indicators', label: '指标填报', icon: Edit }
   ]
 }
 
@@ -134,6 +165,9 @@ onMounted(() => {
           </div>
         </div>
         <div class="header-right">
+          <!-- 年份选择器 -->
+          <YearSelector />
+
           <!-- 战略发展部专属：部门视角切换 -->
           <div v-if="isStrategicDept" class="dept-switcher">
             <el-icon class="switcher-icon"><Switch /></el-icon>
@@ -150,14 +184,14 @@ onMounted(() => {
                 :value="dept.value"
               >
                 <span>{{ dept.label }}</span>
-                <el-tag v-if="dept.value === 'strategic_dept'" size="small" type="primary" style="margin-left: 8px;">当前</el-tag>
+                <el-tag v-if="dept.role === 'strategic_dept'" size="small" type="primary" style="margin-left: 8px;">管理</el-tag>
               </el-option>
             </el-select>
-            <el-tag v-if="viewingDept !== 'strategic_dept'" type="warning" size="small" class="viewing-tag">
+            <el-tag v-if="viewingDept !== strategicDeptName" type="warning" size="small" class="viewing-tag">
               查看中: {{ viewingDeptName }}
             </el-tag>
           </div>
-          
+
           <div class="user-info">
             <span class="dept-name">{{ currentUser?.department }}</span>
             <span class="user-name">{{ currentUser?.name }}</span>
@@ -200,7 +234,8 @@ onMounted(() => {
         <StrategicTaskView v-else-if="activeTab === 'strategic'" :selectedRole="viewingRole || ''" />
         <IndicatorListView v-else-if="activeTab === 'indicators'" :viewingRole="viewingRole" />
         <ReportingView v-else-if="activeTab === 'reporting'" :viewingRole="viewingRole" />
-        <ApprovalView v-else-if="activeTab === 'approval'" :viewingRole="viewingRole" />
+        <!-- 指标下发与审批页面（职能部门专用）-->
+        <IndicatorDistributionView v-else-if="activeTab === 'distribution'" />
       </div>
     </main>
   </div>

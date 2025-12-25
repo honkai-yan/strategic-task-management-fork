@@ -4,6 +4,86 @@ import { Folder, Document, Warning, Connection } from '@element-plus/icons-vue'
 import type { StrategicTask, StrategicIndicator } from '@/types'
 import { useStrategicStore } from '@/stores/strategic'
 
+// 节点统计接口
+interface NodeStats {
+  total: number      // 总指标数
+  normal: number     // 正常（进度等于预期）
+  warning: number    // 预警（进度低于预期）
+  ahead: number      // 超前（进度超过预期）
+}
+
+// 指标分类类型
+type IndicatorCategory = 'normal' | 'warning' | 'ahead'
+
+/**
+ * 根据当前日期和里程碑计算预期进度
+ * 返回当前应达到的目标进度值
+ */
+const getExpectedProgress = (indicator: StrategicIndicator): number => {
+  const milestones = indicator.milestones
+
+  // 无里程碑时返回0
+  if (!milestones || milestones.length === 0) {
+    return 0
+  }
+
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  // 按截止日期排序
+  const sortedMilestones = [...milestones].sort((a, b) =>
+    new Date(a.deadline).getTime() - new Date(b.deadline).getTime()
+  )
+
+  // 找到当前活跃的里程碑（第一个截止日期 >= 今天的）
+  for (const milestone of sortedMilestones) {
+    const deadline = new Date(milestone.deadline)
+    deadline.setHours(23, 59, 59, 999)
+
+    if (deadline >= today) {
+      return milestone.targetProgress
+    }
+  }
+
+  // 所有里程碑已过期，返回最后一个的目标进度
+  return sortedMilestones[sortedMilestones.length - 1].targetProgress
+}
+
+/**
+ * 将指标分类为超前、正常或预警
+ */
+const categorizeIndicator = (indicator: StrategicIndicator): IndicatorCategory => {
+  const expectedProgress = getExpectedProgress(indicator)
+  const currentProgress = indicator.progress
+
+  if (currentProgress > expectedProgress) {
+    return 'ahead'
+  } else if (currentProgress === expectedProgress) {
+    return 'normal'
+  } else {
+    return 'warning'
+  }
+}
+
+/**
+ * 计算指标列表的统计数据
+ */
+const calculateIndicatorStats = (indicators: StrategicIndicator[]): NodeStats => {
+  const stats: NodeStats = {
+    total: indicators.length,
+    normal: 0,
+    warning: 0,
+    ahead: 0
+  }
+
+  indicators.forEach(indicator => {
+    const category = categorizeIndicator(indicator)
+    stats[category]++
+  })
+
+  return stats
+}
+
 const props = defineProps<{
   tasks?: StrategicTask[]
   indicators?: StrategicIndicator[]
@@ -52,7 +132,7 @@ const calculatePath = (indicatorId: string): string[] => {
 const treeData = computed(() => {
   const tasks = props.tasks || strategicStore.tasks
   const indicators = props.indicators || strategicStore.indicators
-  
+
   // 按责任部门分组指标
   const deptMap = new Map<string, StrategicIndicator[]>()
   indicators.forEach(ind => {
@@ -62,20 +142,17 @@ const treeData = computed(() => {
     }
     deptMap.get(dept)!.push(ind)
   })
-  
+
   // 构建树形结构
-  return tasks.map(task => ({
-    id: `task_${task.id}`,
-    label: task.title,
-    type: 'task' as const,
-    status: getTaskAggregatedStatus(task, indicators),
-    progress: getTaskAggregatedProgress(task, indicators),
-    children: Array.from(deptMap.entries()).map(([dept, inds]) => ({
+  return tasks.map(task => {
+    // 构建部门节点，包含统计数据
+    const departmentNodes = Array.from(deptMap.entries()).map(([dept, inds]) => ({
       id: `dept_${task.id}_${dept}`,
       label: dept,
       type: 'department' as const,
       status: getAggregatedStatus(inds),
       progress: getAggregatedProgress(inds),
+      stats: calculateIndicatorStats(inds),
       children: inds.map(ind => ({
         id: `indicator_${ind.id}`,
         label: ind.name,
@@ -85,7 +162,31 @@ const treeData = computed(() => {
         data: ind
       }))
     }))
-  }))
+
+    // 计算任务级别的统计数据（汇总所有部门）
+    const taskStats = departmentNodes.reduce(
+      (acc, dept) => {
+        if (dept.stats) {
+          acc.total += dept.stats.total
+          acc.normal += dept.stats.normal
+          acc.warning += dept.stats.warning
+          acc.ahead += dept.stats.ahead
+        }
+        return acc
+      },
+      { total: 0, normal: 0, warning: 0, ahead: 0 } as NodeStats
+    )
+
+    return {
+      id: `task_${task.id}`,
+      label: task.title,
+      type: 'task' as const,
+      status: getTaskAggregatedStatus(task, indicators),
+      progress: getTaskAggregatedProgress(task, indicators),
+      stats: taskStats,
+      children: departmentNodes
+    }
+  })
 })
 
 // 获取任务聚合状态
@@ -190,7 +291,39 @@ const defaultExpandedKeys = computed(() =>
           <el-icon class="node-icon" :style="{ color: getStatusColor(data.status) }">
             <component :is="getNodeIcon(data.type)" />
           </el-icon>
-          <span class="node-label">{{ node.label }}</span>
+
+          <!-- 任务/部门节点带统计 tooltip -->
+          <el-tooltip
+            v-if="(data.type === 'task' || data.type === 'department') && data.stats"
+            placement="top"
+            effect="light"
+            :show-after="300"
+          >
+            <template #content>
+              <div class="stats-tooltip">
+                <div class="stats-row">
+                  <span class="stats-label">总计:</span>
+                  <span class="stats-value">{{ data.stats.total }}项</span>
+                </div>
+                <div class="stats-row normal">
+                  <span class="stats-label">正常:</span>
+                  <span class="stats-value">{{ data.stats.normal }}项</span>
+                </div>
+                <div class="stats-row warning">
+                  <span class="stats-label">预警:</span>
+                  <span class="stats-value">{{ data.stats.warning }}项</span>
+                </div>
+                <div class="stats-row ahead">
+                  <span class="stats-label">超前:</span>
+                  <span class="stats-value">{{ data.stats.ahead }}项</span>
+                </div>
+              </div>
+            </template>
+            <span class="node-label">{{ node.label }}</span>
+          </el-tooltip>
+
+          <!-- 指标节点无 tooltip -->
+          <span v-else class="node-label">{{ node.label }}</span>
           
           <!-- 父级节点聚合进度 -->
           <template v-if="data.type === 'task' || data.type === 'department'">
@@ -325,5 +458,41 @@ const defaultExpandedKeys = computed(() =>
 
 :deep(.el-tree-node__expand-icon) {
   padding: 4px;
+}
+
+/* 统计 tooltip 样式 */
+.stats-tooltip {
+  padding: 4px 0;
+  font-size: 13px;
+  line-height: 1.6;
+  min-width: 100px;
+}
+
+.stats-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 2px 0;
+}
+
+.stats-label {
+  color: var(--text-regular, #606266);
+}
+
+.stats-value {
+  font-weight: 500;
+  color: var(--text-main, #303133);
+}
+
+.stats-row.normal .stats-value {
+  color: var(--color-success, #67C23A);
+}
+
+.stats-row.warning .stats-value {
+  color: var(--color-warning, #E6A23C);
+}
+
+.stats-row.ahead .stats-value {
+  color: var(--color-primary, #409EFF);
 }
 </style>

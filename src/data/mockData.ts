@@ -1,4 +1,5 @@
 import type { DashboardData, Indicator, DepartmentProgress, PendingApproval, TabItem, RoleOption } from '@/types'
+import { getAllFunctionalDepartments, getAllColleges } from '@/config/departments'
 
 // 仪表盘数据
 export const dashboardData: DashboardData = {
@@ -41,10 +42,20 @@ export const tabItems: TabItem[] = [
   { id: 'approval', label: '审批中心', icon: 'CircleCheck' }
 ]
 
-// 角色选项
+// 角色选项 - 从统一配置生成
+const functionalDepts = getAllFunctionalDepartments()
+const colleges = getAllColleges()
+
 export const roleOptions: RoleOption[] = [
+  // 职能部门选项
+  ...functionalDepts.map(dept => ({ value: dept, label: dept })),
+  // 二级学院选项
+  ...colleges.map(college => ({ value: college, label: college }))
+]
+
+// 快速访问选项（用于测试/演示）
+export const quickRoleOptions: RoleOption[] = [
   { value: '战略发展部', label: '战略发展部' },
   { value: '教务处', label: '教务处' },
-  { value: '科研处', label: '科研处' },
   { value: '计算机学院', label: '计算机学院' }
 ]

@@ -32,6 +32,10 @@
   --bg-purple-light: #f3e8ff; /* 紫色背景（标签） */
   --bg-blue-light: #dbeafe;   /* 浅蓝背景（标签） */
 
+  /* --- 指标类型颜色（区分于任务类型） --- */
+  --color-qualitative: #9333ea;  /* 定性指标：紫色 */
+  --color-quantitative: #0891b2; /* 定量指标：青色 */
+
   /* --- 统一圆角规范 --- */
   --radius-sm: 4px;           /* 小圆角：按钮、输入框 */
   --radius-md: 8px;           /* 中圆角：小卡片、下拉框 */

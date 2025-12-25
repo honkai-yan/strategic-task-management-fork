@@ -44,6 +44,10 @@ export interface StrategicTask {
   status: 'draft' | 'active' | 'completed' | 'cancelled'
   createdBy: string
   indicators: StrategicIndicator[]
+  // 时间维度字段
+  year: number                    // 年份，如 2025
+  isRecurring: boolean            // 是否长久性任务（跨年复制）
+  parentTaskId?: string           // 跨年复制的原任务ID
 }
 
 // Strategic Indicator Types (Enhanced)
@@ -71,6 +75,24 @@ export interface StrategicIndicator {
   taskContent?: string // 关联的战略任务内容
   ownerDept?: string // 发布方部门 (对应数据库 owner_org_id)
   parentIndicatorId?: string // 父指标ID (对应数据库 parent_indicator_id)
+  // 时间维度字段
+  year: number                        // 年份，如 2025
+  statusAudit: StatusAuditEntry[]     // 审批/操作历史JSON
+}
+
+// 状态审计日志条目（用于记录指标的审批历史）
+export interface StatusAuditEntry {
+  id: string
+  timestamp: Date
+  operator: string           // 操作人用户名
+  operatorName: string       // 操作人姓名
+  operatorDept: string       // 操作人部门
+  action: 'submit' | 'approve' | 'reject' | 'revoke' | 'update'
+  comment?: string           // 操作备注
+  previousStatus?: string    // 变更前状态
+  newStatus?: string         // 变更后状态
+  previousProgress?: number  // 变更前进度
+  newProgress?: number       // 变更后进度
 }
 
 // 里程碑类型

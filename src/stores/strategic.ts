@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
-import type { StrategicTask, StrategicIndicator, Milestone } from '@/types'
+import { ref, computed, watch } from 'vue'
+import type { StrategicTask, StrategicIndicator, Milestone, StatusAuditEntry } from '@/types'
+import { useTimeContextStore } from './timeContext'
 
 export const useStrategicStore = defineStore('strategic', () => {
   // State
@@ -15,7 +16,9 @@ export const useStrategicStore = defineStore('strategic', () => {
       endDate: new Date('2025-12-31'),
       status: 'active',
       createdBy: 'admin',
-      indicators: []
+      indicators: [],
+      year: 2025,
+      isRecurring: true // 长久性任务，每年持续
     },
     {
       id: '2',
@@ -27,7 +30,9 @@ export const useStrategicStore = defineStore('strategic', () => {
       endDate: new Date('2025-12-31'),
       status: 'active',
       createdBy: 'admin',
-      indicators: []
+      indicators: [],
+      year: 2025,
+      isRecurring: true // 长久性任务
     },
     {
       id: '3',
@@ -39,7 +44,9 @@ export const useStrategicStore = defineStore('strategic', () => {
       endDate: new Date('2025-12-31'),
       status: 'active',
       createdBy: 'admin',
-      indicators: []
+      indicators: [],
+      year: 2025,
+      isRecurring: false // 非长久性任务
     }
   ])
 
@@ -70,7 +77,30 @@ export const useStrategicStore = defineStore('strategic', () => {
       responsiblePerson: '张老师',
       status: 'active',
       isStrategic: true,
-      ownerDept: '战略发展部' // 新增：发布方部门
+      ownerDept: '战略发展部',
+      year: 2025,
+      statusAudit: [
+        {
+          id: 'audit-101-1',
+          timestamp: new Date('2025-03-01'),
+          operator: 'zhangsan',
+          operatorName: '张老师',
+          operatorDept: '就业创业指导中心',
+          action: 'submit',
+          comment: '提交Q1进度25%',
+          previousProgress: 0,
+          newProgress: 25
+        },
+        {
+          id: 'audit-101-2',
+          timestamp: new Date('2025-03-02'),
+          operator: 'admin',
+          operatorName: '战略发展部管理员',
+          operatorDept: '战略发展部',
+          action: 'approve',
+          comment: '审批通过'
+        }
+      ]
     },
     {
       id: '102',
@@ -885,6 +915,58 @@ export const useStrategicStore = defineStore('strategic', () => {
     }
   }
 
+  // ============ 时间上下文相关 ============
+
+  // 获取时间上下文 Store（延迟获取避免循环依赖）
+  const getTimeContext = () => useTimeContextStore()
+
+  // 按当前年份过滤的任务
+  const tasksByCurrentYear = computed(() => {
+    const timeContext = getTimeContext()
+    return tasks.value.filter(t => t.year === timeContext.currentYear)
+  })
+
+  // 按当前年份过滤的指标
+  const indicatorsByCurrentYear = computed(() => {
+    const timeContext = getTimeContext()
+    return indicators.value.filter(i => i.year === timeContext.currentYear)
+  })
+
+  // 初始化：确保所有指标都有 year 和 statusAudit 字段
+  const initializeIndicatorFields = () => {
+    indicators.value.forEach(indicator => {
+      // 如果没有 year 字段，默认为 2025
+      if (!indicator.year) {
+        indicator.year = 2025
+      }
+      // 如果没有 statusAudit 字段，初始化为空数组
+      if (!indicator.statusAudit) {
+        indicator.statusAudit = []
+      }
+    })
+  }
+
+  // 添加审计日志条目
+  const addStatusAuditEntry = (
+    indicatorId: string,
+    entry: Omit<StatusAuditEntry, 'id' | 'timestamp'>
+  ) => {
+    const indicator = getIndicatorById(indicatorId)
+    if (indicator) {
+      if (!indicator.statusAudit) {
+        indicator.statusAudit = []
+      }
+      indicator.statusAudit.push({
+        ...entry,
+        id: `audit-${indicatorId}-${Date.now()}`,
+        timestamp: new Date()
+      })
+    }
+  }
+
+  // 初始化字段
+  initializeIndicatorFields()
+
   return {
     // State
     tasks,
@@ -898,6 +980,9 @@ export const useStrategicStore = defineStore('strategic', () => {
     getIndicatorsByTask,
     getOverdueMilestones,
     getUpcomingMilestones,
+    // 按年份过滤
+    tasksByCurrentYear,
+    indicatorsByCurrentYear,
 
     // Actions
     addTask,
@@ -906,6 +991,8 @@ export const useStrategicStore = defineStore('strategic', () => {
     addIndicator,
     updateIndicator,
     deleteIndicator,
-    updateMilestoneStatus
+    updateMilestoneStatus,
+    addStatusAuditEntry,
+    initializeIndicatorFields
   }
 })
