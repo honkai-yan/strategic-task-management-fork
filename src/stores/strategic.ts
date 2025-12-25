@@ -814,6 +814,342 @@ export const useStrategicStore = defineStore('strategic', () => {
       status: 'active',
       isStrategic: true,
       ownerDept: '战略发展部'
+    },
+
+    // ============ 更多职能部门指标 ============
+
+    // 党委办公室 | 党委统战部
+    {
+      id: '401',
+      name: '加强党建工作，党员发展质量达标率95%以上',
+      isQualitative: false,
+      type1: '定量',
+      type2: '基础性',
+      progress: 92,
+      createTime: '2025年12月14日',
+      weight: 25,
+      remark: '党建引领发展',
+      canWithdraw: false,
+      taskContent: '加强党的建设，提升组织凝聚力',
+      milestones: [
+        { id: '4011', name: 'Q1: 党员发展计划制定', targetProgress: 25, deadline: '2025-03-31', status: 'completed' },
+        { id: '4012', name: 'Q2: 党员培训实施', targetProgress: 50, deadline: '2025-06-30', status: 'completed' },
+        { id: '4013', name: 'Q3: 党员考核评估', targetProgress: 75, deadline: '2025-09-30', status: 'completed' },
+        { id: '4014', name: 'Q4: 年度总结', targetProgress: 100, deadline: '2025-12-31', status: 'completed' }
+      ],
+      targetValue: 95,
+      unit: '%',
+      responsibleDept: '党委办公室 | 党委统战部',
+      responsiblePerson: '李书记',
+      status: 'active',
+      isStrategic: true,
+      ownerDept: '战略发展部'
+    },
+    {
+      id: '402',
+      name: '统战工作覆盖率达100%，民主党派联络机制完善',
+      isQualitative: true,
+      type1: '定性',
+      type2: '基础性',
+      progress: 85,
+      createTime: '2025年12月14日',
+      weight: 20,
+      remark: '统一战线工作',
+      canWithdraw: false,
+      taskContent: '加强党的建设，提升组织凝聚力',
+      milestones: [
+        { id: '4021', name: 'Q1: 统战对象摸底', targetProgress: 25, deadline: '2025-03-31', status: 'completed' },
+        { id: '4022', name: 'Q2: 联络机制建立', targetProgress: 50, deadline: '2025-06-30', status: 'completed' },
+        { id: '4023', name: 'Q3: 活动开展', targetProgress: 75, deadline: '2025-09-30', status: 'completed' },
+        { id: '4024', name: 'Q4: 工作总结', targetProgress: 100, deadline: '2025-12-31', status: 'pending' }
+      ],
+      targetValue: 100,
+      unit: '%',
+      responsibleDept: '党委办公室 | 党委统战部',
+      responsiblePerson: '李书记',
+      status: 'active',
+      isStrategic: true,
+      ownerDept: '战略发展部'
+    },
+
+    // 纪委办公室 | 监察处
+    {
+      id: '403',
+      name: '廉政教育覆盖率100%，违纪违规案件处理及时率100%',
+      isQualitative: false,
+      type1: '定量',
+      type2: '基础性',
+      progress: 100,
+      createTime: '2025年12月14日',
+      weight: 30,
+      remark: '全面从严治党',
+      canWithdraw: false,
+      taskContent: '加强纪检监察，营造风清气正环境',
+      milestones: [
+        { id: '4031', name: 'Q1: 廉政教育计划', targetProgress: 25, deadline: '2025-03-31', status: 'completed' },
+        { id: '4032', name: 'Q2: 教育活动实施', targetProgress: 50, deadline: '2025-06-30', status: 'completed' },
+        { id: '4033', name: 'Q3: 监督检查', targetProgress: 75, deadline: '2025-09-30', status: 'completed' },
+        { id: '4034', name: 'Q4: 年度总结', targetProgress: 100, deadline: '2025-12-31', status: 'completed' }
+      ],
+      targetValue: 100,
+      unit: '%',
+      responsibleDept: '纪委办公室 | 监察处',
+      responsiblePerson: '张纪委',
+      status: 'active',
+      isStrategic: true,
+      ownerDept: '战略发展部'
+    },
+
+    // 党委宣传部 | 宣传策划部
+    {
+      id: '404',
+      name: '校园文化活动覆盖率达90%，新媒体传播影响力提升30%',
+      isQualitative: false,
+      type1: '定量',
+      type2: '发展性',
+      progress: 78,
+      createTime: '2025年12月14日',
+      weight: 25,
+      remark: '提升学校品牌影响力',
+      canWithdraw: false,
+      taskContent: '加强宣传工作，提升学校影响力',
+      milestones: [
+        { id: '4041', name: 'Q1: 宣传计划制定', targetProgress: 25, deadline: '2025-03-31', status: 'completed' },
+        { id: '4042', name: 'Q2: 新媒体平台建设', targetProgress: 50, deadline: '2025-06-30', status: 'completed' },
+        { id: '4043', name: 'Q3: 品牌活动策划', targetProgress: 75, deadline: '2025-09-30', status: 'completed' },
+        { id: '4044', name: 'Q4: 效果评估', targetProgress: 100, deadline: '2025-12-31', status: 'pending' }
+      ],
+      targetValue: 30,
+      unit: '%',
+      responsibleDept: '党委宣传部 | 宣传策划部',
+      responsiblePerson: '王部长',
+      status: 'active',
+      isStrategic: true,
+      ownerDept: '战略发展部'
+    },
+
+    // 党委组织部 | 党委教师工作部 | 人力资源部
+    {
+      id: '405',
+      name: '教师队伍建设，高层次人才引进不少于10人',
+      isQualitative: false,
+      type1: '定量',
+      type2: '发展性',
+      progress: 60,
+      createTime: '2025年12月14日',
+      weight: 30,
+      remark: '人才强校战略',
+      canWithdraw: false,
+      taskContent: '加强人才队伍建设，提升师资水平',
+      milestones: [
+        { id: '4051', name: 'Q1: 人才需求调研', targetProgress: 25, deadline: '2025-03-31', status: 'completed' },
+        { id: '4052', name: 'Q2: 招聘计划实施', targetProgress: 50, deadline: '2025-06-30', status: 'completed' },
+        { id: '4053', name: 'Q3: 人才引进', targetProgress: 75, deadline: '2025-09-30', status: 'pending' },
+        { id: '4054', name: 'Q4: 目标达成', targetProgress: 100, deadline: '2025-12-31', status: 'pending' }
+      ],
+      targetValue: 10,
+      unit: '人',
+      responsibleDept: '党委组织部 | 党委教师工作部 | 人力资源部',
+      responsiblePerson: '陈部长',
+      status: 'active',
+      isStrategic: true,
+      ownerDept: '战略发展部'
+    },
+
+    // 党委保卫部 | 保卫处
+    {
+      id: '406',
+      name: '校园安全事故零发生，安全隐患整改率100%',
+      isQualitative: false,
+      type1: '定量',
+      type2: '基础性',
+      progress: 95,
+      createTime: '2025年12月14日',
+      weight: 35,
+      remark: '平安校园建设',
+      canWithdraw: false,
+      taskContent: '加强校园安全管理，保障师生安全',
+      milestones: [
+        { id: '4061', name: 'Q1: 安全隐患排查', targetProgress: 25, deadline: '2025-03-31', status: 'completed' },
+        { id: '4062', name: 'Q2: 隐患整改', targetProgress: 50, deadline: '2025-06-30', status: 'completed' },
+        { id: '4063', name: 'Q3: 安全演练', targetProgress: 75, deadline: '2025-09-30', status: 'completed' },
+        { id: '4064', name: 'Q4: 年度评估', targetProgress: 100, deadline: '2025-12-31', status: 'completed' }
+      ],
+      targetValue: 100,
+      unit: '%',
+      responsibleDept: '党委保卫部 | 保卫处',
+      responsiblePerson: '刘处长',
+      status: 'active',
+      isStrategic: true,
+      ownerDept: '战略发展部'
+    },
+
+    // 财务部
+    {
+      id: '407',
+      name: '预算执行率达95%以上，财务合规率100%',
+      isQualitative: false,
+      type1: '定量',
+      type2: '基础性',
+      progress: 88,
+      createTime: '2025年12月14日',
+      weight: 30,
+      remark: '财务规范管理',
+      canWithdraw: false,
+      taskContent: '加强财务管理，提升资金使用效率',
+      milestones: [
+        { id: '4071', name: 'Q1: 预算编制', targetProgress: 25, deadline: '2025-03-31', status: 'completed' },
+        { id: '4072', name: 'Q2: 预算执行监控', targetProgress: 50, deadline: '2025-06-30', status: 'completed' },
+        { id: '4073', name: 'Q3: 财务审计', targetProgress: 75, deadline: '2025-09-30', status: 'completed' },
+        { id: '4074', name: 'Q4: 年度决算', targetProgress: 100, deadline: '2025-12-31', status: 'pending' }
+      ],
+      targetValue: 95,
+      unit: '%',
+      responsibleDept: '财务部',
+      responsiblePerson: '赵部长',
+      status: 'active',
+      isStrategic: true,
+      ownerDept: '战略发展部'
+    },
+
+    // 实验室建设管理处
+    {
+      id: '408',
+      name: '实验室利用率达85%以上，设备完好率98%',
+      isQualitative: false,
+      type1: '定量',
+      type2: '基础性',
+      progress: 82,
+      createTime: '2025年12月14日',
+      weight: 25,
+      remark: '实验教学保障',
+      canWithdraw: false,
+      taskContent: '加强实验室建设，提升实践教学质量',
+      milestones: [
+        { id: '4081', name: 'Q1: 设备检修', targetProgress: 25, deadline: '2025-03-31', status: 'completed' },
+        { id: '4082', name: 'Q2: 实验室升级', targetProgress: 50, deadline: '2025-06-30', status: 'completed' },
+        { id: '4083', name: 'Q3: 利用率提升', targetProgress: 75, deadline: '2025-09-30', status: 'completed' },
+        { id: '4084', name: 'Q4: 年度评估', targetProgress: 100, deadline: '2025-12-31', status: 'pending' }
+      ],
+      targetValue: 85,
+      unit: '%',
+      responsibleDept: '实验室建设管理处',
+      responsiblePerson: '孙处长',
+      status: 'active',
+      isStrategic: true,
+      ownerDept: '战略发展部'
+    },
+
+    // 图书馆 | 档案馆
+    {
+      id: '409',
+      name: '图书馆资源利用率提升20%，数字资源访问量增长30%',
+      isQualitative: false,
+      type1: '定量',
+      type2: '发展性',
+      progress: 72,
+      createTime: '2025年12月14日',
+      weight: 20,
+      remark: '文献资源建设',
+      canWithdraw: false,
+      taskContent: '加强图书馆建设，提升服务质量',
+      milestones: [
+        { id: '4091', name: 'Q1: 资源采购', targetProgress: 25, deadline: '2025-03-31', status: 'completed' },
+        { id: '4092', name: 'Q2: 数字化建设', targetProgress: 50, deadline: '2025-06-30', status: 'completed' },
+        { id: '4093', name: 'Q3: 服务推广', targetProgress: 75, deadline: '2025-09-30', status: 'completed' },
+        { id: '4094', name: 'Q4: 效果评估', targetProgress: 100, deadline: '2025-12-31', status: 'pending' }
+      ],
+      targetValue: 30,
+      unit: '%',
+      responsibleDept: '图书馆 | 档案馆',
+      responsiblePerson: '周馆长',
+      status: 'active',
+      isStrategic: true,
+      ownerDept: '战略发展部'
+    },
+
+    // 后勤资产处
+    {
+      id: '410',
+      name: '后勤服务满意度达90%以上，资产管理规范率100%',
+      isQualitative: false,
+      type1: '定量',
+      type2: '基础性',
+      progress: 86,
+      createTime: '2025年12月14日',
+      weight: 25,
+      remark: '后勤保障服务',
+      canWithdraw: false,
+      taskContent: '提升后勤服务质量，保障校园运行',
+      milestones: [
+        { id: '4101', name: 'Q1: 服务调研', targetProgress: 25, deadline: '2025-03-31', status: 'completed' },
+        { id: '4102', name: 'Q2: 服务改进', targetProgress: 50, deadline: '2025-06-30', status: 'completed' },
+        { id: '4103', name: 'Q3: 资产盘点', targetProgress: 75, deadline: '2025-09-30', status: 'completed' },
+        { id: '4104', name: 'Q4: 满意度调查', targetProgress: 100, deadline: '2025-12-31', status: 'pending' }
+      ],
+      targetValue: 90,
+      unit: '%',
+      responsibleDept: '后勤资产处',
+      responsiblePerson: '吴处长',
+      status: 'active',
+      isStrategic: true,
+      ownerDept: '战略发展部'
+    },
+
+    // 继续教育部
+    {
+      id: '411',
+      name: '继续教育招生人数增长15%，培训项目满意度达85%',
+      isQualitative: false,
+      type1: '定量',
+      type2: '发展性',
+      progress: 68,
+      createTime: '2025年12月14日',
+      weight: 22,
+      remark: '继续教育发展',
+      canWithdraw: false,
+      taskContent: '拓展继续教育，服务社会发展',
+      milestones: [
+        { id: '4111', name: 'Q1: 市场调研', targetProgress: 25, deadline: '2025-03-31', status: 'completed' },
+        { id: '4112', name: 'Q2: 项目开发', targetProgress: 50, deadline: '2025-06-30', status: 'completed' },
+        { id: '4113', name: 'Q3: 招生推广', targetProgress: 75, deadline: '2025-09-30', status: 'pending' },
+        { id: '4114', name: 'Q4: 效果评估', targetProgress: 100, deadline: '2025-12-31', status: 'pending' }
+      ],
+      targetValue: 15,
+      unit: '%',
+      responsibleDept: '继续教育部',
+      responsiblePerson: '郑部长',
+      status: 'active',
+      isStrategic: true,
+      ownerDept: '战略发展部'
+    },
+
+    // 国际合作与交流处
+    {
+      id: '412',
+      name: '国际合作项目新增3个，留学生招生增长20%',
+      isQualitative: false,
+      type1: '定量',
+      type2: '发展性',
+      progress: 55,
+      createTime: '2025年12月14日',
+      weight: 25,
+      remark: '国际化办学',
+      canWithdraw: false,
+      taskContent: '推进国际化办学，提升国际影响力',
+      milestones: [
+        { id: '4121', name: 'Q1: 合作洽谈', targetProgress: 25, deadline: '2025-03-31', status: 'completed' },
+        { id: '4122', name: 'Q2: 项目签约', targetProgress: 50, deadline: '2025-06-30', status: 'completed' },
+        { id: '4123', name: 'Q3: 留学生招生', targetProgress: 75, deadline: '2025-09-30', status: 'pending' },
+        { id: '4124', name: 'Q4: 项目实施', targetProgress: 100, deadline: '2025-12-31', status: 'pending' }
+      ],
+      targetValue: 3,
+      unit: '个',
+      responsibleDept: '国际合作与交流处',
+      responsiblePerson: '钱处长',
+      status: 'active',
+      isStrategic: true,
+      ownerDept: '战略发展部'
     }
   ])
 

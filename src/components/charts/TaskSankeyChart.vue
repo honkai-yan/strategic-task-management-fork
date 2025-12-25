@@ -45,15 +45,18 @@ const chartOption = computed(() => ({
         return `
           <div style="padding: 8px;">
             <div style="font-weight: bold; margin-bottom: 4px;">${params.data.source} → ${params.data.target}</div>
-            <div>任务数: <strong>${params.data.value}</strong></div>
+            <div>指标数: <strong>${params.data.value}</strong></div>
           </div>
         `
       } else {
-        // 节点tooltip
+        // 节点tooltip - 根据层级显示不同文字
+        // depth 0/1 是战略发展部和职能部门，显示"任务数"
+        // depth 2 是二级学院，显示"指标数"
+        const label = params.data?.depth === 2 ? '总指标数' : '总任务数'
         return `
           <div style="padding: 8px;">
             <div style="font-weight: bold; margin-bottom: 4px;">${params.name}</div>
-            <div>总任务数: <strong>${params.value}</strong></div>
+            <div>${label}: <strong>${params.value}</strong></div>
           </div>
         `
       }

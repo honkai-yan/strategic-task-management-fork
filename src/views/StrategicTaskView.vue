@@ -46,9 +46,6 @@
   const currentTaskIndex = ref(0)
   const isAddingOrEditing = ref(false)
   
-  // 选中的部门
-  const selectedDepartment = ref('')
-  
   // 职能部门列表
   const functionalDepartments = [
     '党委办公室 | 党委统战部',
@@ -70,6 +67,9 @@
     '继续教育部',
     '国际合作与交流处'
   ]
+
+  // 选中的部门 - 默认选中第一个
+  const selectedDepartment = ref(functionalDepartments[0])
   
   // 表格引用和选中的指标
   const tableRef = ref<InstanceType<typeof ElTable>>()
@@ -93,17 +93,28 @@
     cycle: ''
   })
   
-  // 从 Store 获取指标列表（带里程碑），按年份过滤，按任务类型和战略任务分组排序
+  // 从 Store 获取指标列表（带里程碑），按年份和部门过滤，按任务类型和战略任务分组排序
   const indicators = computed(() => {
     // 过滤当前年份的指标
-    const list = strategicStore.indicators
+    let list = strategicStore.indicators
       .filter(i => !i.year || i.year === timeContext.currentYear)
-      .map(i => ({
-        ...i,
-        id: Number(i.id)
-      }))
+    
+    // 根据选中的部门筛选指标
+    // 战略发展部视角：显示下发给该职能部门的指标（ownerDept 或 responsibleDept 匹配）
+    if (selectedDepartment.value) {
+      list = list.filter(i => 
+        i.responsibleDept === selectedDepartment.value || 
+        i.ownerDept === selectedDepartment.value
+      )
+    }
+    
+    const mappedList = list.map(i => ({
+      ...i,
+      id: Number(i.id)
+    }))
+    
     // 先按 type2（任务类型）排序，再按 taskContent（战略任务）排序
-    return list.sort((a, b) => {
+    return mappedList.sort((a, b) => {
       const type2A = a.type2 || ''
       const type2B = b.type2 || ''
       if (type2A !== type2B) {
@@ -339,6 +350,13 @@
   // 在指定类别中添加新指标
   const addIndicatorToCategory = (category: '发展性' | '基础性') => {
     newRow.value.type2 = category
+    isAddingOrEditing.value = true
+  }
+
+  // 为指定任务新增指标
+  const handleAddIndicatorToTask = (row: StrategicIndicator) => {
+    newRow.value.taskContent = row.taskContent || ''
+    newRow.value.type2 = row.type2 || '发展性'
     isAddingOrEditing.value = true
   }
   
@@ -628,6 +646,55 @@
     distributeTarget.value = selectedDepartment.value ? [selectedDepartment.value] : []
     distributeDialogVisible.value = true
   }
+
+  // 按任务整体撤回
+  const handleBatchWithdrawByTask = (group: { taskContent: string; rows: StrategicIndicator[] }) => {
+    const distributedRows = group.rows.filter(r => !r.canWithdraw)
+    if (distributedRows.length === 0) {
+      ElMessage.warning('该任务下没有已下发的指标')
+      return
+    }
+    
+    ElMessageBox.confirm(
+      `确认撤回任务 "${group.taskContent}" 下的 ${distributedRows.length} 个已下发指标？`,
+      '批量撤回确认',
+      {
+        confirmButtonText: '确认撤回',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    ).then(() => {
+      distributedRows.forEach(row => {
+        strategicStore.updateIndicator(row.id.toString(), { canWithdraw: true })
+      })
+      ElMessage.success(`已成功撤回 ${distributedRows.length} 个指标`)
+      updateEditTime()
+    })
+  }
+
+  // 按任务整体删除
+  const handleBatchDeleteByTask = (group: { taskContent: string; rows: StrategicIndicator[] }) => {
+    if (group.rows.length === 0) {
+      ElMessage.warning('该任务下没有指标')
+      return
+    }
+    
+    ElMessageBox.confirm(
+      `确定要删除任务 "${group.taskContent}" 下的全部 ${group.rows.length} 个指标吗？删除后无法恢复。`,
+      '批量删除确认',
+      {
+        confirmButtonText: '确定删除',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    ).then(() => {
+      group.rows.forEach(row => {
+        strategicStore.deleteIndicator(row.id.toString())
+      })
+      ElMessage.success(`已成功删除 ${group.rows.length} 个指标`)
+      updateEditTime()
+    })
+  }
   
   // 删除单个指标
   const handleDeleteIndicator = (row: StrategicIndicator) => {
@@ -716,11 +783,8 @@
 
       <!-- 左侧任务列表 - 动态隐藏 -->
       <aside class="task-sidebar">
-        <!-- 展开箭头（右上角） -->
-        <span class="sidebar-arrow">›</span>
         <div class="sidebar-header">
           <div class="task-list-title">部门列表</div>
-          <span class="sidebar-badge">{{ functionalDepartments.length }}</span>
         </div>
 
         <ul class="task-list">
@@ -734,6 +798,13 @@
           </li>
         </ul>
       </aside>
+      <!-- 展开箭头独立于侧边栏 - 使用SVG图标 -->
+      <div class="sidebar-toggle">
+        <svg class="toggle-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M9 6L15 12L9 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span class="toggle-hint">部门</span>
+      </div>
   
       <!-- 右侧详情区域 - Excel风格 -->
       <section class="task-detail excel-style card-animate" style="animation-delay: 0.1s;">
@@ -777,22 +848,32 @@
               <el-table-column type="selection" width="50" />
               <el-table-column prop="taskContent" label="战略任务" width="150">
                 <template #default="{ row }">
-                  <div class="indicator-name-cell" @dblclick="handleIndicatorDblClick(row, 'taskContent')">
-                    <el-input
-                      v-if="editingIndicatorId === row.id && editingIndicatorField === 'taskContent'"
-                      v-model="editingIndicatorValue"
-                      v-focus
-                      type="textarea"
-                      :autosize="{ minRows: 2, maxRows: 6 }"
-                      @blur="saveIndicatorEdit(row, 'taskContent')"
-                      @keyup.esc="cancelIndicatorEdit"
-                    />
-                    <el-tooltip v-else :content="row.type2 === '发展性' ? '发展性任务' : '基础性任务'" placement="top">
-                      <span
-                        class="indicator-name-text task-content-colored"
-                        :style="{ color: row.type2 === '发展性' ? '#409EFF' : '#67C23A' }"
-                      >{{ row.taskContent || '未关联任务' }}</span>
-                    </el-tooltip>
+                  <div class="task-cell-wrapper">
+                    <div class="indicator-name-cell" @dblclick="handleIndicatorDblClick(row, 'taskContent')">
+                      <el-input
+                        v-if="editingIndicatorId === row.id && editingIndicatorField === 'taskContent'"
+                        v-model="editingIndicatorValue"
+                        v-focus
+                        type="textarea"
+                        :autosize="{ minRows: 2, maxRows: 6 }"
+                        @blur="saveIndicatorEdit(row, 'taskContent')"
+                        @keyup.esc="cancelIndicatorEdit"
+                      />
+                      <el-tooltip v-else :content="row.type2 === '发展性' ? '发展性任务' : '基础性任务'" placement="top">
+                        <span
+                          class="indicator-name-text task-content-colored"
+                          :style="{ color: row.type2 === '发展性' ? '#409EFF' : '#67C23A' }"
+                        >{{ row.taskContent || '未关联任务' }}</span>
+                      </el-tooltip>
+                    </div>
+                    <!-- 右下角新增指标三角形按钮 -->
+                    <div 
+                      v-if="!isReadOnly && row.canWithdraw" 
+                      class="add-indicator-trigger"
+                      @click="handleAddIndicatorToTask(row)"
+                    >
+                      <span class="trigger-icon">+</span>
+                    </div>
                   </div>
                 </template>
               </el-table-column>
@@ -873,19 +954,39 @@
                   </div>
                 </template>
               </el-table-column>
-              <el-table-column label="操作" width="130" align="center">
+              <el-table-column label="操作" width="90" align="center">
                 <template #default="{ row }">
-                  <div class="action-buttons">
+                  <div class="action-buttons-inline">
                     <el-button link type="primary" size="small" @click="handleViewDetail(row)">查看</el-button>
-                    <el-button v-if="row.canWithdraw && !isReadOnly" link type="warning" size="small" @click="openDistributeDialog(row)">下发</el-button>
-                    <el-button v-else-if="!row.canWithdraw && !isReadOnly" link type="info" size="small" @click="handleWithdraw(row)">撤回</el-button>
-                    <el-button v-if="!isReadOnly" link type="danger" size="small" @click="handleDeleteIndicator(row)">删除</el-button>
+                    <el-button v-if="row.canWithdraw && !isReadOnly" link type="danger" size="small" @click="handleDeleteIndicator(row)">删除</el-button>
                   </div>
                 </template>
               </el-table-column>
-              <el-table-column label="批量" width="90" align="center" class-name="batch-column">
+              <el-table-column label="批量" width="120" align="center" class-name="batch-column">
                 <template #default="{ row }">
-                  <el-button type="primary" size="small" :disabled="isReadOnly" @click="handleBatchDistributeByTask(getTaskGroup(row))">下发</el-button>
+                  <div class="batch-buttons">
+                    <el-button 
+                      v-if="getTaskGroup(row).rows.some(r => r.canWithdraw)" 
+                      type="primary" 
+                      size="small" 
+                      :disabled="isReadOnly" 
+                      @click="handleBatchDistributeByTask(getTaskGroup(row))"
+                    >下发</el-button>
+                    <el-button 
+                      v-if="getTaskGroup(row).rows.some(r => !r.canWithdraw)" 
+                      type="warning" 
+                      size="small" 
+                      :disabled="isReadOnly" 
+                      @click="handleBatchWithdrawByTask(getTaskGroup(row))"
+                    >撤回</el-button>
+                    <el-button 
+                      v-if="getTaskGroup(row).rows.every(r => r.canWithdraw)"
+                      type="danger" 
+                      size="small" 
+                      :disabled="isReadOnly" 
+                      @click="handleBatchDeleteByTask(getTaskGroup(row))"
+                    >删除</el-button>
+                  </div>
                 </template>
               </el-table-column>
             </el-table>
@@ -1063,34 +1164,55 @@
             </el-timeline>
           </div>
 
-          <!-- 审计日志入口 -->
+          <!-- 审计日志 - 直接显示完整日志 -->
           <div class="audit-log-section">
             <div class="divider"></div>
             <div class="audit-log-header">
               <h4>审计日志</h4>
-              <el-button type="primary" link @click="handleViewAuditLog(currentDetail)">
-                查看完整日志
-              </el-button>
+              <span v-if="currentDetail.statusAudit && currentDetail.statusAudit.length > 0" class="log-count">
+                共 {{ currentDetail.statusAudit.length }} 条记录
+              </span>
             </div>
-            <div v-if="currentDetail.statusAudit && currentDetail.statusAudit.length > 0" class="audit-log-preview">
-              <p class="audit-summary">共 {{ currentDetail.statusAudit.length }} 条记录</p>
+            
+            <!-- 审计日志时间线 -->
+            <div v-if="currentDetail.statusAudit && currentDetail.statusAudit.length > 0" class="audit-log-timeline">
+              <el-timeline>
+                <el-timeline-item
+                  v-for="log in [...currentDetail.statusAudit].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())"
+                  :key="log.id"
+                  :type="log.action === 'approve' ? 'success' : log.action === 'reject' ? 'danger' : log.action === 'submit' ? 'primary' : 'warning'"
+                  :hollow="false"
+                  placement="top"
+                >
+                  <div class="log-card">
+                    <div class="log-header">
+                      <el-tag
+                        :type="log.action === 'approve' ? 'success' : log.action === 'reject' ? 'danger' : log.action === 'submit' ? 'primary' : 'warning'"
+                        size="small"
+                        effect="dark"
+                      >
+                        {{ log.action === 'submit' ? '提交进度' : log.action === 'approve' ? '审批通过' : log.action === 'reject' ? '审批驳回' : log.action === 'revoke' ? '撤回提交' : '更新进度' }}
+                      </el-tag>
+                      <span class="log-time">{{ new Date(log.timestamp).toLocaleString('zh-CN') }}</span>
+                    </div>
+                    <div class="log-operator">
+                      <span class="operator-name">{{ log.operatorName }}</span>
+                      <span class="operator-dept">· {{ log.operatorDept }}</span>
+                    </div>
+                    <div v-if="log.previousProgress !== undefined && log.newProgress !== undefined" class="log-progress">
+                      <span>进度: {{ log.previousProgress }}% → {{ log.newProgress }}%</span>
+                    </div>
+                    <div v-if="log.comment" class="log-comment">
+                      {{ log.comment }}
+                    </div>
+                  </div>
+                </el-timeline-item>
+              </el-timeline>
             </div>
+            
             <div v-else class="audit-log-empty">
               <span>暂无审计记录</span>
             </div>
-          </div>
-
-          <!-- 操作按钮 -->
-          <div class="detail-actions" v-if="!isReadOnly">
-            <el-button v-if="currentDetail.canWithdraw" type="primary" @click="openDistributeDialog(currentDetail); detailDrawerVisible = false">
-              下发指标
-            </el-button>
-            <el-button v-else type="warning" @click="handleWithdraw(currentDetail); detailDrawerVisible = false">
-              撤回指标
-            </el-button>
-          </div>
-          <div class="detail-actions" v-else>
-            <el-tag type="info">历史快照模式，仅供查看</el-tag>
           </div>
         </div>
       </el-drawer>
@@ -1152,6 +1274,7 @@
     height: calc(100vh - 200px);
     min-height: 500px;
     position: relative;
+    overflow: hidden;
   }
 
   /* ========================================
@@ -1175,11 +1298,65 @@
   }
 
   /* 侧边栏展开时显示遮罩 */
-  .strategic-task-container:has(.task-sidebar:hover) .sidebar-backdrop {
+  .strategic-task-container:has(.task-sidebar:hover) .sidebar-backdrop,
+  .strategic-task-container:has(.sidebar-arrow:hover) .sidebar-backdrop {
     opacity: 1;
   }
 
-  /* 侧边栏主体 - 完全隐藏，只有箭头可见 */
+  /* 展开按钮 - 现代胶囊设计 */
+  .sidebar-toggle {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 72px;
+    background: linear-gradient(135deg, var(--color-primary, #409EFF) 0%, #2c5282 100%);
+    color: #fff;
+    border-radius: 0 14px 14px 0;
+    cursor: pointer;
+    box-shadow: 
+      2px 4px 12px rgba(64, 158, 255, 0.3),
+      0 2px 4px rgba(0, 0, 0, 0.1);
+    z-index: 30;
+    transition: 
+      transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+      background 0.3s ease,
+      box-shadow 0.3s ease,
+      width 0.3s ease;
+    overflow: hidden;
+  }
+
+  .sidebar-toggle:hover {
+    background: linear-gradient(135deg, #2c5282 0%, #1a365d 100%);
+    box-shadow: 
+      3px 6px 16px rgba(44, 82, 130, 0.4),
+      0 2px 6px rgba(0, 0, 0, 0.15);
+    width: 32px;
+  }
+
+  .toggle-icon {
+    width: 18px;
+    height: 18px;
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    flex-shrink: 0;
+  }
+
+  .toggle-hint {
+    font-size: 11px;
+    font-weight: 500;
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    letter-spacing: 2px;
+    margin-top: 4px;
+    opacity: 0.9;
+  }
+
+  /* 侧边栏主体 - 默认完全隐藏 */
   .task-sidebar {
     position: absolute;
     left: 0;
@@ -1187,57 +1364,38 @@
     width: 280px;
     height: 100%;
     background: var(--bg-white, #fff);
-    border-radius: 0 12px 12px 0;
+    border-radius: 0 16px 16px 0;
     padding: 0;
     border: 1px solid var(--border-color, #e2e8f0);
     border-left: none;
-    box-shadow: 4px 0 16px rgba(0, 0, 0, 0.08);
+    box-shadow: 
+      4px 0 20px rgba(0, 0, 0, 0.08),
+      8px 0 40px rgba(0, 0, 0, 0.04);
     display: flex;
     flex-direction: column;
     max-height: calc(100vh - 200px);
     z-index: 25;
     transform: translateX(-100%);
-    transition: transform 0.3s ease;
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
     overflow: hidden;
   }
 
-  /* 展开箭头 - 固定在侧边栏右上角外侧 */
-  .sidebar-arrow {
-    position: absolute;
-    right: -20px;
-    top: 12px;
-    width: 20px;
-    height: 32px;
-    background: var(--color-primary, #2c5282);
-    color: #fff;
-    font-size: 18px;
-    font-weight: bold;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 0 6px 6px 0;
-    cursor: pointer;
-    box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.15);
-    transition: all 0.3s ease;
-    z-index: 30;
-  }
-
-  .sidebar-arrow:hover {
-    background: var(--color-primary-dark, #1a365d);
-    right: -22px;
-    width: 22px;
-  }
-
-  /* 侧边栏展开状态 - 只响应箭头和侧边栏本身的hover */
-  .task-sidebar:hover {
+  /* 侧边栏展开状态 */
+  .task-sidebar:hover,
+  .strategic-task-container:has(.sidebar-toggle:hover) .task-sidebar {
     transform: translateX(0);
   }
 
-  /* 箭头在侧边栏展开时旋转 */
-  .task-sidebar:hover .sidebar-arrow {
+  /* 按钮跟随侧边栏展开 */
+  .strategic-task-container:has(.task-sidebar:hover) .sidebar-toggle,
+  .strategic-task-container:has(.sidebar-toggle:hover) .sidebar-toggle {
+    transform: translateY(-50%) translateX(280px);
+  }
+
+  /* 图标旋转 */
+  .strategic-task-container:has(.task-sidebar:hover) .toggle-icon,
+  .strategic-task-container:has(.sidebar-toggle:hover) .toggle-icon {
     transform: rotate(180deg);
-    right: 0;
-    border-radius: 6px 0 0 6px;
   }
 
   /* 侧边栏头部 */
@@ -1262,21 +1420,6 @@
     margin: 0;
     padding: 0;
     border: none;
-  }
-
-  .sidebar-badge {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 24px;
-    height: 24px;
-    padding: 0 8px;
-    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark, #1a365d) 100%);
-    color: white;
-    font-size: 12px;
-    font-weight: 600;
-    border-radius: 12px;
-    box-shadow: 0 2px 6px rgba(44, 82, 130, 0.3);
   }
   
   /* 部门列表 */
@@ -1728,6 +1871,22 @@
     justify-content: center;
     gap: 2px;
   }
+
+  /* 操作按钮竖直排列 */
+  .action-buttons-inline {
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .action-buttons-inline .el-button {
+    padding: 4px 8px;
+    font-size: 12px;
+    margin: 0 !important;
+    white-space: nowrap;
+  }
   
   .action-buttons .el-button {
     padding: 4px 6px;
@@ -1741,6 +1900,21 @@
   
   .unified-table :deep(.batch-column) .el-button {
     font-size: 12px;
+  }
+
+  /* 批量按钮容器 */
+  .batch-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    align-items: center;
+  }
+
+  .batch-buttons .el-button {
+    margin: 0;
+    padding: 4px 8px;
+    font-size: 11px;
+    min-width: 50px;
   }
   
   /* ========================================
@@ -2039,16 +2213,78 @@
     margin: 0;
   }
 
-  .audit-log-preview {
-    background: var(--bg-page);
-    padding: var(--spacing-md);
-    border-radius: var(--radius-sm);
-  }
-
-  .audit-summary {
-    margin: 0;
+  .audit-log-header .log-count {
     font-size: 13px;
     color: var(--text-secondary);
+  }
+
+  .audit-log-timeline {
+    max-height: 400px;
+    overflow-y: auto;
+    padding-right: 8px;
+  }
+
+  .audit-log-timeline::-webkit-scrollbar {
+    width: 5px;
+  }
+
+  .audit-log-timeline::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .audit-log-timeline::-webkit-scrollbar-thumb {
+    background: var(--border-light, #e2e8f0);
+    border-radius: 3px;
+  }
+
+  .audit-log-timeline .log-card {
+    background: var(--bg-page);
+    padding: 12px;
+    border-radius: 8px;
+  }
+
+  .audit-log-timeline .log-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+
+  .audit-log-timeline .log-time {
+    font-size: 12px;
+    color: var(--text-placeholder);
+  }
+
+  .audit-log-timeline .log-operator {
+    font-size: 13px;
+    color: var(--text-regular);
+    margin-bottom: 6px;
+  }
+
+  .audit-log-timeline .operator-name {
+    font-weight: 500;
+  }
+
+  .audit-log-timeline .operator-dept {
+    color: var(--text-secondary);
+  }
+
+  .audit-log-timeline .log-progress {
+    font-size: 13px;
+    color: var(--color-primary);
+    background: var(--bg-white);
+    padding: 6px 10px;
+    border-radius: 4px;
+    margin-bottom: 6px;
+  }
+
+  .audit-log-timeline .log-comment {
+    font-size: 13px;
+    color: var(--text-regular);
+    background: var(--bg-white);
+    padding: 8px 10px;
+    border-radius: 4px;
+    border-left: 3px solid var(--color-primary-light, #93c5fd);
   }
 
   .audit-log-empty {
@@ -2245,5 +2481,55 @@
   .indicator-quantitative {
     color: var(--color-quantitative);
     font-weight: 500;
+  }
+
+  /* ========================================
+     任务单元格新增指标三角形按钮
+     ======================================== */
+  .task-cell-wrapper {
+    position: relative;
+    min-height: 40px;
+  }
+
+  .add-indicator-trigger {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: 0;
+    height: 0;
+    border-style: solid;
+    border-width: 0 0 24px 24px;
+    border-color: transparent transparent rgba(64, 158, 255, 0.15) transparent;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    z-index: 1;
+  }
+
+  .add-indicator-trigger .trigger-icon {
+    position: absolute;
+    right: 2px;
+    bottom: -22px;
+    font-size: 12px;
+    font-weight: 600;
+    color: transparent;
+    transition: color 0.25s ease;
+    line-height: 1;
+    user-select: none;
+  }
+
+  .add-indicator-trigger:hover {
+    border-color: transparent transparent var(--color-primary) transparent;
+    border-width: 0 0 28px 28px;
+  }
+
+  .add-indicator-trigger:hover .trigger-icon {
+    color: #fff;
+    right: 3px;
+    bottom: -25px;
+    font-size: 14px;
+  }
+
+  .add-indicator-trigger:active {
+    border-color: transparent transparent var(--color-primary-dark) transparent;
   }
   </style>
