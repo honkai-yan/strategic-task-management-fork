@@ -194,6 +194,39 @@
     })
     return Array.from(taskSet)
   })
+
+  // 获取任务名称对应的任务类型映射
+  const taskTypeMap = computed(() => {
+    const map: Record<string, '发展性' | '基础性'> = {}
+    indicators.value.forEach(i => {
+      if (i.taskContent && i.taskContent !== '未命名任务' && i.type2) {
+        map[i.taskContent] = i.type2
+      }
+    })
+    return map
+  })
+
+  // 选择战略任务时自动更新任务类型
+  const handleTaskSelect = (taskName: string) => {
+    if (taskTypeMap.value[taskName]) {
+      newRow.value.type2 = taskTypeMap.value[taskName]
+    }
+  }
+
+  // 战略任务选择器ref
+  const taskSelectRef = ref<any>(null)
+
+  // 处理战略任务下拉框关闭 - 保存输入的值
+  const handleTaskVisibleChange = (visible: boolean) => {
+    if (!visible && taskSelectRef.value) {
+      // 下拉框关闭时，如果有输入内容但未选择，则保存输入的值
+      const inputEl = taskSelectRef.value.$el?.querySelector('input')
+      const inputValue = inputEl?.value || ''
+      if (inputValue.trim() && !newRow.value.taskContent) {
+        newRow.value.taskContent = inputValue.trim()
+      }
+    }
+  }
   
   // 新增行数据
   const newRow = ref({
@@ -214,15 +247,38 @@
   const assignmentTarget = ref('')
   const assignmentMethod = ref<'self' | 'college'>('self')
   
-  // 添加新里程碑
+  // 添加新里程碑（单个）
   const addMilestone = () => {
+    // 定量指标时，里程碑名称自动填充为核心指标内容
+    const autoName = newRow.value.type1 === '定量' ? newRow.value.name : ''
     newRow.value.milestones.push({
       id: Date.now(),
-      name: '',
+      name: autoName,
       targetProgress: 0,
       deadline: '',
       status: 'pending'
     })
+  }
+
+  // 生成12个月里程碑（定量指标默认）
+  const generateMonthlyMilestones = () => {
+    const currentYear = timeContext.currentYear
+    const indicatorName = newRow.value.name || '指标完成'
+    newRow.value.milestones = []
+    
+    for (let month = 1; month <= 12; month++) {
+      const lastDay = new Date(currentYear, month, 0).getDate()
+      const deadline = `${currentYear}-${String(month).padStart(2, '0')}-${lastDay}`
+      const progress = Math.round((month / 12) * 100)
+      
+      newRow.value.milestones.push({
+        id: Date.now() + month,
+        name: indicatorName,
+        targetProgress: progress,
+        deadline: deadline,
+        status: 'pending'
+      })
+    }
   }
   
   // 删除里程碑
@@ -386,7 +442,8 @@
       milestones: [...newRow.value.milestones],
       targetValue: 100,
       unit: '%',
-      responsibleDept: authStore.userDepartment || '未分配',
+      responsibleDept: selectedDepartment.value || authStore.userDepartment || '未分配',
+      ownerDept: selectedDepartment.value || authStore.userDepartment || '未分配',
       responsiblePerson: authStore.userName || '未分配',
       status: 'active',
       isStrategic: true,
@@ -897,6 +954,22 @@
                   </div>
                 </template>
               </el-table-column>
+              <el-table-column prop="remark" label="说明" width="130">
+                <template #default="{ row }">
+                  <div class="indicator-name-cell" @dblclick="handleIndicatorDblClick(row, 'remark')">
+                    <el-input
+                      v-if="editingIndicatorId === row.id && editingIndicatorField === 'remark'"
+                      v-model="editingIndicatorValue"
+                      v-focus
+                      type="textarea"
+                      :autosize="{ minRows: 2, maxRows: 6 }"
+                      @blur="saveIndicatorEdit(row, 'remark')"
+                      @keyup.esc="cancelIndicatorEdit"
+                    />
+                    <span v-else class="indicator-name-text remark-text-wrap">{{ row.remark }}</span>
+                  </div>
+                </template>
+              </el-table-column>
               <el-table-column prop="weight" label="权重" width="90" align="center">
                 <template #default="{ row }">
                   <span @dblclick="handleIndicatorDblClick(row, 'weight')">
@@ -936,22 +1009,6 @@
                       />
                     </el-tooltip>
                   </span>
-                </template>
-              </el-table-column>
-              <el-table-column prop="remark" label="说明" width="130">
-                <template #default="{ row }">
-                  <div class="indicator-name-cell" @dblclick="handleIndicatorDblClick(row, 'remark')">
-                    <el-input
-                      v-if="editingIndicatorId === row.id && editingIndicatorField === 'remark'"
-                      v-model="editingIndicatorValue"
-                      v-focus
-                      type="textarea"
-                      :autosize="{ minRows: 2, maxRows: 6 }"
-                      @blur="saveIndicatorEdit(row, 'remark')"
-                      @keyup.esc="cancelIndicatorEdit"
-                    />
-                    <span v-else class="indicator-name-text remark-text-wrap">{{ row.remark }}</span>
-                  </div>
                 </template>
               </el-table-column>
               <el-table-column label="操作" width="90" align="center">
@@ -999,7 +1056,7 @@
               <el-row :gutter="16">
                 <el-col :span="4">
                   <el-form-item label="任务类型">
-                    <el-select v-model="newRow.type2" style="width: 100%">
+                    <el-select v-model="newRow.type2" style="width: 100%" :disabled="!!taskTypeMap[newRow.taskContent]">
                       <el-option label="发展性" value="发展性" />
                       <el-option label="基础性" value="基础性" />
                     </el-select>
@@ -1008,12 +1065,16 @@
                 <el-col :span="8">
                   <el-form-item label="战略任务">
                     <el-select
+                      ref="taskSelectRef"
                       v-model="newRow.taskContent"
                       filterable
                       allow-create
                       default-first-option
                       placeholder="选择或输入战略任务名称"
                       style="width: 100%"
+                      @change="handleTaskSelect"
+                      @visible-change="handleTaskVisibleChange"
+                      :teleported="false"
                     >
                       <el-option
                         v-for="task in existingTaskNames"
@@ -1038,10 +1099,31 @@
               <el-row :gutter="16">
                 <el-col :span="4">
                   <el-form-item label="指标类型">
-                    <el-select v-model="newRow.type1" style="width: 100%">
+                    <el-select v-model="newRow.type1" style="width: 100%" @change="(val: string) => { if (val === '定量') generateMonthlyMilestones() }">
                       <el-option label="定性" value="定性" />
                       <el-option label="定量" value="定量" />
                     </el-select>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="20">
+                  <el-form-item label="里程碑">
+                    <div class="milestone-form-area">
+                      <el-button v-if="newRow.type1 === '定性'" size="small" type="primary" plain @click="addMilestone">
+                        <el-icon><Plus /></el-icon> 添加里程碑
+                      </el-button>
+                      <div v-if="newRow.milestones.length > 0" class="milestone-list">
+                        <div v-for="(ms, idx) in newRow.milestones" :key="ms.id" class="milestone-item">
+                          <span class="milestone-index">{{ idx + 1 }}.</span>
+                          <el-input v-model="ms.name" placeholder="里程碑名称" style="width: 160px" size="small" />
+                          <el-input-number v-model="ms.targetProgress" :min="0" :max="100" placeholder="目标进度%" size="small" style="width: 110px" />
+                          <el-date-picker v-model="ms.deadline" type="date" placeholder="截止日期" size="small" style="width: 130px" value-format="YYYY-MM-DD" />
+                          <el-button type="danger" size="small" text @click="removeMilestone(idx)">
+                            <el-icon><Delete /></el-icon>
+                          </el-button>
+                        </div>
+                      </div>
+                      <span v-else class="milestone-hint">{{ newRow.type1 === '定量' ? '选择定量后自动生成12月里程碑' : '暂无里程碑，点击添加' }}</span>
+                    </div>
                   </el-form-item>
                 </el-col>
               </el-row>
@@ -2091,6 +2173,53 @@
     color: var(--color-primary-dark);
     margin: 0 0 var(--spacing-lg) 0;
   }
+
+  /* 里程碑表单区域 */
+  .milestone-form-area {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .milestone-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 4px;
+    max-height: 300px;
+    overflow-y: auto;
+    padding-right: 4px;
+  }
+
+  .milestone-list::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  .milestone-list::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 2px;
+  }
+
+  .milestone-index {
+    font-size: 12px;
+    color: var(--text-secondary);
+    min-width: 20px;
+  }
+
+  .milestone-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: var(--bg-white);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
+  }
+
+  .milestone-hint {
+    font-size: 12px;
+    color: var(--text-placeholder);
+  }
   
   /* 新增行内联表单 */
   .add-row-inline {
@@ -2486,9 +2615,13 @@
   /* ========================================
      任务单元格新增指标三角形按钮
      ======================================== */
-  .task-cell-wrapper {
+  /* 让战略任务列的td支持绝对定位 */
+  :deep(.unified-table .el-table__body td:nth-child(2)) {
     position: relative;
-    min-height: 40px;
+  }
+
+  .task-cell-wrapper {
+    position: static;
   }
 
   .add-indicator-trigger {
@@ -2498,35 +2631,35 @@
     width: 0;
     height: 0;
     border-style: solid;
-    border-width: 0 0 24px 24px;
+    border-width: 0 0 20px 20px;
     border-color: transparent transparent rgba(64, 158, 255, 0.15) transparent;
     cursor: pointer;
-    transition: all 0.25s ease;
-    z-index: 1;
+    transition: all 0.2s ease;
+    z-index: 5;
   }
 
   .add-indicator-trigger .trigger-icon {
     position: absolute;
     right: 2px;
-    bottom: -22px;
-    font-size: 12px;
-    font-weight: 600;
+    bottom: -18px;
+    font-size: 11px;
+    font-weight: 700;
     color: transparent;
-    transition: color 0.25s ease;
+    transition: color 0.2s ease;
     line-height: 1;
     user-select: none;
   }
 
   .add-indicator-trigger:hover {
     border-color: transparent transparent var(--color-primary) transparent;
-    border-width: 0 0 28px 28px;
+    border-width: 0 0 24px 24px;
   }
 
   .add-indicator-trigger:hover .trigger-icon {
     color: #fff;
     right: 3px;
-    bottom: -25px;
-    font-size: 14px;
+    bottom: -21px;
+    font-size: 12px;
   }
 
   .add-indicator-trigger:active {

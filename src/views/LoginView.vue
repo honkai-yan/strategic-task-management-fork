@@ -287,9 +287,39 @@ const loginRules = {
 
 // 用户数据库（模拟）
 const userDatabase = [
-  { username: 'jiaowu', password: '123456', role: '教务处', department: '教务处' },
+  // 战略发展部（管理员）
   { username: 'admin', password: '123456', role: '战略发展部', department: '战略发展部' },
-  { username: 'keyan', password: '123456', role: '科研处', department: '科研处' }
+  
+  // 职能部门
+  { username: 'dangban', password: '123456', role: '职能部门', department: '党委办公室 | 党委统战部' },
+  { username: 'jiwei', password: '123456', role: '职能部门', department: '纪委办公室 | 监察处' },
+  { username: 'xuanchuan', password: '123456', role: '职能部门', department: '党委宣传部 | 宣传策划部' },
+  { username: 'zuzhi', password: '123456', role: '职能部门', department: '党委组织部 | 党委教师工作部' },
+  { username: 'renli', password: '123456', role: '职能部门', department: '人力资源部' },
+  { username: 'xuegong', password: '123456', role: '职能部门', department: '党委学工部 | 学生工作处' },
+  { username: 'baowei', password: '123456', role: '职能部门', department: '党委保卫部 | 保卫处' },
+  { username: 'zongban', password: '123456', role: '职能部门', department: '学校综合办公室' },
+  { username: 'jiaowu', password: '123456', role: '职能部门', department: '教务处' },
+  { username: 'keji', password: '123456', role: '职能部门', department: '科技处' },
+  { username: 'caiwu', password: '123456', role: '职能部门', department: '财务部' },
+  { username: 'zhaosheng', password: '123456', role: '职能部门', department: '招生工作处' },
+  { username: 'jiuye', password: '123456', role: '职能部门', department: '就业创业指导中心' },
+  { username: 'shiyanshi', password: '123456', role: '职能部门', department: '实验室建设管理处' },
+  { username: 'xinxi', password: '123456', role: '职能部门', department: '数字校园建设办公室' },
+  { username: 'tushuguan', password: '123456', role: '职能部门', department: '图书馆 | 档案馆' },
+  { username: 'houqin', password: '123456', role: '职能部门', department: '后勤资产处' },
+  { username: 'jixu', password: '123456', role: '职能部门', department: '继续教育部' },
+  { username: 'guoji', password: '123456', role: '职能部门', department: '国际合作与交流处' },
+  
+  // 二级学院
+  { username: 'makesi', password: '123456', role: '二级学院', department: '马克思主义学院' },
+  { username: 'gongxue', password: '123456', role: '二级学院', department: '工学院' },
+  { username: 'jisuanji', password: '123456', role: '二级学院', department: '计算机学院' },
+  { username: 'shangxue', password: '123456', role: '二级学院', department: '商学院' },
+  { username: 'wenli', password: '123456', role: '二级学院', department: '文理学院' },
+  { username: 'yishu', password: '123456', role: '二级学院', department: '艺术与科技学院' },
+  { username: 'hangkong', password: '123456', role: '二级学院', department: '航空学院' },
+  { username: 'guojijiaoyu', password: '123456', role: '二级学院', department: '国际教育学院' }
 ]
 
 const emit = defineEmits<{
@@ -297,7 +327,10 @@ const emit = defineEmits<{
 }>()
 
 const handleLogin = async () => {
-  if (!loginFormRef.value) return
+  if (!loginFormRef.value) {
+    console.error('loginFormRef is null')
+    return
+  }
 
   if (isLoginLocked.value) {
     ElMessage.error('账户已锁定，请稍后再试')
@@ -306,7 +339,8 @@ const handleLogin = async () => {
 
   try {
     await loginFormRef.value.validate()
-  } catch {
+  } catch (err) {
+    console.log('Form validation failed:', err)
     return
   }
 
@@ -322,20 +356,18 @@ const handleLogin = async () => {
       // 登录成功
       loginErrorCount.value = 0
       
+      // 根据用户角色字段映射系统角色
       const roleMap: Record<string, 'strategic_dept' | 'functional_dept' | 'secondary_college'> = {
         '战略发展部': 'strategic_dept',
-        '教务处': 'functional_dept',
-        '科研处': 'functional_dept',
-        '人事处': 'functional_dept',
-        '计算机学院': 'secondary_college',
-        '艺术与科技学院': 'secondary_college'
+        '职能部门': 'functional_dept',
+        '二级学院': 'secondary_college'
       }
 
       authStore.user = {
         id: user.username,
         username: user.username,
         name: user.username,
-        role: roleMap[user.department] || 'functional_dept',
+        role: roleMap[user.role] || 'functional_dept',
         department: user.department,
         createdAt: new Date(),
         updatedAt: new Date()

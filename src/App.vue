@@ -28,8 +28,20 @@ const currentUser = computed(() => authStore.user)
 // 是否是战略发展部用户（只有战略发展部可以切换视角）
 const isStrategicDept = computed(() => authStore.userRole === 'strategic_dept')
 
-// 当前查看的视角（战略发展部可以切换）
+// 当前查看的视角（战略发展部可以切换，其他部门固定为自己的部门）
 const viewingDept = ref<string>(STRATEGIC_DEPT)
+
+// 监听用户登录状态，非战略发展部用户自动设置为自己的部门
+watch(() => authStore.user, (user) => {
+  if (user) {
+    if (authStore.userRole === 'strategic_dept') {
+      viewingDept.value = STRATEGIC_DEPT
+    } else {
+      // 非战略发展部用户，设置为自己的部门
+      viewingDept.value = user.department || STRATEGIC_DEPT
+    }
+  }
+}, { immediate: true })
 
 // 暴露常量供模板使用
 const strategicDeptName = STRATEGIC_DEPT
@@ -232,7 +244,7 @@ onMounted(() => {
       <div class="content-area">
         <DashboardView v-if="activeTab === 'dashboard'" :viewingRole="viewingRole" />
         <StrategicTaskView v-else-if="activeTab === 'strategic'" :selectedRole="viewingRole || ''" />
-        <IndicatorListView v-else-if="activeTab === 'indicators'" :viewingRole="viewingRole" />
+        <IndicatorListView v-else-if="activeTab === 'indicators'" :viewingRole="viewingDept" />
         <ReportingView v-else-if="activeTab === 'reporting'" :viewingRole="viewingRole" />
         <!-- 指标下发与审批页面（职能部门专用）-->
         <IndicatorDistributionView v-else-if="activeTab === 'distribution'" />

@@ -26,11 +26,19 @@ const authStore = useAuthStore()
 
 // 接收父组件传递的选中角色
 const props = defineProps<{
-  selectedRole: string
+  viewingRole?: string
 }>()
 
+// 判断当前是否为战略发展部角色
+const isStrategicDept = computed(() => {
+  return props.viewingRole === '战略发展部' || props.viewingRole === 'strategic_dept' || !props.viewingRole
+})
+
 // 判断是否可以编辑（只有战略发展部可以编辑）
-const canEdit = computed(() => authStore.userRole === 'strategic_dept' || props.selectedRole === 'strategic_dept')
+const canEdit = computed(() => authStore.userRole === 'strategic_dept' || isStrategicDept.value)
+
+// 是否显示责任部门列（只有战略发展部才显示）
+const showResponsibleDeptColumn = computed(() => isStrategicDept.value)
 
 // 当前选中任务索引
 const currentTaskIndex = ref(0)
@@ -102,6 +110,18 @@ const indicators = computed(() => {
     id: Number(i.id)
   }))
 
+  // 根据当前角色过滤数据
+  // 如果不是战略发展部，只显示下发给当前部门的指标（responsibleDept 或 ownerDept 匹配）
+  if (!isStrategicDept.value && props.viewingRole) {
+    list = list.filter(i => {
+      // 匹配责任部门（当前部门负责的指标）
+      const isResponsible = i.responsibleDept === props.viewingRole
+      // 匹配下发部门（当前部门下发的指标）
+      const isOwner = i.ownerDept === props.viewingRole
+      return isResponsible || isOwner
+    })
+  }
+
   // 应用筛选条件
   if (filterType2.value) {
     list = list.filter(i => i.type2 === filterType2.value)
@@ -131,8 +151,11 @@ const indicators = computed(() => {
 const getSpanMethod = ({ row, column, rowIndex, columnIndex }: { row: any; column: any; rowIndex: number; columnIndex: number }) => {
   const dataList = indicators.value
 
-  // 战略任务列（第1列，index=1，选择框后面）和批量操作列（最后一列，index=9）合并
-  if (columnIndex === 1 || columnIndex === 9) {
+  // 批量操作列的索引：添加了说明列后，如果显示责任部门列则是9，否则是8
+  const batchColumnIndex = showResponsibleDeptColumn.value ? 9 : 8
+
+  // 战略任务列（第1列，index=1，选择框后面）和批量操作列合并
+  if (columnIndex === 1 || columnIndex === batchColumnIndex) {
     const currentTask = row.taskContent || '未关联任务'
 
     // 计算当前任务在列表中的起始位置
@@ -163,7 +186,7 @@ const getTaskGroup = (row: StrategicIndicator) => {
   return { taskContent, rows }
 }
 
-// 按任务组批量分解
+// 按任务组批量分解（战略发展部专用）
 const handleBatchDistributeByTask = (group: { taskContent: string; rows: StrategicIndicator[] }) => {
   const departments = ['教务处', '科研处', '人事处']
   const indicatorNames = group.rows.map(ind => ind.name).join('、')
@@ -178,6 +201,24 @@ const handleBatchDistributeByTask = (group: { taskContent: string; rows: Strateg
     }
   ).then(() => {
     ElMessage.success(`成功分解${group.rows.length}项指标到职能部门`)
+  })
+}
+
+// 按任务组批量提交（职能部门/二级学院专用）
+const handleBatchFillByTask = (group: { taskContent: string; rows: StrategicIndicator[] }) => {
+  const indicatorNames = group.rows.map(ind => ind.name).join('、')
+
+  ElMessageBox.confirm(
+    `确认对任务 "${group.taskContent}" 下的 ${group.rows.length} 个指标进行批量提交？\n\n${indicatorNames}`,
+    '批量提交确认',
+    {
+      confirmButtonText: '确定提交',
+      cancelButtonText: '取消',
+      type: 'info'
+    }
+  ).then(() => {
+    // TODO: 打开批量提交对话框或跳转到提交页面
+    ElMessage.success(`已选择${group.rows.length}项指标进行提交`)
   })
 }
 
@@ -544,13 +585,7 @@ const handleTableScroll = (e: Event) => {
                 <el-option label="基础性" value="基础性" />
               </el-select>
             </el-form-item>
-            <el-form-item label="指标类型">
-              <el-select v-model="filterType1" placeholder="全部类型" clearable style="width: 140px;">
-                <el-option label="定性" value="定性" />
-                <el-option label="定量" value="定量" />
-              </el-select>
-            </el-form-item>
-            <el-form-item label="责任部门">
+            <el-form-item label="责任部门" v-if="showResponsibleDeptColumn">
               <el-select v-model="filterDept" placeholder="全部部门" clearable style="width: 200px;">
                 <el-option v-for="dept in functionalDepartments" :key="dept" :label="dept" :value="dept" />
               </el-select>
@@ -579,8 +614,8 @@ const handleTableScroll = (e: Event) => {
               @selection-change="handleSelectionChange"
               class="unified-table"
             >
-              <el-table-column type="selection" width="36" />
-              <el-table-column prop="taskContent" label="战略任务" min-width="140">
+              <el-table-column type="selection" width="45" />
+              <el-table-column prop="taskContent" label="战略任务" width="200">
                 <template #default="{ row }">
                   <el-tooltip :content="row.type2 === '发展性' ? '发展性任务' : '基础性任务'" placement="top">
                     <span
@@ -590,7 +625,7 @@ const handleTableScroll = (e: Event) => {
                   </el-tooltip>
                 </template>
               </el-table-column>
-              <el-table-column prop="name" label="核心指标" min-width="180">
+              <el-table-column prop="name" label="核心指标" min-width="280">
                 <template #default="{ row }">
                   <div class="indicator-name-cell" @dblclick="handleIndicatorDblClick(row, 'name')">
                     <el-input
@@ -601,47 +636,47 @@ const handleTableScroll = (e: Event) => {
                       :autosize="{ minRows: 2, maxRows: 6 }"
                       @blur="saveIndicatorEdit(row, 'name')"
                     />
-                    <span v-else class="indicator-name-text">{{ row.name }}</span>
+                    <el-tooltip v-else :content="row.type1 === '定性' ? '定性指标' : '定量指标'" placement="top">
+                      <span
+                        class="indicator-name-text"
+                        :class="row.type1 === '定性' ? 'indicator-qualitative' : 'indicator-quantitative'"
+                      >{{ row.name }}</span>
+                    </el-tooltip>
                   </div>
                 </template>
               </el-table-column>
-              <el-table-column prop="type1" label="类型" width="80" align="center">
+              <el-table-column prop="remark" label="说明" width="130">
                 <template #default="{ row }">
-                  <span @dblclick="handleIndicatorDblClick(row, 'type1')">
-                    <el-select
-                      v-if="editingIndicatorId === row.id && editingIndicatorField === 'type1'"
+                  <div class="indicator-name-cell" @dblclick="handleIndicatorDblClick(row, 'remark')">
+                    <el-input
+                      v-if="editingIndicatorId === row.id && editingIndicatorField === 'remark'"
                       v-model="editingIndicatorValue"
-                      size="small"
-                      style="width: 60px"
-                      @change="saveIndicatorEdit(row, 'type1')"
-                      @visible-change="(visible: boolean) => !visible && saveIndicatorEdit(row, 'type1')"
-                    >
-                      <el-option label="定性" value="定性" />
-                      <el-option label="定量" value="定量" />
-                    </el-select>
-                    <el-tag v-else :type="row.type1 === '定量' ? 'primary' : 'warning'" size="small" effect="plain">
-                      {{ row.type1 }}
-                    </el-tag>
-                  </span>
+                      v-focus
+                      type="textarea"
+                      :autosize="{ minRows: 2, maxRows: 6 }"
+                      @blur="saveIndicatorEdit(row, 'remark')"
+                    />
+                    <span v-else class="remark-text">{{ row.remark || '' }}</span>
+                  </div>
                 </template>
               </el-table-column>
-              <el-table-column prop="weight" label="权重" width="70" align="center">
+              <el-table-column prop="weight" label="权重" width="80" align="center">
                 <template #default="{ row }">
-                  <span @dblclick="handleIndicatorDblClick(row, 'weight')">
+                  <div class="weight-cell" @dblclick="handleIndicatorDblClick(row, 'weight')">
                     <el-input
                       v-if="editingIndicatorId === row.id && editingIndicatorField === 'weight'"
                       v-model="editingIndicatorValue"
                       v-focus
                       size="small"
-                      style="width: 40px"
+                      style="width: 50px"
                       @blur="saveIndicatorEdit(row, 'weight')"
                     />
-                    <span v-else>{{ row.weight }}</span>
-                  </span>
+                    <span v-else class="weight-text">{{ row.weight }}</span>
+                  </div>
                 </template>
               </el-table-column>
               <!-- 进度条 - 统一进度条样式 (Requirements: 10.1, 10.2) -->
-              <el-table-column prop="progress" label="进度" width="120" align="center">
+              <el-table-column prop="progress" label="进度" width="100" align="center">
                 <template #default="{ row }">
                   <div class="progress-cell">
                     <el-progress
@@ -649,33 +684,52 @@ const handleTableScroll = (e: Event) => {
                       :stroke-width="8"
                       :status="getProgressStatus(row.progress || 0)"
                       :show-text="false"
-                      style="width: 55px;"
+                      style="width: 50px;"
                     />
                     <span class="progress-text">{{ row.progress || 0 }}%</span>
                   </div>
                 </template>
               </el-table-column>
-              <el-table-column prop="responsibleDept" label="责任部门" min-width="100">
+              <el-table-column prop="responsibleDept" label="责任部门" min-width="140" v-if="showResponsibleDeptColumn">
                 <template #default="{ row }">
                   <span class="dept-text">{{ row.responsibleDept || '未分配' }}</span>
                 </template>
               </el-table-column>
-              <el-table-column prop="status" label="状态" width="80" align="center">
+              <el-table-column prop="status" label="状态" width="85" align="center">
                 <template #default="{ row }">
-                  <el-tag :type="getStatusTagType(row.status)" size="small">
-                    {{ row.status === 'active' ? '进行中' : row.status }}
-                  </el-tag>
+                  <div class="status-cell">
+                    <el-tag :type="getStatusTagType(row.status)" size="small">
+                      {{ row.status === 'active' ? '进行中' : row.status }}
+                    </el-tag>
+                  </div>
                 </template>
               </el-table-column>
-              <el-table-column label="操作" width="90" align="center">
+              <el-table-column label="操作" width="120" align="center">
                 <template #default="{ row }">
-                  <el-button link type="primary" size="small" @click="handleViewDetail(row)">查看</el-button>
-                  <el-button link type="danger" size="small" @click="handleDeleteIndicator(row)" v-if="canEdit">删除</el-button>
+                  <div class="action-cell">
+                    <el-button link type="primary" size="small" @click="handleViewDetail(row)">查看</el-button>
+                    <el-button link type="danger" size="small" @click="handleDeleteIndicator(row)" v-if="canEdit">删除</el-button>
+                  </div>
                 </template>
               </el-table-column>
-              <el-table-column label="批量" width="80" align="center" class-name="batch-column">
+              <el-table-column label="批量" width="75" align="center" class-name="batch-column">
                 <template #default="{ row }">
-                  <el-button type="primary" size="small" @click="handleBatchDistributeByTask(getTaskGroup(row))">分解</el-button>
+                  <div class="batch-cell">
+                    <!-- 战略发展部显示分解按钮 -->
+                    <el-button 
+                      v-if="isStrategicDept" 
+                      type="primary" 
+                      size="small" 
+                      @click="handleBatchDistributeByTask(getTaskGroup(row))"
+                    >分解</el-button>
+                    <!-- 职能部门/二级学院显示填报按钮 -->
+                    <el-button 
+                      v-else 
+                      type="success" 
+                      size="small" 
+                      @click="handleBatchFillByTask(getTaskGroup(row))"
+                    >提交</el-button>
+                  </div>
                 </template>
               </el-table-column>
             </el-table>
@@ -744,59 +798,111 @@ const handleTableScroll = (e: Event) => {
     <el-drawer
       v-model="detailDrawerVisible"
       title="指标详情"
-      size="500px"
+      size="45%"
     >
       <div v-if="currentDetail" class="detail-container">
+        <!-- 基础信息 -->
         <div class="detail-header">
           <h3>{{ currentDetail.name }}</h3>
           <div class="detail-tags">
-            <el-tag :type="currentDetail.type2 === '发展性' ? 'primary' : 'success'" size="small">
-              {{ currentDetail.type2 }}
+            <el-tag size="small" :type="currentDetail.type1 === '定量' ? 'primary' : 'warning'">{{ currentDetail.type1 }}</el-tag>
+            <el-tag size="small" :style="{ backgroundColor: getTaskTypeColor(currentDetail.type2), color: '#fff', border: 'none' }">
+              {{ currentDetail.type2 }}任务
             </el-tag>
-            <el-tag :type="currentDetail.type1 === '定性' ? 'info' : 'warning'" size="small">
-              {{ currentDetail.type1 }}
+            <el-tag size="small" :type="currentDetail.canWithdraw ? 'info' : 'success'">
+              {{ currentDetail.canWithdraw ? '待下发' : '已下发' }}
             </el-tag>
           </div>
         </div>
 
-        <div class="detail-section">
-          <div class="detail-item">
-            <span class="detail-label">权重：</span>
-            <span class="detail-value">{{ currentDetail.weight }}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">责任部门：</span>
-            <span class="detail-value">{{ currentDetail.responsibleDept || '未分配' }}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">责任人：</span>
-            <span class="detail-value">{{ currentDetail.responsiblePerson || '未分配' }}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">创建时间：</span>
-            <span class="detail-value">{{ currentDetail.createTime }}</span>
-          </div>
+        <el-descriptions :column="2" border class="detail-desc">
+          <el-descriptions-item label="战略任务" :span="2">{{ currentDetail.taskContent }}</el-descriptions-item>
+          <el-descriptions-item label="任务类别">{{ currentDetail.type2 }}任务</el-descriptions-item>
+          <el-descriptions-item label="指标类型">{{ currentDetail.type1 }}</el-descriptions-item>
+          <el-descriptions-item label="权重">{{ currentDetail.weight }}</el-descriptions-item>
+          <el-descriptions-item label="当前进度">{{ currentDetail.progress || 0 }}%</el-descriptions-item>
+          <el-descriptions-item label="责任部门">{{ currentDetail.responsibleDept || '未分配' }}</el-descriptions-item>
+          <el-descriptions-item label="责任人">{{ currentDetail.responsiblePerson || '未分配' }}</el-descriptions-item>
+          <el-descriptions-item label="创建时间" :span="2">{{ currentDetail.createTime }}</el-descriptions-item>
+          <el-descriptions-item label="说明" :span="2">{{ currentDetail.remark || '暂无说明' }}</el-descriptions-item>
+        </el-descriptions>
+
+        <!-- 里程碑信息 -->
+        <div v-if="currentDetail.milestones && currentDetail.milestones.length > 0" class="milestone-section">
+          <div class="divider"></div>
+          <h4>里程碑节点</h4>
+          <el-timeline style="margin-top: 20px; padding-left: 5px;">
+            <el-timeline-item
+              v-for="(milestone, index) in currentDetail.milestones"
+              :key="index"
+              :timestamp="milestone.deadline"
+              :type="milestone.status === 'completed' ? 'success' : milestone.status === 'overdue' ? 'danger' : 'primary'"
+              placement="top"
+            >
+              <div class="timeline-card">
+                <div class="timeline-header">
+                  <span class="action-text">{{ milestone.name }}</span>
+                  <el-tag size="small" :type="milestone.status === 'completed' ? 'success' : milestone.status === 'overdue' ? 'danger' : 'warning'">
+                    {{ milestone.status === 'completed' ? '已完成' : milestone.status === 'overdue' ? '已逾期' : '进行中' }}
+                  </el-tag>
+                </div>
+                <div class="timeline-comment">
+                  目标进度: {{ milestone.targetProgress }}%
+                </div>
+              </div>
+            </el-timeline-item>
+          </el-timeline>
         </div>
 
-        <div class="divider"></div>
-
-        <div class="detail-section">
-          <h4>完成进度</h4>
-          <div class="progress-detail">
-            <el-progress
-              :percentage="currentDetail.progress || 0"
-              :stroke-width="12"
-              :status="getProgressStatus(currentDetail.progress || 0)"
-            />
-            <p class="progress-hint">{{ getMilestoneProgressText(currentDetail) }}</p>
+        <!-- 审计日志 -->
+        <div class="audit-log-section">
+          <div class="divider"></div>
+          <div class="audit-log-header">
+            <h4>审计日志</h4>
+            <span v-if="currentDetail.statusAudit && currentDetail.statusAudit.length > 0" class="log-count">
+              共 {{ currentDetail.statusAudit.length }} 条记录
+            </span>
           </div>
-        </div>
-
-        <div class="divider"></div>
-
-        <div class="detail-section">
-          <h4>备注说明</h4>
-          <p class="detail-remark">{{ currentDetail.remark || '暂无备注' }}</p>
+          
+          <!-- 审计日志时间线 -->
+          <div v-if="currentDetail.statusAudit && currentDetail.statusAudit.length > 0" class="audit-log-timeline">
+            <el-timeline>
+              <el-timeline-item
+                v-for="log in [...currentDetail.statusAudit].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())"
+                :key="log.id"
+                :type="log.action === 'approve' ? 'success' : log.action === 'reject' ? 'danger' : log.action === 'submit' ? 'primary' : 'warning'"
+                :hollow="false"
+                placement="top"
+              >
+                <div class="log-card">
+                  <div class="log-header">
+                    <el-tag
+                      :type="log.action === 'approve' ? 'success' : log.action === 'reject' ? 'danger' : log.action === 'submit' ? 'primary' : 'warning'"
+                      size="small"
+                      effect="dark"
+                    >
+                      {{ log.action === 'submit' ? '提交进度' : log.action === 'approve' ? '审批通过' : log.action === 'reject' ? '审批驳回' : log.action === 'revoke' ? '撤回提交' : '更新进度' }}
+                    </el-tag>
+                    <span class="log-time">{{ new Date(log.timestamp).toLocaleString('zh-CN') }}</span>
+                  </div>
+                  <div class="log-operator">
+                    <span class="operator-name">{{ log.operatorName }}</span>
+                    <span class="operator-dept">· {{ log.operatorDept }}</span>
+                  </div>
+                  <div v-if="log.previousProgress !== undefined && log.newProgress !== undefined" class="log-progress">
+                    <span>进度: {{ log.previousProgress }}% → {{ log.newProgress }}%</span>
+                  </div>
+                  <div v-if="log.comment" class="log-comment">
+                    {{ log.comment }}
+                  </div>
+                </div>
+              </el-timeline-item>
+            </el-timeline>
+          </div>
+          
+          <div v-else class="audit-log-empty">
+            <span>暂无审计记录</span>
+          </div>
         </div>
       </div>
     </el-drawer>
@@ -924,17 +1030,22 @@ const handleTableScroll = (e: Event) => {
 
 .table-container {
   width: 100%;
-  overflow: auto;
+  overflow-x: auto;
 }
 
-/* 确保表格有最小宽度，防止列被压缩 */
+/* 确保表头不换行，列宽自适应 */
 .table-container .unified-table {
-  min-width: 1200px;
+  width: 100%;
 }
 
-/* 确保表头不换行 */
 .table-container .unified-table :deep(.el-table__header) th .cell {
   white-space: nowrap;
+  overflow: visible;
+}
+
+/* 确保表格单元格内容不被截断 */
+.unified-table :deep(.el-table__cell .cell) {
+  overflow: visible;
 }
 
 /* 批量操作列样式 */
@@ -1027,10 +1138,64 @@ const handleTableScroll = (e: Event) => {
   white-space: pre-wrap;
   word-break: break-word;
   display: block;
+  cursor: default;
+}
+
+/* 定性指标颜色（紫色） */
+.indicator-qualitative {
+  color: var(--color-qualitative);
+  font-weight: 500;
+}
+
+/* 定量指标颜色（青色） */
+.indicator-quantitative {
+  color: var(--color-quantitative);
+  font-weight: 500;
 }
 
 .dept-text {
   color: var(--text-regular);
+}
+
+/* 权重单元格样式 */
+.weight-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.weight-text {
+  font-weight: 500;
+  color: var(--text-main);
+  white-space: nowrap;
+}
+
+/* 状态单元格样式 */
+.status-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+/* 操作单元格样式 */
+.action-cell {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  white-space: nowrap;
+}
+
+/* 批量单元格样式 */
+.batch-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
 }
 
 /* ========================================
@@ -1162,6 +1327,145 @@ const handleTableScroll = (e: Event) => {
   font-size: 14px;
   color: var(--text-regular);
   line-height: 1.6;
+}
+
+/* ========================================
+   详情抽屉样式 - 与战略任务管理页面一致
+   ======================================== */
+.detail-desc {
+  margin-bottom: var(--spacing-2xl);
+}
+
+.milestone-section h4 {
+  font-size: 16px;
+  color: var(--text-main);
+  margin: 0 0 var(--spacing-lg) 0;
+}
+
+.timeline-card {
+  padding: var(--spacing-md);
+  background: var(--bg-page);
+  border-radius: var(--radius-sm);
+}
+
+.timeline-header {
+  font-weight: 600;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+  color: var(--text-main);
+}
+
+.action-text {
+  color: var(--text-main);
+}
+
+.timeline-comment {
+  margin-top: var(--spacing-sm);
+  color: var(--text-regular);
+  font-size: 13px;
+}
+
+/* 审计日志区域样式 */
+.audit-log-section {
+  margin-top: var(--spacing-lg);
+}
+
+.audit-log-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-md);
+}
+
+.audit-log-header h4 {
+  font-size: 16px;
+  color: var(--text-main);
+  margin: 0;
+}
+
+.audit-log-header .log-count {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.audit-log-timeline {
+  max-height: 400px;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.audit-log-timeline::-webkit-scrollbar {
+  width: 5px;
+}
+
+.audit-log-timeline::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.audit-log-timeline::-webkit-scrollbar-thumb {
+  background: var(--border-light, #e2e8f0);
+  border-radius: 3px;
+}
+
+.audit-log-timeline .log-card {
+  background: var(--bg-page);
+  padding: 12px;
+  border-radius: 8px;
+}
+
+.audit-log-timeline .log-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.audit-log-timeline .log-time {
+  font-size: 12px;
+  color: var(--text-placeholder);
+}
+
+.audit-log-timeline .log-operator {
+  font-size: 13px;
+  color: var(--text-regular);
+  margin-bottom: 6px;
+}
+
+.audit-log-timeline .operator-name {
+  font-weight: 500;
+}
+
+.audit-log-timeline .operator-dept {
+  color: var(--text-secondary);
+}
+
+.audit-log-timeline .log-progress {
+  font-size: 13px;
+  color: var(--color-primary);
+  background: var(--bg-white);
+  padding: 6px 10px;
+  border-radius: 4px;
+  margin-bottom: 6px;
+}
+
+.audit-log-timeline .log-comment {
+  font-size: 13px;
+  color: var(--text-regular);
+  background: var(--bg-white);
+  padding: 8px 10px;
+  border-radius: 4px;
+  border-left: 3px solid var(--color-primary-light, #93c5fd);
+}
+
+.audit-log-empty {
+  background: var(--bg-page);
+  padding: var(--spacing-md);
+  border-radius: var(--radius-sm);
+  text-align: center;
+  color: var(--text-placeholder);
+  font-size: 13px;
 }
 
 /* ========================================
