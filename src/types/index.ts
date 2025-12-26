@@ -50,6 +50,9 @@ export interface StrategicTask {
   parentTaskId?: string           // 跨年复制的原任务ID
 }
 
+// 进度审批状态类型
+export type ProgressApprovalStatus = 'none' | 'pending' | 'approved' | 'rejected'
+
 // Strategic Indicator Types (Enhanced)
 export interface StrategicIndicator {
   id: string
@@ -78,6 +81,11 @@ export interface StrategicIndicator {
   // 时间维度字段
   year: number                        // 年份，如 2025
   statusAudit: StatusAuditEntry[]     // 审批/操作历史JSON
+  // 进度填报审批相关字段
+  progressApprovalStatus?: ProgressApprovalStatus  // 进度审批状态：none-无待审批, pending-待审批, approved-已通过, rejected-已驳回
+  pendingProgress?: number             // 待审批的进度值
+  pendingRemark?: string               // 待审批的说明
+  pendingAttachments?: string[]        // 待审批的附件URL列表
 }
 
 // 状态审计日志条目（用于记录指标的审批历史）

@@ -550,6 +550,136 @@ const handleTableScroll = (e: Event) => {
   const clientWidth = target.clientWidth
   isTableScrolling.value = scrollLeft < scrollWidth - clientWidth - 2
 }
+
+// ================== 进度填报相关 ==================
+
+// 填报弹窗状态
+const reportDialogVisible = ref(false)
+const currentReportIndicator = ref<StrategicIndicator | null>(null)
+
+// 填报表单数据
+const reportForm = ref({
+  newProgress: 0,
+  remark: '',
+  attachments: [] as string[]
+})
+
+// 打开填报弹窗
+const handleOpenReportDialog = (row: StrategicIndicator) => {
+  currentReportIndicator.value = row
+  // 初始化表单，新进度默认为当前进度
+  reportForm.value = {
+    newProgress: row.progress || 0,
+    remark: '',
+    attachments: []
+  }
+  reportDialogVisible.value = true
+}
+
+// 关闭填报弹窗
+const closeReportDialog = () => {
+  reportDialogVisible.value = false
+  currentReportIndicator.value = null
+  reportForm.value = {
+    newProgress: 0,
+    remark: '',
+    attachments: []
+  }
+}
+
+// 提交进度填报
+const submitProgressReport = () => {
+  if (!currentReportIndicator.value) return
+
+  const indicator = currentReportIndicator.value
+  const currentProgress = indicator.progress || 0
+
+  // 验证：进度只能递增
+  if (reportForm.value.newProgress < currentProgress) {
+    ElMessage.warning(`进度只能递增，当前进度为 ${currentProgress}%，不能填报更低的进度`)
+    return
+  }
+
+  // 验证：进度不能超过100
+  if (reportForm.value.newProgress > 100) {
+    ElMessage.warning('进度不能超过 100%')
+    return
+  }
+
+  // 验证：必须填写说明
+  if (!reportForm.value.remark.trim()) {
+    ElMessage.warning('请填写进度说明')
+    return
+  }
+
+  ElMessageBox.confirm(
+    `确认提交进度填报？\n\n指标：${indicator.name}\n当前进度：${currentProgress}%\n填报进度：${reportForm.value.newProgress}%\n\n提交后将等待上级审批`,
+    '提交确认',
+    {
+      confirmButtonText: '确认提交',
+      cancelButtonText: '取消',
+      type: 'info'
+    }
+  ).then(() => {
+    // 更新指标的待审批状态
+    strategicStore.updateIndicator(indicator.id.toString(), {
+      progressApprovalStatus: 'pending',
+      pendingProgress: reportForm.value.newProgress,
+      pendingRemark: reportForm.value.remark,
+      pendingAttachments: reportForm.value.attachments
+    })
+
+    // 添加审计日志
+    strategicStore.addStatusAuditEntry(indicator.id.toString(), {
+      operator: authStore.userName || 'unknown',
+      operatorName: authStore.userName || '未知用户',
+      operatorDept: authStore.userDepartment || '未知部门',
+      action: 'submit',
+      comment: reportForm.value.remark,
+      previousProgress: currentProgress,
+      newProgress: reportForm.value.newProgress,
+      previousStatus: 'active',
+      newStatus: 'pending_approval'
+    })
+
+    ElMessage.success('进度填报已提交，等待上级审批')
+    closeReportDialog()
+  })
+}
+
+// 撤回进度填报
+const handleRevokeReport = (row: StrategicIndicator) => {
+  ElMessageBox.confirm(
+    `确认撤回进度填报？\n\n指标：${row.name}\n待审批进度：${row.pendingProgress}%\n\n撤回后可重新填报`,
+    '撤回确认',
+    {
+      confirmButtonText: '确认撤回',
+      cancelButtonText: '取消',
+      type: 'warning'
+    }
+  ).then(() => {
+    // 清除待审批状态
+    strategicStore.updateIndicator(row.id.toString(), {
+      progressApprovalStatus: 'none',
+      pendingProgress: undefined,
+      pendingRemark: undefined,
+      pendingAttachments: undefined
+    })
+
+    // 添加审计日志
+    strategicStore.addStatusAuditEntry(row.id.toString(), {
+      operator: authStore.userName || 'unknown',
+      operatorName: authStore.userName || '未知用户',
+      operatorDept: authStore.userDepartment || '未知部门',
+      action: 'revoke',
+      comment: '撤回进度填报',
+      previousStatus: 'pending_approval',
+      newStatus: 'active'
+    })
+
+    ElMessage.info('已撤回进度填报')
+  })
+}
 </script>
 
 
@@ -698,16 +828,36 @@ const handleTableScroll = (e: Event) => {
               <el-table-column prop="status" label="状态" width="85" align="center">
                 <template #default="{ row }">
                   <div class="status-cell">
-                    <el-tag :type="getStatusTagType(row.status)" size="small">
+                    <!-- 优先显示进度审批状态 -->
+                    <el-tag v-if="row.progressApprovalStatus === 'pending'" type="warning" size="small">待审批</el-tag>
+                    <el-tag v-else-if="row.progressApprovalStatus === 'rejected'" type="danger" size="small">已驳回</el-tag>
+                    <el-tag v-else :type="getStatusTagType(row.status)" size="small">
                       {{ row.status === 'active' ? '进行中' : row.status }}
                     </el-tag>
                   </div>
                 </template>
               </el-table-column>
-              <el-table-column label="操作" width="120" align="center">
+              <el-table-column label="操作" width="160" align="center">
                 <template #default="{ row }">
                   <div class="action-cell">
                     <el-button link type="primary" size="small" @click="handleViewDetail(row)">查看</el-button>
+                    <!-- 职能部门/二级学院显示填报按钮 -->
+                    <el-button 
+                      v-if="!isStrategicDept" 
+                      link 
+                      type="success" 
+                      size="small" 
+                      :disabled="row.progressApprovalStatus === 'pending'"
+                      @click="handleOpenReportDialog(row)"
+                    >{{ row.progressApprovalStatus === 'rejected' ? '重新填报' : '填报' }}</el-button>
+                    <!-- 职能部门/二级学院在待审批状态下可撤回 -->
+                    <el-button 
+                      v-if="!isStrategicDept && row.progressApprovalStatus === 'pending'" 
+                      link 
+                      type="warning" 
+                      size="small" 
+                      @click="handleRevokeReport(row)"
+                    >撤回</el-button>
                     <el-button link type="danger" size="small" @click="handleDeleteIndicator(row)" v-if="canEdit">删除</el-button>
                   </div>
                 </template>
@@ -906,6 +1056,87 @@ const handleTableScroll = (e: Event) => {
         </div>
       </div>
     </el-drawer>
+
+    <!-- 进度填报弹窗 -->
+    <el-dialog
+      v-model="reportDialogVisible"
+      title="进度填报"
+      width="500px"
+      :close-on-click-modal="false"
+      @close="closeReportDialog"
+    >
+      <div v-if="currentReportIndicator" class="report-dialog">
+        <!-- 指标信息 -->
+        <div class="report-indicator-info">
+          <div class="info-row">
+            <span class="info-label">指标名称：</span>
+            <span class="info-value">{{ currentReportIndicator.name }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">当前进度：</span>
+            <span class="info-value highlight">{{ currentReportIndicator.progress || 0 }}%</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">目标值：</span>
+            <span class="info-value">{{ currentReportIndicator.targetValue }}{{ currentReportIndicator.unit }}</span>
+          </div>
+        </div>
+
+        <el-divider />
+
+        <!-- 填报表单 -->
+        <el-form label-width="100px" class="report-form">
+          <el-form-item label="填报进度" required>
+            <el-input-number
+              v-model="reportForm.newProgress"
+              :min="currentReportIndicator.progress || 0"
+              :max="100"
+              :step="5"
+              style="width: 200px;"
+            />
+            <span class="form-hint">%（只能递增，不能低于当前进度）</span>
+          </el-form-item>
+          <el-form-item label="进度说明" required>
+            <el-input
+              v-model="reportForm.remark"
+              type="textarea"
+              :rows="4"
+              placeholder="请详细说明本次进度更新的工作内容和完成情况..."
+              maxlength="500"
+              show-word-limit
+            />
+          </el-form-item>
+          <el-form-item label="附件（可选）">
+            <el-upload
+              action="#"
+              :auto-upload="false"
+              :limit="5"
+              accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg"
+            >
+              <el-button size="small" type="primary" plain>选择文件</el-button>
+              <template #tip>
+                <div class="upload-tip">支持 PDF、Word、Excel、图片格式，最多5个文件</div>
+              </template>
+            </el-upload>
+          </el-form-item>
+        </el-form>
+
+        <!-- 提示信息 -->
+        <div class="report-tips">
+          <el-alert
+            title="提交后将等待上级审批，审批通过后进度才会更新"
+            type="info"
+            :closable="false"
+            show-icon
+          />
+        </div>
+      </div>
+
+      <template #footer>
+        <el-button @click="closeReportDialog">取消</el-button>
+        <el-button type="primary" @click="submitProgressReport">提交填报</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -1537,5 +1768,69 @@ const handleTableScroll = (e: Event) => {
     width: 100%;
     margin-right: 0;
   }
+}
+
+/* ========================================
+   进度填报弹窗样式
+   ======================================== */
+.report-dialog {
+  padding: 0 var(--spacing-md);
+}
+
+.report-indicator-info {
+  background: var(--bg-page);
+  padding: var(--spacing-lg);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--spacing-md);
+}
+
+.report-indicator-info .info-row {
+  display: flex;
+  margin-bottom: var(--spacing-sm);
+}
+
+.report-indicator-info .info-row:last-child {
+  margin-bottom: 0;
+}
+
+.report-indicator-info .info-label {
+  color: var(--text-secondary);
+  min-width: 80px;
+  font-size: 14px;
+}
+
+.report-indicator-info .info-value {
+  color: var(--text-main);
+  font-size: 14px;
+}
+
+.report-indicator-info .info-value.highlight {
+  color: var(--color-primary);
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.report-form {
+  margin-top: var(--spacing-lg);
+}
+
+.report-form .form-hint {
+  margin-left: var(--spacing-sm);
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.report-form .upload-tip {
+  font-size: 12px;
+  color: var(--text-placeholder);
+  margin-top: var(--spacing-xs);
+}
+
+.report-tips {
+  margin-top: var(--spacing-lg);
+}
+
+.report-tips :deep(.el-alert) {
+  border-radius: var(--radius-sm);
 }
 </style>

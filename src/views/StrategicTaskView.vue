@@ -600,6 +600,120 @@
   const currentDistributeItem = ref<StrategicIndicator | null>(null)
   const currentDistributeGroup = ref<{ taskContent: string; rows: StrategicIndicator[] } | null>(null)
   const distributeTarget = ref<string[]>([])
+
+  // ================== 进度审批相关 ==================
+  
+  // 审批弹窗状态
+  const approvalDialogVisible = ref(false)
+  const currentApprovalIndicator = ref<StrategicIndicator | null>(null)
+  
+  // 审批表单数据
+  const approvalForm = ref({
+    action: 'approve' as 'approve' | 'reject',
+    comment: '',
+    rejectReason: ''
+  })
+
+  // 打开审批弹窗
+  const handleOpenApprovalDialog = (row: StrategicIndicator) => {
+    currentApprovalIndicator.value = row
+    approvalForm.value = {
+      action: 'approve',
+      comment: '',
+      rejectReason: ''
+    }
+    approvalDialogVisible.value = true
+  }
+
+  // 关闭审批弹窗
+  const closeApprovalDialog = () => {
+    approvalDialogVisible.value = false
+    currentApprovalIndicator.value = null
+    approvalForm.value = {
+      action: 'approve',
+      comment: '',
+      rejectReason: ''
+    }
+  }
+
+  // 提交审批
+  const submitApproval = () => {
+    if (!currentApprovalIndicator.value) return
+
+    const indicator = currentApprovalIndicator.value
+    const isApprove = approvalForm.value.action === 'approve'
+
+    // 驳回时必须填写原因
+    if (!isApprove && !approvalForm.value.rejectReason.trim()) {
+      ElMessage.warning('请填写驳回原因')
+      return
+    }
+
+    const actionText = isApprove ? '通过' : '驳回'
+    const pendingProgress = indicator.pendingProgress || 0
+    const currentProgress = indicator.progress || 0
+
+    ElMessageBox.confirm(
+      isApprove 
+        ? `确认审批通过？\n\n指标：${indicator.name}\n进度将从 ${currentProgress}% 更新为 ${pendingProgress}%`
+        : `确认驳回该进度填报？\n\n指标：${indicator.name}\n驳回原因：${approvalForm.value.rejectReason}`,
+      `审批${actionText}确认`,
+      {
+        confirmButtonText: `确认${actionText}`,
+        cancelButtonText: '取消',
+        type: isApprove ? 'success' : 'warning'
+      }
+    ).then(() => {
+      if (isApprove) {
+        // 审批通过：更新实际进度，清除待审批状态
+        strategicStore.updateIndicator(indicator.id.toString(), {
+          progress: pendingProgress,
+          progressApprovalStatus: 'approved',
+          pendingProgress: undefined,
+          pendingRemark: undefined,
+          pendingAttachments: undefined
+        })
+
+        // 添加审计日志
+        strategicStore.addStatusAuditEntry(indicator.id.toString(), {
+          operator: authStore.userName || 'unknown',
+          operatorName: authStore.userName || '未知用户',
+          operatorDept: authStore.userDepartment || '战略发展部',
+          action: 'approve',
+          comment: approvalForm.value.comment || '审批通过',
+          previousProgress: currentProgress,
+          newProgress: pendingProgress,
+          previousStatus: 'pending_approval',
+          newStatus: 'active'
+        })
+
+        ElMessage.success('审批通过，进度已更新')
+      } else {
+        // 审批驳回：设置驳回状态，保留待审批数据供查看
+        strategicStore.updateIndicator(indicator.id.toString(), {
+          progressApprovalStatus: 'rejected'
+        })
+
+        // 添加审计日志
+        strategicStore.addStatusAuditEntry(indicator.id.toString(), {
+          operator: authStore.userName || 'unknown',
+          operatorName: authStore.userName || '未知用户',
+          operatorDept: authStore.userDepartment || '战略发展部',
+          action: 'reject',
+          comment: approvalForm.value.rejectReason,
+          previousProgress: currentProgress,
+          newProgress: pendingProgress,
+          previousStatus: 'pending_approval',
+          newStatus: 'rejected'
+        })
+
+        ElMessage.info('已驳回该进度填报')
+      }
+
+      closeApprovalDialog()
+      updateEditTime()
+    })
+  }
   
   // 查看详情
   const handleViewDetail = (row: StrategicIndicator) => {
@@ -1011,10 +1125,30 @@
                   </span>
                 </template>
               </el-table-column>
-              <el-table-column label="操作" width="90" align="center">
+              <el-table-column prop="status" label="状态" width="85" align="center">
+                <template #default="{ row }">
+                  <div class="status-cell">
+                    <!-- 优先显示进度审批状态 -->
+                    <el-tag v-if="row.progressApprovalStatus === 'pending'" type="warning" size="small">待审批</el-tag>
+                    <el-tag v-else-if="row.progressApprovalStatus === 'rejected'" type="danger" size="small">已驳回</el-tag>
+                    <el-tag v-else :type="row.canWithdraw ? 'info' : 'success'" size="small">
+                      {{ row.canWithdraw ? '待下发' : '已下发' }}
+                    </el-tag>
+                  </div>
+                </template>
+              </el-table-column>
+              <el-table-column label="操作" width="120" align="center">
                 <template #default="{ row }">
                   <div class="action-buttons-inline">
                     <el-button link type="primary" size="small" @click="handleViewDetail(row)">查看</el-button>
+                    <!-- 战略发展部可以审批待审批的进度 -->
+                    <el-button 
+                      v-if="row.progressApprovalStatus === 'pending' && !isReadOnly" 
+                      link 
+                      type="success" 
+                      size="small" 
+                      @click="handleOpenApprovalDialog(row)"
+                    >审批</el-button>
                     <el-button v-if="row.canWithdraw && !isReadOnly" link type="danger" size="small" @click="handleDeleteIndicator(row)">删除</el-button>
                   </div>
                 </template>
@@ -1330,6 +1464,112 @@
         <template #footer>
           <el-button @click="closeDistributeDialog">取消</el-button>
           <el-button type="primary" @click="confirmDistribute">确认下发</el-button>
+        </template>
+      </el-dialog>
+
+      <!-- 进度审批弹窗 -->
+      <el-dialog
+        v-model="approvalDialogVisible"
+        title="进度审批"
+        width="520px"
+        :close-on-click-modal="false"
+        @close="closeApprovalDialog"
+      >
+        <div v-if="currentApprovalIndicator" class="approval-dialog">
+          <!-- 指标信息 -->
+          <div class="approval-indicator-info">
+            <div class="info-row">
+              <span class="info-label">指标名称：</span>
+              <span class="info-value">{{ currentApprovalIndicator.name }}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">责任部门：</span>
+              <span class="info-value">{{ currentApprovalIndicator.responsibleDept }}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">当前进度：</span>
+              <span class="info-value">{{ currentApprovalIndicator.progress || 0 }}%</span>
+            </div>
+            <div class="info-row highlight-row">
+              <span class="info-label">申请进度：</span>
+              <span class="info-value highlight">{{ currentApprovalIndicator.pendingProgress || 0 }}%</span>
+              <span class="progress-change">
+                ({{ (currentApprovalIndicator.pendingProgress || 0) - (currentApprovalIndicator.progress || 0) > 0 ? '+' : '' }}{{ (currentApprovalIndicator.pendingProgress || 0) - (currentApprovalIndicator.progress || 0) }}%)
+              </span>
+            </div>
+          </div>
+
+          <!-- 填报说明 -->
+          <div v-if="currentApprovalIndicator.pendingRemark" class="approval-remark">
+            <div class="remark-label">填报说明：</div>
+            <div class="remark-content">{{ currentApprovalIndicator.pendingRemark }}</div>
+          </div>
+
+          <el-divider />
+
+          <!-- 审批表单 -->
+          <el-form label-width="100px" class="approval-form">
+            <el-form-item label="审批结果" required>
+              <el-radio-group v-model="approvalForm.action">
+                <el-radio value="approve">
+                  <span class="radio-label approve">通过</span>
+                </el-radio>
+                <el-radio value="reject">
+                  <span class="radio-label reject">驳回</span>
+                </el-radio>
+              </el-radio-group>
+            </el-form-item>
+            
+            <el-form-item v-if="approvalForm.action === 'approve'" label="审批意见">
+              <el-input
+                v-model="approvalForm.comment"
+                type="textarea"
+                :rows="3"
+                placeholder="可选，填写审批意见..."
+                maxlength="200"
+                show-word-limit
+              />
+            </el-form-item>
+
+            <el-form-item v-if="approvalForm.action === 'reject'" label="驳回原因" required>
+              <el-input
+                v-model="approvalForm.rejectReason"
+                type="textarea"
+                :rows="3"
+                placeholder="请填写驳回原因，以便填报人了解问题并重新填报..."
+                maxlength="500"
+                show-word-limit
+              />
+            </el-form-item>
+          </el-form>
+
+          <!-- 提示信息 -->
+          <div class="approval-tips">
+            <el-alert
+              v-if="approvalForm.action === 'approve'"
+              title="审批通过后，指标进度将更新为申请的进度值"
+              type="success"
+              :closable="false"
+              show-icon
+            />
+            <el-alert
+              v-else
+              title="驳回后，填报人可以重新填报进度"
+              type="warning"
+              :closable="false"
+              show-icon
+            />
+          </div>
+        </div>
+
+        <template #footer>
+          <el-button @click="closeApprovalDialog">取消</el-button>
+          <el-button 
+            :type="approvalForm.action === 'approve' ? 'success' : 'warning'" 
+            @click="submitApproval"
+          >
+            {{ approvalForm.action === 'approve' ? '确认通过' : '确认驳回' }}
+          </el-button>
         </template>
       </el-dialog>
 
@@ -2664,5 +2904,115 @@
 
   .add-indicator-trigger:active {
     border-color: transparent transparent var(--color-primary-dark) transparent;
+  }
+
+  /* ========================================
+     进度审批弹窗样式
+     ======================================== */
+  .approval-dialog {
+    padding: 0 var(--spacing-md);
+  }
+
+  .approval-indicator-info {
+    background: var(--bg-page);
+    padding: var(--spacing-lg);
+    border-radius: var(--radius-md);
+    margin-bottom: var(--spacing-md);
+  }
+
+  .approval-indicator-info .info-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: var(--spacing-sm);
+  }
+
+  .approval-indicator-info .info-row:last-child {
+    margin-bottom: 0;
+  }
+
+  .approval-indicator-info .info-label {
+    color: var(--text-secondary);
+    min-width: 80px;
+    font-size: 14px;
+  }
+
+  .approval-indicator-info .info-value {
+    color: var(--text-main);
+    font-size: 14px;
+    flex: 1;
+  }
+
+  .approval-indicator-info .info-value.highlight {
+    color: var(--color-primary);
+    font-weight: 600;
+    font-size: 16px;
+  }
+
+  .approval-indicator-info .highlight-row {
+    background: rgba(64, 158, 255, 0.08);
+    margin: var(--spacing-sm) calc(-1 * var(--spacing-lg));
+    padding: var(--spacing-sm) var(--spacing-lg);
+    border-radius: var(--radius-sm);
+  }
+
+  .approval-indicator-info .progress-change {
+    color: var(--color-success);
+    font-size: 13px;
+    margin-left: var(--spacing-sm);
+  }
+
+  .approval-remark {
+    background: var(--bg-light);
+    padding: var(--spacing-md);
+    border-radius: var(--radius-sm);
+    margin-bottom: var(--spacing-md);
+    border-left: 3px solid var(--color-primary);
+  }
+
+  .approval-remark .remark-label {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: var(--spacing-xs);
+  }
+
+  .approval-remark .remark-content {
+    font-size: 14px;
+    color: var(--text-regular);
+    line-height: 1.6;
+    white-space: pre-wrap;
+  }
+
+  .approval-form {
+    margin-top: var(--spacing-lg);
+  }
+
+  .approval-form .radio-label {
+    font-size: 14px;
+  }
+
+  .approval-form .radio-label.approve {
+    color: var(--color-success);
+    font-weight: 500;
+  }
+
+  .approval-form .radio-label.reject {
+    color: var(--color-warning);
+    font-weight: 500;
+  }
+
+  .approval-tips {
+    margin-top: var(--spacing-lg);
+  }
+
+  .approval-tips :deep(.el-alert) {
+    border-radius: var(--radius-sm);
+  }
+
+  /* 状态单元格样式 */
+  .status-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
   }
   </style>
