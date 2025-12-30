@@ -352,6 +352,104 @@
     milestoneDrawerVisible.value = true
   }
 
+  // 里程碑编辑弹窗
+  const milestoneEditDialogVisible = ref(false)
+  const editingMilestoneIndicator = ref<StrategicIndicator | null>(null)
+  const editingMilestones = ref<Milestone[]>([])
+
+  // 打开里程碑编辑弹窗
+  const handleEditMilestones = (row: StrategicIndicator) => {
+    // 只有未下发状态且有编辑权限时才能编辑
+    if (!canEditIndicators.value) {
+      ElMessage.warning('已下发的指标不可编辑里程碑')
+      return
+    }
+    
+    editingMilestoneIndicator.value = row
+    // 深拷贝里程碑数据
+    editingMilestones.value = JSON.parse(JSON.stringify(row.milestones || []))
+    milestoneEditDialogVisible.value = true
+  }
+
+  // 添加里程碑（编辑弹窗内）
+  const addMilestoneInDialog = () => {
+    const autoName = editingMilestoneIndicator.value?.type1 === '定量' 
+      ? editingMilestoneIndicator.value?.name 
+      : ''
+    editingMilestones.value.push({
+      id: Date.now(),
+      name: autoName,
+      targetProgress: 0,
+      deadline: '',
+      status: 'pending'
+    })
+  }
+
+  // 生成12个月里程碑（编辑弹窗内）
+  const generateMonthlyMilestonesInDialog = () => {
+    const currentYear = timeContext.currentYear
+    const indicatorName = editingMilestoneIndicator.value?.name || '指标完成'
+    editingMilestones.value = []
+    
+    for (let month = 1; month <= 12; month++) {
+      const lastDay = new Date(currentYear, month, 0).getDate()
+      const deadline = `${currentYear}-${String(month).padStart(2, '0')}-${lastDay}`
+      const progress = Math.round((month / 12) * 100)
+      
+      editingMilestones.value.push({
+        id: Date.now() + month,
+        name: indicatorName,
+        targetProgress: progress,
+        deadline: deadline,
+        status: 'pending'
+      })
+    }
+  }
+
+  // 删除里程碑（编辑弹窗内）
+  const removeMilestoneInDialog = (index: number) => {
+    editingMilestones.value.splice(index, 1)
+  }
+
+  // 保存里程碑编辑
+  const saveMilestoneEdit = () => {
+    if (!editingMilestoneIndicator.value) return
+
+    // 验证里程碑数据
+    for (const ms of editingMilestones.value) {
+      if (!ms.name || !ms.name.trim()) {
+        ElMessage.warning('请填写里程碑名称')
+        return
+      }
+      if (!ms.deadline) {
+        ElMessage.warning('请设置里程碑截止日期')
+        return
+      }
+      if (ms.targetProgress < 0 || ms.targetProgress > 100) {
+        ElMessage.warning('目标进度必须在0-100之间')
+        return
+      }
+    }
+
+    // 更新指标的里程碑
+    strategicStore.updateIndicator(editingMilestoneIndicator.value.id.toString(), {
+      milestones: [...editingMilestones.value]
+    })
+
+    ElMessage.success('里程碑已更新')
+    milestoneEditDialogVisible.value = false
+    editingMilestoneIndicator.value = null
+    editingMilestones.value = []
+    updateEditTime()
+  }
+
+  // 取消里程碑编辑
+  const cancelMilestoneEdit = () => {
+    milestoneEditDialogVisible.value = false
+    editingMilestoneIndicator.value = null
+    editingMilestones.value = []
+  }
+
   // 格式化更新时间
   const formatUpdateTime = (time: string | Date | undefined) => {
     if (!time) return '-'
@@ -1505,7 +1603,11 @@
                       :disabled="!row.milestones?.length"
                     >
                       <template #reference>
-                        <div class="milestone-cell">
+                        <div 
+                          class="milestone-cell"
+                          :class="{ 'editable': canEditIndicators }"
+                          @dblclick="handleEditMilestones(row)"
+                        >
                           <span class="milestone-count">
                             {{ row.milestones?.length || 0 }} 个里程碑
                           </span>
@@ -1641,15 +1743,6 @@
                   <el-button type="primary" size="small" @click="handleViewDetail(currentIndicator)">
                     <el-icon><View /></el-icon>
                     详情
-                  </el-button>
-                  <el-button 
-                    v-if="currentIndicator.progressApprovalStatus === 'pending' && !isReadOnly" 
-                    type="success" 
-                    size="small" 
-                    @click="handleOpenApprovalDialog(currentIndicator)"
-                  >
-                    <el-icon><Check /></el-icon>
-                    审批
                   </el-button>
                   <el-button 
                     v-if="currentIndicator.canWithdraw && !isReadOnly" 
@@ -2199,6 +2292,109 @@
         @close="taskApprovalVisible = false"
         @refresh="handleApprovalRefresh"
       />
+
+      <!-- 里程碑编辑弹窗 -->
+      <el-dialog
+        v-model="milestoneEditDialogVisible"
+        title="编辑里程碑"
+        width="700px"
+        :close-on-click-modal="false"
+        @close="cancelMilestoneEdit"
+      >
+        <div v-if="editingMilestoneIndicator" class="milestone-edit-dialog">
+          <!-- 指标信息 -->
+          <div class="indicator-info-header">
+            <div class="info-item">
+              <span class="label">指标名称：</span>
+              <span class="value">{{ editingMilestoneIndicator.name }}</span>
+            </div>
+            <div class="info-item">
+              <span class="label">指标类型：</span>
+              <el-tag size="small" :type="editingMilestoneIndicator.type1 === '定量' ? 'primary' : 'warning'">
+                {{ editingMilestoneIndicator.type1 }}
+              </el-tag>
+            </div>
+          </div>
+
+          <el-divider />
+
+          <!-- 操作按钮 -->
+          <div class="milestone-actions">
+            <el-button 
+              size="small" 
+              type="primary" 
+              :icon="Plus" 
+              @click="addMilestoneInDialog"
+            >
+              添加里程碑
+            </el-button>
+            <el-button 
+              v-if="editingMilestoneIndicator.type1 === '定量'"
+              size="small" 
+              type="success" 
+              :icon="Timer"
+              @click="generateMonthlyMilestonesInDialog"
+            >
+              生成12个月里程碑
+            </el-button>
+            <span class="milestone-count-hint">
+              当前共 {{ editingMilestones.length }} 个里程碑
+            </span>
+          </div>
+
+          <!-- 里程碑列表 -->
+          <div class="milestone-edit-list">
+            <el-empty 
+              v-if="editingMilestones.length === 0" 
+              description="暂无里程碑，点击上方按钮添加"
+              :image-size="80"
+            />
+            <div 
+              v-for="(ms, idx) in editingMilestones" 
+              :key="ms.id" 
+              class="milestone-edit-item"
+            >
+              <div class="milestone-index">{{ idx + 1 }}</div>
+              <div class="milestone-fields">
+                <el-input 
+                  v-model="ms.name" 
+                  placeholder="里程碑名称" 
+                  size="small"
+                  class="field-name"
+                />
+                <el-input-number 
+                  v-model="ms.targetProgress" 
+                  :min="0" 
+                  :max="100" 
+                  placeholder="目标进度%" 
+                  size="small"
+                  class="field-progress"
+                />
+                <el-date-picker 
+                  v-model="ms.deadline" 
+                  type="date" 
+                  placeholder="截止日期" 
+                  size="small"
+                  value-format="YYYY-MM-DD"
+                  class="field-date"
+                />
+                <el-button 
+                  type="danger" 
+                  size="small" 
+                  :icon="Delete"
+                  circle
+                  @click="removeMilestoneInDialog(idx)"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <template #footer>
+          <el-button @click="cancelMilestoneEdit">取消</el-button>
+          <el-button type="primary" @click="saveMilestoneEdit">保存</el-button>
+        </template>
+      </el-dialog>
     </div>
   </template>
   
@@ -4166,6 +4362,137 @@
     align-items: center;
     justify-content: center;
     padding: var(--spacing-2xl);
+  }
+
+  /* ========================================
+     里程碑编辑弹窗样式
+     ======================================== */
+  .milestone-edit-dialog {
+    padding: 0;
+  }
+
+  .indicator-info-header {
+    display: flex;
+    gap: 24px;
+    padding: 16px;
+    background: var(--bg-page, #f8fafc);
+    border-radius: 8px;
+    margin-bottom: 16px;
+  }
+
+  .indicator-info-header .info-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .indicator-info-header .label {
+    font-size: 13px;
+    color: var(--text-secondary, #64748b);
+  }
+
+  .indicator-info-header .value {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-main, #1e293b);
+  }
+
+  .milestone-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .milestone-count-hint {
+    margin-left: auto;
+    font-size: 13px;
+    color: var(--text-secondary, #64748b);
+  }
+
+  .milestone-edit-list {
+    max-height: 400px;
+    overflow-y: auto;
+    padding: 4px;
+  }
+
+  .milestone-edit-item {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    padding: 12px;
+    background: var(--bg-white, #fff);
+    border: 1px solid var(--border-color, #e2e8f0);
+    border-radius: 8px;
+    margin-bottom: 12px;
+    transition: all 0.3s;
+  }
+
+  .milestone-edit-item:hover {
+    border-color: var(--color-primary, #2c5282);
+    box-shadow: 0 2px 8px rgba(44, 82, 130, 0.1);
+  }
+
+  .milestone-index {
+    width: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-secondary, #64748b);
+    flex-shrink: 0;
+    margin-top: 4px;
+  }
+  
+
+  .milestone-fields {
+    flex: 1;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .field-name {
+    flex: 1;
+    min-width: 160px;
+  }
+
+  .field-progress {
+    width: 120px;
+  }
+
+  .field-date {
+    width: 150px;
+  }
+
+  .milestone-edit-list::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .milestone-edit-list::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .milestone-edit-list::-webkit-scrollbar-thumb {
+    background: var(--border-color, #e2e8f0);
+    border-radius: 3px;
+  }
+
+  .milestone-edit-list::-webkit-scrollbar-thumb:hover {
+    background: var(--border-light, #cbd5e1);
+  }
+
+  /* 里程碑单元格可编辑提示 */
+  .milestone-cell.editable {
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .milestone-cell.editable:hover {
+    background: var(--bg-page, #f8fafc);
+    border-radius: 4px;
   }
 
   /* 响应式调整 */

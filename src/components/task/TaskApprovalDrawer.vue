@@ -69,16 +69,23 @@ const currentSubmissions = computed(() => {
   })
 })
 
-// 历史审批记录（按审批批次分组）
+// 历史审批记录（按审批批次分组，包含完整流程）
 const historyApprovalBatches = computed(() => {
-  // 收集所有审批和驳回操作
-  const approvalActions: any[] = []
+  // 收集所有审批批次
+  const batches: any[] = []
+  
+  // 按时间戳分组审批操作
+  const approvalGroups: Record<string, any[]> = {}
   
   props.indicators.forEach((indicator) => {
     if (indicator.statusAudit && indicator.statusAudit.length > 0) {
       indicator.statusAudit.forEach((entry) => {
         if (entry.action === 'approve' || entry.action === 'reject') {
-          approvalActions.push({
+          const batchKey = new Date(entry.timestamp).toISOString().slice(0, 16)
+          if (!approvalGroups[batchKey]) {
+            approvalGroups[batchKey] = []
+          }
+          approvalGroups[batchKey].push({
             ...entry,
             _indicatorName: indicator.name,
             _taskContent: indicator.taskContent,
@@ -89,28 +96,44 @@ const historyApprovalBatches = computed(() => {
     }
   })
   
-  // 按时间戳分组（同一时间的审批操作视为一个批次）
-  const batches: Record<string, any[]> = {}
-  approvalActions.forEach((action) => {
-    // 使用时间戳的分钟级别作为批次key
-    const batchKey = new Date(action.timestamp).toISOString().slice(0, 16)
-    if (!batches[batchKey]) {
-      batches[batchKey] = []
-    }
-    batches[batchKey].push(action)
+  // 为每个审批批次找到对应的提交记录
+  Object.entries(approvalGroups).forEach(([key, approvalActions]) => {
+    const submitters: any[] = []
+    
+    // 查找这些指标的提交记录
+    approvalActions.forEach((approval) => {
+      const indicator = props.indicators.find(i => i.id.toString() === approval._indicatorId.toString())
+      if (indicator?.statusAudit) {
+        // 找到最近的提交记录（在审批之前）
+        const submitLog = indicator.statusAudit
+          .filter(log => 
+            log.action === 'submit' && 
+            new Date(log.timestamp).getTime() <= new Date(approval.timestamp).getTime()
+          )
+          .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0]
+        
+        if (submitLog && !submitters.find(s => s.operatorName === submitLog.operatorName)) {
+          submitters.push({
+            operatorName: submitLog.operatorName,
+            operatorDept: submitLog.operatorDept,
+            timestamp: submitLog.timestamp,
+          })
+        }
+      }
+    })
+    
+    batches.push({
+      timestamp: approvalActions[0].timestamp,
+      approver: approvalActions[0].operatorName,
+      approverDept: approvalActions[0].operatorDept,
+      action: approvalActions[0].action,
+      submitters: submitters,
+      actions: approvalActions,
+      count: approvalActions.length,
+    })
   })
   
-  // 转换为数组并按时间倒序排列
-  return Object.entries(batches)
-    .map(([key, actions]) => ({
-      timestamp: actions[0].timestamp,
-      operator: actions[0].operatorName,
-      operatorDept: actions[0].operatorDept,
-      action: actions[0].action,
-      actions: actions,
-      count: actions.length,
-    }))
-    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+  return batches.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
 })
 
 // 统一驳回原因输入
@@ -488,7 +511,7 @@ const handleClose = () => {
               />
             </template>
 
-            <!-- 历史审批记录卡片列表 -->
+            <!-- 历史审批记录流程时间线列表 -->
             <div v-if="historyApprovalBatches.length === 0" class="empty-state">
               <el-empty description="暂无历史记录" :image-size="80" />
             </div>
@@ -496,68 +519,116 @@ const handleClose = () => {
               <div
                 v-for="(batch, index) in historyApprovalBatches"
                 :key="index"
-                class="history-card"
+                class="history-batch"
               >
-                <!-- 卡片头部 -->
-                <div class="history-header">
-                  <div class="header-left">
-                    <el-tag
-                      :type="getActionConfig(batch.action).type"
-                      size="small"
-                      effect="plain"
-                    >
-                      {{ getActionConfig(batch.action).label }}
-                    </el-tag>
-                    <span class="batch-count">{{ batch.count }} 条指标</span>
-                  </div>
-                  <span class="history-time">{{
-                    formatTime(batch.timestamp)
-                  }}</span>
+                <!-- 批次时间标签 -->
+                <div class="batch-time-label">
+                  <span>{{ formatTime(batch.timestamp) }}</span>
+                  <el-tag
+                    :type="getActionConfig(batch.action).type"
+                    size="small"
+                    effect="plain"
+                  >
+                    {{ getActionConfig(batch.action).label }}
+                  </el-tag>
                 </div>
 
-                <!-- 操作人信息 -->
-                <div class="history-operator">
-                  <el-icon><User /></el-icon>
-                  <span class="operator-name">{{ batch.operator }}</span>
-                  <span class="operator-dept">{{ batch.operatorDept }}</span>
-                </div>
-
-                <!-- 指标列表（折叠） -->
-                <el-collapse class="history-collapse">
-                  <el-collapse-item title="查看详情" name="1">
-                    <div class="indicator-list">
-                      <div
-                        v-for="action in batch.actions"
-                        :key="action._indicatorId"
-                        class="indicator-item"
-                      >
-                        <div class="indicator-name-row">
-                          <el-icon><Document /></el-icon>
-                          <span class="name">{{ action._indicatorName }}</span>
-                        </div>
-                        <div v-if="action._taskContent" class="task-content-row">
-                          {{ action._taskContent }}
-                        </div>
+                <!-- 流程时间线 -->
+                <div class="flow-timeline">
+                  <!-- 发起申请节点 -->
+                  <div class="flow-node">
+                    <div class="node-icon submit-icon">
+                      <el-icon><Upload /></el-icon>
+                    </div>
+                    <div class="node-content">
+                      <div class="node-title">发起申请</div>
+                      <div v-if="batch.submitters.length > 0" class="submitters-list">
                         <div
-                          v-if="
-                            action.previousProgress !== undefined &&
-                            action.newProgress !== undefined
-                          "
-                          class="progress-row"
+                          v-for="(submitter, idx) in batch.submitters"
+                          :key="idx"
+                          class="submitter-item"
                         >
-                          <span class="label">进度：</span>
-                          <span class="from">{{ action.previousProgress }}%</span>
-                          <el-icon class="arrow"><Right /></el-icon>
-                          <span class="to">{{ action.newProgress }}%</span>
-                        </div>
-                        <div v-if="action.comment" class="comment-row">
-                          <el-icon><ChatDotRound /></el-icon>
-                          <span>{{ action.comment }}</span>
+                          <span class="node-user">{{ submitter.operatorName }}</span>
+                          <span class="node-dept">{{ submitter.operatorDept }}</span>
                         </div>
                       </div>
+                      <div v-else class="node-user">提交人</div>
+                      <div v-if="batch.submitters.length > 0" class="node-time">
+                        {{ formatTime(batch.submitters[0].timestamp) }}
+                      </div>
                     </div>
-                  </el-collapse-item>
-                </el-collapse>
+                  </div>
+
+                  <!-- 连接线 -->
+                  <div class="flow-line"></div>
+
+                  <!-- 主管审批节点 -->
+                  <div class="flow-node">
+                    <div
+                      class="node-icon"
+                      :class="batch.action === 'approve' ? 'approve-icon' : 'reject-icon'"
+                    >
+                      <el-icon>
+                        <Check v-if="batch.action === 'approve'" />
+                        <Close v-else />
+                      </el-icon>
+                    </div>
+                    <div class="node-content">
+                      <div class="node-title">主管审批</div>
+                      <div class="node-user">
+                        {{ batch.approver }}
+                        <el-tag
+                          :type="getActionConfig(batch.action).type"
+                          size="small"
+                          class="status-tag"
+                        >
+                          {{ batch.action === 'approve' ? '已通过' : '已驳回' }}
+                        </el-tag>
+                      </div>
+                      <div class="node-dept">{{ batch.approverDept }}</div>
+                      <div class="node-time">{{ formatTime(batch.timestamp) }}</div>
+
+                      <!-- 指标列表折叠 -->
+                      <el-collapse class="indicators-collapse">
+                        <el-collapse-item
+                          :title="`查看指标详情（${batch.count} 条）`"
+                          name="1"
+                        >
+                          <div class="indicators-detail">
+                            <div
+                              v-for="action in batch.actions"
+                              :key="action._indicatorId"
+                              class="indicator-detail-item"
+                            >
+                              <div class="detail-name">
+                                <el-icon><Document /></el-icon>
+                                <span>{{ action._indicatorName }}</span>
+                              </div>
+                              <div v-if="action._taskContent" class="detail-task">
+                                {{ action._taskContent }}
+                              </div>
+                              <div
+                                v-if="
+                                  action.previousProgress !== undefined &&
+                                  action.newProgress !== undefined
+                                "
+                                class="detail-progress"
+                              >
+                                <span class="from">{{ action.previousProgress }}%</span>
+                                <el-icon class="arrow"><Right /></el-icon>
+                                <span class="to">{{ action.newProgress }}%</span>
+                              </div>
+                              <div v-if="action.comment" class="detail-remark">
+                                <el-icon><ChatDotRound /></el-icon>
+                                <span>{{ action.comment }}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </el-collapse-item>
+                      </el-collapse>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </el-tab-pane>
@@ -1007,14 +1078,14 @@ const handleClose = () => {
   );
 }
 
-/* 历史记录卡片列表 */
+/* 历史记录流程时间线列表 */
 .history-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 24px;
 }
 
-.history-card {
+.history-batch {
   background: var(--bg-white, #fff);
   border: 1px solid var(--border-color, #e2e8f0);
   border-radius: 8px;
@@ -1022,162 +1093,65 @@ const handleClose = () => {
   transition: all 0.3s;
 }
 
-.history-card:hover {
+.history-batch:hover {
   border-color: var(--color-primary, #2c5282);
   box-shadow: 0 2px 8px rgba(44, 82, 130, 0.1);
 }
 
-.history-header {
+.batch-time-label {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-color, #e2e8f0);
 }
 
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.batch-count {
-  font-size: 12px;
-  color: var(--text-secondary, #64748b);
-}
-
-.history-time {
-  font-size: 12px;
-  color: var(--text-placeholder, #94a3b8);
-}
-
-.history-operator {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  color: var(--text-regular, #475569);
-  margin-bottom: 12px;
-}
-
-.history-operator .el-icon {
-  color: var(--text-placeholder, #94a3b8);
-  font-size: 14px;
-}
-
-.history-operator .operator-name {
-  font-weight: 500;
-}
-
-.history-operator .operator-dept {
-  color: var(--text-secondary, #64748b);
-}
-
-.history-operator .operator-dept::before {
-  content: '·';
-  margin: 0 4px;
-}
-
-.history-collapse {
-  border: none;
-}
-
-.history-collapse :deep(.el-collapse-item__header) {
-  background: var(--bg-page, #f8fafc);
-  border: none;
-  padding: 8px 12px;
-  border-radius: 4px;
-  font-size: 13px;
-  color: var(--color-primary, #2c5282);
-}
-
-.history-collapse :deep(.el-collapse-item__wrap) {
-  border: none;
-  background: transparent;
-}
-
-.history-collapse :deep(.el-collapse-item__content) {
-  padding: 12px 0 0 0;
-}
-
-.indicator-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.indicator-item {
-  background: var(--bg-page, #f8fafc);
-  padding: 12px;
-  border-radius: 6px;
-  border-left: 3px solid var(--color-primary-light, #93c5fd);
-}
-
-.indicator-name-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 6px;
-}
-
-.indicator-name-row .el-icon {
-  color: var(--color-primary, #2c5282);
-  font-size: 14px;
-}
-
-.indicator-name-row .name {
+.batch-time-label span {
   font-size: 13px;
   font-weight: 500;
   color: var(--text-main, #1e293b);
 }
 
-.task-content-row {
-  font-size: 12px;
-  color: var(--text-secondary, #64748b);
-  margin-bottom: 6px;
-  padding-left: 20px;
+.submitters-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
-.progress-row {
+.submitter-item {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  margin-bottom: 6px;
-  padding-left: 20px;
+  gap: 8px;
 }
 
-.progress-row .label {
+.node-dept {
+  font-size: 12px;
   color: var(--text-secondary, #64748b);
+  margin-bottom: 4px;
 }
 
-.progress-row .from {
-  color: var(--text-placeholder, #94a3b8);
+.node-dept::before {
+  content: '·';
+  margin-right: 4px;
 }
 
-.progress-row .arrow {
-  color: var(--text-placeholder, #94a3b8);
-  font-size: 10px;
+.status-tag {
+  margin-left: 8px;
 }
 
-.progress-row .to {
-  color: var(--color-primary, #2c5282);
-  font-weight: 600;
+.approve-icon {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
 }
 
-.comment-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 6px;
+.reject-icon {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+}
+
+.detail-task {
   font-size: 12px;
-  color: var(--text-regular, #475569);
-  padding-left: 20px;
-}
-
-.comment-row .el-icon {
-  color: var(--color-primary, #2c5282);
-  font-size: 13px;
-  flex-shrink: 0;
-  margin-top: 2px;
+  color: var(--text-secondary, #64748b);
+  margin-bottom: 6px;
 }
 
 .drawer-footer {
