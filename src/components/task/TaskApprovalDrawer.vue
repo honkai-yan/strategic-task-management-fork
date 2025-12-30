@@ -51,23 +51,66 @@ const pendingApprovals = computed(() => {
   )
 })
 
-// 汇总所有审计日志（按时间倒序）
-const allAuditLogs = computed(() => {
-  const logs: any[] = []
+// 标签页切换
+const activeTab = ref<'current' | 'history'>('current')
+
+// 当前批次的提交记录（待审批的指标及其提交信息）
+const currentSubmissions = computed(() => {
+  return pendingApprovals.value.map((indicator) => {
+    // 找到最新的提交记录
+    const submitLog = indicator.statusAudit
+      ?.filter((log) => log.action === 'submit')
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0]
+
+    return {
+      indicator,
+      submitLog,
+    }
+  })
+})
+
+// 历史审批记录（按审批批次分组）
+const historyApprovalBatches = computed(() => {
+  // 收集所有审批和驳回操作
+  const approvalActions: any[] = []
+  
   props.indicators.forEach((indicator) => {
     if (indicator.statusAudit && indicator.statusAudit.length > 0) {
       indicator.statusAudit.forEach((entry) => {
-        logs.push({
-          ...entry,
-          _indicatorName: indicator.name,
-          _taskContent: indicator.taskContent,
-        })
+        if (entry.action === 'approve' || entry.action === 'reject') {
+          approvalActions.push({
+            ...entry,
+            _indicatorName: indicator.name,
+            _taskContent: indicator.taskContent,
+            _indicatorId: indicator.id,
+          })
+        }
       })
     }
   })
-  return logs.sort(
-    (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-  )
+  
+  // 按时间戳分组（同一时间的审批操作视为一个批次）
+  const batches: Record<string, any[]> = {}
+  approvalActions.forEach((action) => {
+    // 使用时间戳的分钟级别作为批次key
+    const batchKey = new Date(action.timestamp).toISOString().slice(0, 16)
+    if (!batches[batchKey]) {
+      batches[batchKey] = []
+    }
+    batches[batchKey].push(action)
+  })
+  
+  // 转换为数组并按时间倒序排列
+  return Object.entries(batches)
+    .map(([key, actions]) => ({
+      timestamp: actions[0].timestamp,
+      operator: actions[0].operatorName,
+      operatorDept: actions[0].operatorDept,
+      action: actions[0].action,
+      actions: actions,
+      count: actions.length,
+    }))
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
 })
 
 // 统一驳回原因输入
@@ -336,87 +379,189 @@ const handleClose = () => {
       <!-- 分隔线 -->
       <el-divider />
 
-      <!-- 审计日志区域 -->
-      <div class="audit-section">
-        <div class="section-title">
-          <el-icon><ChatDotRound /></el-icon>
-          <span>审计日志</span>
-          <span class="log-count">共 {{ allAuditLogs.length }} 条</span>
-        </div>
-
-        <!-- 空状态 -->
-        <el-empty
-          v-if="allAuditLogs.length === 0"
-          description="暂无审计日志"
-          :image-size="80"
-        />
-
-        <!-- 时间线 -->
-        <el-timeline v-else class="audit-timeline">
-          <el-timeline-item
-            v-for="(log, index) in allAuditLogs"
-            :key="log.id + '-' + index"
-            :timestamp="formatRelativeTime(log.timestamp)"
-            :type="getActionConfig(log.action).type"
-            :hollow="index !== 0"
-            placement="top"
-          >
-            <div class="log-card">
-              <!-- 指标信息 -->
-              <div class="log-indicator-info">
-                <el-icon><Document /></el-icon>
-                <span class="indicator-name">{{ log._indicatorName }}</span>
-                <span v-if="log._taskContent" class="task-name">{{
-                  log._taskContent
-                }}</span>
-              </div>
-
-              <!-- 操作标题 -->
-              <div class="log-header">
-                <el-tag
-                  :type="getActionConfig(log.action).type"
-                  size="small"
-                  effect="dark"
-                >
-                  <div style="display: flex; align-items: center; gap: 4px">
-                    <el-icon
-                      ><component :is="getActionConfig(log.action).icon"
-                    /></el-icon>
-                    {{ getActionConfig(log.action).label }}
+      <!-- 审批流程区域 -->
+      <div class="approval-flow-section">
+        <!-- 标签页切换 -->
+        <el-tabs v-model="activeTab" class="approval-tabs">
+          <el-tab-pane label="本次提交" name="current">
+            <!-- 本次提交的审批流程时间线 -->
+            <div v-if="currentSubmissions.length === 0" class="empty-state">
+              <el-empty description="暂无提交记录" :image-size="80" />
+            </div>
+            <div v-else class="flow-timeline">
+              <!-- 发起申请节点 -->
+              <div class="flow-node">
+                <div class="node-icon submit-icon">
+                  <el-icon><Upload /></el-icon>
+                </div>
+                <div class="node-content">
+                  <div class="node-title">发起申请</div>
+                  <div class="node-user">
+                    {{
+                      currentSubmissions[0]?.submitLog?.operatorName || '提交人'
+                    }}
                   </div>
-                </el-tag>
-                <span class="log-time">{{ formatTime(log.timestamp) }}</span>
+                  <div class="node-time">
+                    {{
+                      currentSubmissions[0]?.submitLog
+                        ? formatTime(currentSubmissions[0].submitLog.timestamp)
+                        : ''
+                    }}
+                  </div>
+                </div>
               </div>
 
-              <!-- 操作人信息 -->
-              <div class="log-operator">
-                <el-icon><User /></el-icon>
-                <span class="operator-name">{{ log.operatorName }}</span>
-                <span class="operator-dept">{{ log.operatorDept }}</span>
+              <!-- 连接线 -->
+              <div class="flow-line"></div>
+
+              <!-- 主管审批节点 -->
+              <div class="flow-node">
+                <div class="node-icon pending-icon">
+                  <el-icon><User /></el-icon>
+                </div>
+                <div class="node-content">
+                  <div class="node-title">主管审批</div>
+                  <div class="node-user">
+                    {{ authStore.userName || '审批人' }} (待审批)
+                  </div>
+                  
+                  <!-- 待审批说明 -->
+                  <div class="pending-notice">
+                    <el-icon><Warning /></el-icon>
+                    <span>待审批 {{ pendingApprovals.length }} 条指标</span>
+                  </div>
+
+                  <!-- 指标列表折叠 -->
+                  <el-collapse class="indicators-collapse">
+                    <el-collapse-item title="查看指标详情" name="1">
+                      <div class="indicators-detail">
+                        <div
+                          v-for="item in currentSubmissions"
+                          :key="item.indicator.id"
+                          class="indicator-detail-item"
+                        >
+                          <div class="detail-name">
+                            <el-icon><Document /></el-icon>
+                            <span>{{ item.indicator.name }}</span>
+                          </div>
+                          <div class="detail-progress">
+                            <span class="from">{{ item.indicator.progress }}%</span>
+                            <el-icon class="arrow"><Right /></el-icon>
+                            <span class="to">{{ item.indicator.pendingProgress }}%</span>
+                          </div>
+                          <div
+                            v-if="item.indicator.pendingRemark"
+                            class="detail-remark"
+                          >
+                            {{ item.indicator.pendingRemark }}
+                          </div>
+                        </div>
+                      </div>
+                    </el-collapse-item>
+                  </el-collapse>
+                </div>
               </div>
 
-              <!-- 进度变化 -->
-              <div
-                v-if="
-                  log.previousProgress !== undefined &&
-                  log.newProgress !== undefined
-                "
-                class="log-progress"
-              >
-                <span class="progress-label">进度变化:</span>
-                <span class="progress-from">{{ log.previousProgress }}%</span>
-                <el-icon class="progress-arrow"><Right /></el-icon>
-                <span class="progress-to">{{ log.newProgress }}%</span>
-              </div>
+              <!-- 连接线 -->
+              <div class="flow-line dashed"></div>
 
-              <!-- 备注 -->
-              <div v-if="log.comment" class="log-comment">
-                <el-icon><ChatDotRound /></el-icon>
-                <span>{{ log.comment }}</span>
+              <!-- 抄送人节点（可选） -->
+              <div class="flow-node">
+                <div class="node-icon notify-icon">
+                  <el-icon><ChatDotRound /></el-icon>
+                </div>
+                <div class="node-content">
+                  <div class="node-title">抄送人</div>
+                  <div class="node-desc">审批完成后通知相关人员</div>
+                </div>
               </div>
             </div>
-          </el-timeline-item>
-        </el-timeline>
+          </el-tab-pane>
+
+          <el-tab-pane name="history">
+            <template #label>
+              <span>历史记录</span>
+              <el-badge
+                :value="historyApprovalBatches.length"
+                :max="99"
+                class="tab-badge"
+              />
+            </template>
+
+            <!-- 历史审批记录卡片列表 -->
+            <div v-if="historyApprovalBatches.length === 0" class="empty-state">
+              <el-empty description="暂无历史记录" :image-size="80" />
+            </div>
+            <div v-else class="history-list">
+              <div
+                v-for="(batch, index) in historyApprovalBatches"
+                :key="index"
+                class="history-card"
+              >
+                <!-- 卡片头部 -->
+                <div class="history-header">
+                  <div class="header-left">
+                    <el-tag
+                      :type="getActionConfig(batch.action).type"
+                      size="small"
+                      effect="plain"
+                    >
+                      {{ getActionConfig(batch.action).label }}
+                    </el-tag>
+                    <span class="batch-count">{{ batch.count }} 条指标</span>
+                  </div>
+                  <span class="history-time">{{
+                    formatTime(batch.timestamp)
+                  }}</span>
+                </div>
+
+                <!-- 操作人信息 -->
+                <div class="history-operator">
+                  <el-icon><User /></el-icon>
+                  <span class="operator-name">{{ batch.operator }}</span>
+                  <span class="operator-dept">{{ batch.operatorDept }}</span>
+                </div>
+
+                <!-- 指标列表（折叠） -->
+                <el-collapse class="history-collapse">
+                  <el-collapse-item title="查看详情" name="1">
+                    <div class="indicator-list">
+                      <div
+                        v-for="action in batch.actions"
+                        :key="action._indicatorId"
+                        class="indicator-item"
+                      >
+                        <div class="indicator-name-row">
+                          <el-icon><Document /></el-icon>
+                          <span class="name">{{ action._indicatorName }}</span>
+                        </div>
+                        <div v-if="action._taskContent" class="task-content-row">
+                          {{ action._taskContent }}
+                        </div>
+                        <div
+                          v-if="
+                            action.previousProgress !== undefined &&
+                            action.newProgress !== undefined
+                          "
+                          class="progress-row"
+                        >
+                          <span class="label">进度：</span>
+                          <span class="from">{{ action.previousProgress }}%</span>
+                          <el-icon class="arrow"><Right /></el-icon>
+                          <span class="to">{{ action.newProgress }}%</span>
+                        </div>
+                        <div v-if="action.comment" class="comment-row">
+                          <el-icon><ChatDotRound /></el-icon>
+                          <span>{{ action.comment }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </el-collapse-item>
+                </el-collapse>
+              </div>
+            </div>
+          </el-tab-pane>
+        </el-tabs>
       </div>
     </div>
 
@@ -424,7 +569,7 @@ const handleClose = () => {
       <div class="drawer-footer">
         <span class="footer-info"
           >待审批 {{ pendingApprovals.length }} 条 · 历史记录
-          {{ allAuditLogs.length }} 条</span
+          {{ historyApprovalBatches.length }} 批次</span
         >
         <el-button @click="handleClose">关闭</el-button>
       </div>
@@ -640,144 +785,397 @@ const handleClose = () => {
   flex: 1;
 }
 
-/* 审计日志区域 */
-.audit-section {
+/* 审批流程区域 */
+.approval-flow-section {
   margin-top: 20px;
 }
 
-.audit-timeline {
-  padding-left: 4px;
+.approval-tabs {
+  margin-top: 0;
 }
 
-.log-card {
-  background: var(--bg-page, #f8fafc);
-  padding: 12px;
+.approval-tabs :deep(.el-tabs__header) {
+  margin-bottom: 16px;
+}
+
+.tab-badge {
+  margin-left: 8px;
+}
+
+.empty-state {
+  padding: 20px 0;
+}
+
+/* 本次提交流程时间线 */
+.flow-timeline {
+  padding: 20px 0;
+}
+
+.flow-node {
+  display: flex;
+  gap: 16px;
+  position: relative;
+}
+
+.node-icon {
+  width: 48px;
+  height: 48px;
   border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 2;
+}
+
+.node-icon .el-icon {
+  font-size: 20px;
+  color: #fff;
+}
+
+.submit-icon {
+  background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%);
+}
+
+.pending-icon {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+}
+
+.notify-icon {
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+}
+
+.node-icon::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 16px;
+  height: 16px;
+  background: #10b981;
+  border: 2px solid #fff;
+  border-radius: 50%;
+}
+
+.node-content {
+  flex: 1;
+  padding-bottom: 24px;
+}
+
+.node-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-main, #1e293b);
+  margin-bottom: 6px;
+}
+
+.node-user {
+  font-size: 13px;
+  color: var(--text-regular, #475569);
   margin-bottom: 4px;
 }
 
-.log-indicator-info {
+.node-time {
+  font-size: 12px;
+  color: var(--text-placeholder, #94a3b8);
+  margin-bottom: 12px;
+}
+
+.node-desc {
+  font-size: 13px;
+  color: var(--text-secondary, #64748b);
+}
+
+.pending-notice {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: #fef3c7;
+  border-radius: 4px;
+  font-size: 13px;
+  color: #92400e;
+  margin-bottom: 12px;
+}
+
+.pending-notice .el-icon {
+  font-size: 14px;
+}
+
+.indicators-collapse {
+  border: none;
+  margin-top: 8px;
+}
+
+.indicators-collapse :deep(.el-collapse-item__header) {
+  background: var(--bg-page, #f8fafc);
+  border: 1px solid var(--border-color, #e2e8f0);
+  padding: 10px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--color-primary, #2c5282);
+  height: auto;
+  line-height: 1.5;
+}
+
+.indicators-collapse :deep(.el-collapse-item__wrap) {
+  border: none;
+  background: transparent;
+}
+
+.indicators-collapse :deep(.el-collapse-item__content) {
+  padding: 12px 0 0 0;
+}
+
+.indicators-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.indicator-detail-item {
+  background: var(--bg-page, #f8fafc);
+  padding: 12px;
+  border-radius: 6px;
+  border-left: 3px solid var(--color-primary, #2c5282);
+}
+
+.detail-name {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
-  color: var(--text-secondary, #64748b);
-  margin-bottom: 10px;
-  padding-bottom: 8px;
-  border-bottom: 1px dashed var(--border-color, #e2e8f0);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-main, #1e293b);
+  margin-bottom: 8px;
 }
 
-.log-indicator-info .el-icon {
+.detail-name .el-icon {
   color: var(--color-primary, #2c5282);
   font-size: 14px;
 }
 
-.log-indicator-info .indicator-name {
-  font-weight: 500;
-  color: var(--text-main, #1e293b);
-  max-width: 200px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.log-indicator-info .task-name {
-  color: var(--text-placeholder, #94a3b8);
-  font-size: 11px;
-}
-
-.log-indicator-info .task-name::before {
-  content: '·';
-  margin: 0 4px;
-}
-
-.log-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px;
-}
-
-.log-header .el-tag {
-  width: fit-content;
-}
-
-.log-time {
-  font-size: 12px;
-  color: var(--text-placeholder, #94a3b8);
-}
-
-.log-operator {
+.detail-progress {
   display: flex;
   align-items: center;
   gap: 6px;
   font-size: 13px;
-  color: var(--text-regular, #475569);
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
-.log-operator .el-icon {
-  color: var(--text-placeholder, #94a3b8);
-  font-size: 14px;
-}
-
-.operator-name {
-  font-weight: 500;
-}
-
-.operator-dept {
-  color: var(--text-secondary, #64748b);
-}
-
-.operator-dept::before {
-  content: '·';
-  margin: 0 4px;
-}
-
-.log-progress {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  margin-bottom: 8px;
-  padding: 8px 10px;
-  background: var(--bg-white, #fff);
-  border-radius: 4px;
-}
-
-.progress-label {
-  color: var(--text-secondary, #64748b);
-}
-
-.progress-from {
+.detail-progress .from {
   color: var(--text-placeholder, #94a3b8);
 }
 
-.progress-arrow {
+.detail-progress .arrow {
   color: var(--text-placeholder, #94a3b8);
   font-size: 12px;
 }
 
-.progress-to {
+.detail-progress .to {
   color: var(--color-primary, #2c5282);
   font-weight: 600;
 }
 
-.log-comment {
+.detail-remark {
+  font-size: 12px;
+  color: var(--text-secondary, #64748b);
+  line-height: 1.5;
+  padding: 8px;
+  background: var(--bg-white, #fff);
+  border-radius: 4px;
+}
+
+.flow-line {
+  position: absolute;
+  left: 23px;
+  top: 48px;
+  bottom: -24px;
+  width: 2px;
+  background: var(--border-color, #e2e8f0);
+  z-index: 1;
+}
+
+.flow-line.dashed {
+  background: repeating-linear-gradient(
+    to bottom,
+    var(--border-color, #e2e8f0) 0px,
+    var(--border-color, #e2e8f0) 4px,
+    transparent 4px,
+    transparent 8px
+  );
+}
+
+/* 历史记录卡片列表 */
+.history-list {
   display: flex;
-  align-items: flex-start;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.history-card {
+  background: var(--bg-white, #fff);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 8px;
+  padding: 16px;
+  transition: all 0.3s;
+}
+
+.history-card:hover {
+  border-color: var(--color-primary, #2c5282);
+  box-shadow: 0 2px 8px rgba(44, 82, 130, 0.1);
+}
+
+.history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.batch-count {
+  font-size: 12px;
+  color: var(--text-secondary, #64748b);
+}
+
+.history-time {
+  font-size: 12px;
+  color: var(--text-placeholder, #94a3b8);
+}
+
+.history-operator {
+  display: flex;
+  align-items: center;
   gap: 6px;
   font-size: 13px;
   color: var(--text-regular, #475569);
-  padding: 8px 10px;
-  background: var(--bg-white, #fff);
+  margin-bottom: 12px;
+}
+
+.history-operator .el-icon {
+  color: var(--text-placeholder, #94a3b8);
+  font-size: 14px;
+}
+
+.history-operator .operator-name {
+  font-weight: 500;
+}
+
+.history-operator .operator-dept {
+  color: var(--text-secondary, #64748b);
+}
+
+.history-operator .operator-dept::before {
+  content: '·';
+  margin: 0 4px;
+}
+
+.history-collapse {
+  border: none;
+}
+
+.history-collapse :deep(.el-collapse-item__header) {
+  background: var(--bg-page, #f8fafc);
+  border: none;
+  padding: 8px 12px;
   border-radius: 4px;
+  font-size: 13px;
+  color: var(--color-primary, #2c5282);
+}
+
+.history-collapse :deep(.el-collapse-item__wrap) {
+  border: none;
+  background: transparent;
+}
+
+.history-collapse :deep(.el-collapse-item__content) {
+  padding: 12px 0 0 0;
+}
+
+.indicator-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.indicator-item {
+  background: var(--bg-page, #f8fafc);
+  padding: 12px;
+  border-radius: 6px;
   border-left: 3px solid var(--color-primary-light, #93c5fd);
 }
 
-.log-comment .el-icon {
+.indicator-name-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.indicator-name-row .el-icon {
   color: var(--color-primary, #2c5282);
   font-size: 14px;
+}
+
+.indicator-name-row .name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-main, #1e293b);
+}
+
+.task-content-row {
+  font-size: 12px;
+  color: var(--text-secondary, #64748b);
+  margin-bottom: 6px;
+  padding-left: 20px;
+}
+
+.progress-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  margin-bottom: 6px;
+  padding-left: 20px;
+}
+
+.progress-row .label {
+  color: var(--text-secondary, #64748b);
+}
+
+.progress-row .from {
+  color: var(--text-placeholder, #94a3b8);
+}
+
+.progress-row .arrow {
+  color: var(--text-placeholder, #94a3b8);
+  font-size: 10px;
+}
+
+.progress-row .to {
+  color: var(--color-primary, #2c5282);
+  font-weight: 600;
+}
+
+.comment-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-regular, #475569);
+  padding-left: 20px;
+}
+
+.comment-row .el-icon {
+  color: var(--color-primary, #2c5282);
+  font-size: 13px;
   flex-shrink: 0;
   margin-top: 2px;
 }
