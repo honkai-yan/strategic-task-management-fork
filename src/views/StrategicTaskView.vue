@@ -1,6 +1,6 @@
 <script setup lang="ts">
   import { ref, computed, onMounted, onUnmounted } from 'vue'
-  import { Plus, View, Download, Delete, ArrowDown, Promotion, RefreshLeft, Check, Close, Upload, Edit, Refresh, User, ChatDotRound, Right } from '@element-plus/icons-vue'
+  import { Plus, View, Download, Delete, ArrowDown, Promotion, RefreshLeft, Check, Close, Upload, Edit, Refresh, User, ChatDotRound, Right, Timer } from '@element-plus/icons-vue'
   import { ElMessage, ElMessageBox } from 'element-plus'
   import type { ElTable } from 'element-plus'
   import type { StrategicTask, StrategicIndicator } from '@/types'
@@ -8,6 +8,7 @@
   import { useAuthStore } from '@/stores/auth'
   import { useTimeContextStore } from '@/stores/timeContext'
   import AuditLogDrawer from '@/components/task/AuditLogDrawer.vue'
+  import TaskApprovalDrawer from '@/components/task/TaskApprovalDrawer.vue'
   
   // --- 新增：自定义指令，用于自动聚焦 ---
   const vFocus = {
@@ -817,10 +818,23 @@
   const auditLogVisible = ref(false)
   const currentAuditIndicator = ref<StrategicIndicator | null>(null)
 
+  // 任务审批抽屉状态
+  const taskApprovalVisible = ref(false)
+
   // 查看审计日志
   const handleViewAuditLog = (row: StrategicIndicator) => {
     currentAuditIndicator.value = row
     auditLogVisible.value = true
+  }
+
+  // 打开任务审批抽屉
+  const handleOpenApproval = () => {
+    taskApprovalVisible.value = true
+  }
+
+  // 审批后刷新
+  const handleApprovalRefresh = () => {
+    updateEditTime()
   }
 
   // 下发弹窗状态
@@ -1326,6 +1340,11 @@
             >
               <el-icon><component :is="hasDistributedIndicators ? RefreshLeft : Promotion" /></el-icon>
               {{ hasDistributedIndicators ? '撤回' : '下发' }}
+            </el-button>
+            <!-- 审批按钮 -->
+            <el-button size="small" type="primary" @click="handleOpenApproval">
+              <el-icon><Check /></el-icon>
+              审批
             </el-button>
             <el-button size="small">
               <el-icon><Download /></el-icon>
@@ -2178,6 +2197,15 @@
         v-model:visible="auditLogVisible"
         :indicator="currentAuditIndicator"
         @close="auditLogVisible = false"
+      />
+
+      <!-- 任务审批抽屉 -->
+      <TaskApprovalDrawer
+        v-model:visible="taskApprovalVisible"
+        :indicators="indicators"
+        :department-name="selectedDepartment"
+        @close="taskApprovalVisible = false"
+        @refresh="handleApprovalRefresh"
       />
     </div>
   </template>

@@ -13,6 +13,9 @@ import {
   User,
   Clock,
   ChatDotRound,
+  Document,
+  Right,
+  Promotion,
 } from "@element-plus/icons-vue";
 import type { StrategicIndicator, StatusAuditEntry } from "@/types";
 
@@ -72,6 +75,12 @@ const getActionConfig = (action: StatusAuditEntry["action"]) => {
       color: "#909399",
       label: "更新进度",
       type: "info",
+    },
+    distribute: {
+      icon: Promotion,
+      color: "#409EFF",
+      label: "下发指标",
+      type: "primary",
     },
   };
   return configs[action] || configs.update;
@@ -151,6 +160,13 @@ const handleClose = () => {
           placement="top"
         >
           <div class="log-card">
+            <!-- 指标信息（汇总日志时显示） -->
+            <div v-if="log._indicatorName" class="log-indicator-info">
+              <el-icon><Document /></el-icon>
+              <span class="indicator-name">{{ log._indicatorName }}</span>
+              <span v-if="log._taskContent" class="task-name">{{ log._taskContent }}</span>
+            </div>
+
             <!-- 操作标题 -->
             <div class="log-header">
               <el-tag
@@ -250,6 +266,42 @@ const handleClose = () => {
   padding: 12px;
   border-radius: 8px;
   margin-bottom: 4px;
+}
+
+/* 指标信息（汇总日志时显示） */
+.log-indicator-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-secondary, #64748b);
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px dashed var(--border-color, #e2e8f0);
+}
+
+.log-indicator-info .el-icon {
+  color: var(--color-primary, #2c5282);
+  font-size: 14px;
+}
+
+.indicator-name {
+  font-weight: 500;
+  color: var(--text-main, #1e293b);
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.task-name {
+  color: var(--text-placeholder, #94a3b8);
+  font-size: 11px;
+}
+
+.task-name::before {
+  content: '·';
+  margin: 0 4px;
 }
 
 .log-header {

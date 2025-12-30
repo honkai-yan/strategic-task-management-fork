@@ -79,6 +79,9 @@ export const useStrategicStore = defineStore('strategic', () => {
       isStrategic: true,
       ownerDept: '战略发展部',
       year: 2025,
+      progressApprovalStatus: 'pending',
+      pendingProgress: 55,
+      pendingRemark: '本季度优质就业企业对接工作进展顺利，已完成10个优质岗位推荐',
       statusAudit: [
         {
           id: 'audit-101-1',
@@ -99,6 +102,17 @@ export const useStrategicStore = defineStore('strategic', () => {
           operatorDept: '战略发展部',
           action: 'approve',
           comment: '审批通过'
+        },
+        {
+          id: 'audit-101-3',
+          timestamp: new Date('2025-12-28'),
+          operator: 'zhangsan',
+          operatorName: '张老师',
+          operatorDept: '就业创业指导中心',
+          action: 'submit',
+          comment: '提交Q4进度更新，优质就业企业对接工作进展顺利',
+          previousProgress: 45,
+          newProgress: 55
         }
       ]
     },
@@ -152,7 +166,24 @@ export const useStrategicStore = defineStore('strategic', () => {
       responsiblePerson: '王主任',
       status: 'active',
       isStrategic: true,
-      ownerDept: '战略发展部'
+      ownerDept: '战略发展部',
+      year: 2025,
+      progressApprovalStatus: 'pending',
+      pendingProgress: 42,
+      pendingRemark: '已成功对接3家优质企业，计划下月组织校园宣讲会',
+      statusAudit: [
+        {
+          id: 'audit-103-1',
+          timestamp: new Date('2025-12-27'),
+          operator: 'wangzhu',
+          operatorName: '王主任',
+          operatorDept: '招生工作处',
+          action: 'submit',
+          comment: '提交进度更新，企业对接工作取得阶段性成果',
+          previousProgress: 30,
+          newProgress: 42
+        }
+      ]
     },
 
     // 二级指标：学院级（下发自职能部门）
@@ -960,7 +991,24 @@ export const useStrategicStore = defineStore('strategic', () => {
       responsiblePerson: '李书记',
       status: 'active',
       isStrategic: true,
-      ownerDept: '战略发展部'
+      ownerDept: '战略发展部',
+      year: 2025,
+      progressApprovalStatus: 'pending',
+      pendingProgress: 96,
+      pendingRemark: '本年度党员发展工作圆满完成，新发展党员质量优秀，培训考核全部达标',
+      statusAudit: [
+        {
+          id: 'audit-401-1',
+          timestamp: new Date('2025-12-29'),
+          operator: 'lishuji',
+          operatorName: '李书记',
+          operatorDept: '党委办公室 | 党委统战部',
+          action: 'submit',
+          comment: '提交年度党建工作进度，党员发展质量达标率已超目标',
+          previousProgress: 92,
+          newProgress: 96
+        }
+      ]
     },
     {
       id: '402',
@@ -986,7 +1034,24 @@ export const useStrategicStore = defineStore('strategic', () => {
       responsiblePerson: '李书记',
       status: 'active',
       isStrategic: true,
-      ownerDept: '战略发展部'
+      ownerDept: '战略发展部',
+      year: 2025,
+      progressApprovalStatus: 'pending',
+      pendingProgress: 92,
+      pendingRemark: '统战工作取得显著成效，民主党派联络机制已完善，各项活动顺利开展',
+      statusAudit: [
+        {
+          id: 'audit-402-1',
+          timestamp: new Date('2025-12-28'),
+          operator: 'lishuji',
+          operatorName: '李书记',
+          operatorDept: '党委办公室 | 党委统战部',
+          action: 'submit',
+          comment: '提交统战工作进度更新，覆盖率和联络机制建设均达标',
+          previousProgress: 85,
+          newProgress: 92
+        }
+      ]
     },
 
     // 纪委办公室 | 监察处
