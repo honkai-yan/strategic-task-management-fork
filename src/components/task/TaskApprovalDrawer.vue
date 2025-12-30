@@ -70,86 +70,113 @@ const allAuditLogs = computed(() => {
   )
 })
 
-// 驳回原因输入
-const rejectReasons = ref<Record<string, string>>({})
+// 统一驳回原因输入
+const batchRejectReason = ref('')
 
-// 审批通过
-const handleApprove = (indicator: StrategicIndicator) => {
+// 一键审批通过所有
+const handleBatchApprove = () => {
+  if (pendingApprovals.value.length === 0) {
+    ElMessage.warning('暂无待审批记录')
+    return
+  }
+
+  const count = pendingApprovals.value.length
+  const indicatorNames = pendingApprovals.value.map(i => i.name).join('、')
+
   ElMessageBox.confirm(
-    `确认审批通过？\n\n指标：${indicator.name}\n进度将从 ${indicator.progress}% 更新为 ${indicator.pendingProgress}%`,
-    '审批通过确认',
+    `确认一键审批通过所有待审批记录？\n\n共 ${count} 条记录：\n${indicatorNames}`,
+    '一键审批通过',
     {
       confirmButtonText: '确认通过',
       cancelButtonText: '取消',
       type: 'success',
     }
   ).then(() => {
-    // 更新指标进度
-    strategicStore.updateIndicator(indicator.id.toString(), {
-      progress: indicator.pendingProgress || indicator.progress,
-      progressApprovalStatus: 'approved',
-      pendingProgress: undefined,
-      pendingRemark: undefined,
-      pendingAttachments: undefined,
+    let successCount = 0
+
+    pendingApprovals.value.forEach((indicator) => {
+      // 更新指标进度
+      strategicStore.updateIndicator(indicator.id.toString(), {
+        progress: indicator.pendingProgress || indicator.progress,
+        progressApprovalStatus: 'approved',
+        pendingProgress: undefined,
+        pendingRemark: undefined,
+        pendingAttachments: undefined,
+      })
+
+      // 添加审计日志
+      strategicStore.addStatusAuditEntry(indicator.id.toString(), {
+        operator: authStore.userName || 'unknown',
+        operatorName: authStore.userName || '未知用户',
+        operatorDept: authStore.userDepartment || '战略发展部',
+        action: 'approve',
+        comment: '一键审批通过',
+        previousProgress: indicator.progress,
+        newProgress: indicator.pendingProgress || indicator.progress,
+        previousStatus: 'pending_approval',
+        newStatus: 'active',
+      })
+
+      successCount++
     })
 
-    // 添加审计日志
-    strategicStore.addStatusAuditEntry(indicator.id.toString(), {
-      operator: authStore.userName || 'unknown',
-      operatorName: authStore.userName || '未知用户',
-      operatorDept: authStore.userDepartment || '战略发展部',
-      action: 'approve',
-      comment: '审批通过',
-      previousProgress: indicator.progress,
-      newProgress: indicator.pendingProgress || indicator.progress,
-      previousStatus: 'pending_approval',
-      newStatus: 'active',
-    })
-
-    ElMessage.success('审批通过，进度已更新')
+    ElMessage.success(`已成功审批通过 ${successCount} 条记录`)
     emit('refresh')
   })
 }
 
-// 审批驳回
-const handleReject = (indicator: StrategicIndicator) => {
-  const reason = rejectReasons.value[indicator.id.toString()]
-  if (!reason || !reason.trim()) {
+// 一键驳回所有
+const handleBatchReject = () => {
+  if (pendingApprovals.value.length === 0) {
+    ElMessage.warning('暂无待审批记录')
+    return
+  }
+
+  if (!batchRejectReason.value || !batchRejectReason.value.trim()) {
     ElMessage.warning('请填写驳回原因')
     return
   }
 
+  const count = pendingApprovals.value.length
+  const indicatorNames = pendingApprovals.value.map(i => i.name).join('、')
+
   ElMessageBox.confirm(
-    `确认驳回该进度填报？\n\n指标：${indicator.name}\n驳回原因：${reason}`,
-    '审批驳回确认',
+    `确认一键驳回所有待审批记录？\n\n共 ${count} 条记录：\n${indicatorNames}\n\n驳回原因：${batchRejectReason.value}`,
+    '一键驳回',
     {
       confirmButtonText: '确认驳回',
       cancelButtonText: '取消',
       type: 'warning',
     }
   ).then(() => {
-    // 设置驳回状态
-    strategicStore.updateIndicator(indicator.id.toString(), {
-      progressApprovalStatus: 'rejected',
+    let successCount = 0
+
+    pendingApprovals.value.forEach((indicator) => {
+      // 设置驳回状态（保持原进度）
+      strategicStore.updateIndicator(indicator.id.toString(), {
+        progressApprovalStatus: 'rejected',
+      })
+
+      // 添加审计日志
+      strategicStore.addStatusAuditEntry(indicator.id.toString(), {
+        operator: authStore.userName || 'unknown',
+        operatorName: authStore.userName || '未知用户',
+        operatorDept: authStore.userDepartment || '战略发展部',
+        action: 'reject',
+        comment: batchRejectReason.value,
+        previousProgress: indicator.progress,
+        newProgress: indicator.pendingProgress || indicator.progress,
+        previousStatus: 'pending_approval',
+        newStatus: 'rejected',
+      })
+
+      successCount++
     })
 
-    // 添加审计日志
-    strategicStore.addStatusAuditEntry(indicator.id.toString(), {
-      operator: authStore.userName || 'unknown',
-      operatorName: authStore.userName || '未知用户',
-      operatorDept: authStore.userDepartment || '战略发展部',
-      action: 'reject',
-      comment: reason,
-      previousProgress: indicator.progress,
-      newProgress: indicator.pendingProgress || indicator.progress,
-      previousStatus: 'pending_approval',
-      newStatus: 'rejected',
-    })
+    // 清空驳回原因
+    batchRejectReason.value = ''
 
-    // 清空驳回原因输入
-    rejectReasons.value[indicator.id.toString()] = ''
-
-    ElMessage.info('已驳回该进度填报')
+    ElMessage.info(`已驳回 ${successCount} 条记录`)
     emit('refresh')
   })
 }
@@ -270,36 +297,39 @@ const handleClose = () => {
               <el-icon><ChatDotRound /></el-icon>
               <span>{{ indicator.pendingRemark }}</span>
             </div>
-
-            <!-- 驳回原因输入 -->
-            <el-input
-              v-model="rejectReasons[indicator.id.toString()]"
-              type="textarea"
-              :rows="2"
-              placeholder="请填写原因"
-              class="reject-input"
-            />
-
-            <!-- 操作按钮 -->
-            <div class="card-actions">
-              <el-button
-                type="success"
-                size="small"
-                :icon="Check"
-                @click="handleApprove(indicator)"
-              >
-                通过
-              </el-button>
-              <el-button
-                type="danger"
-                size="small"
-                :icon="Close"
-                @click="handleReject(indicator)"
-              >
-                驳回
-              </el-button>
-            </div>
           </div>
+        </div>
+
+        <!-- 统一驳回原因输入 -->
+        <div class="batch-reject-section">
+          <div class="reject-label">驳回原因（一键驳回时必填）：</div>
+          <el-input
+            v-model="batchRejectReason"
+            type="textarea"
+            :rows="3"
+            placeholder="请填写驳回原因，将应用于所有待审批记录..."
+            class="batch-reject-input"
+          />
+        </div>
+
+        <!-- 一键操作按钮 -->
+        <div class="batch-actions">
+          <el-button
+            type="success"
+            size="large"
+            :icon="Check"
+            @click="handleBatchApprove"
+          >
+            一键审批通过（{{ pendingApprovals.length }}条）
+          </el-button>
+          <el-button
+            type="danger"
+            size="large"
+            :icon="Close"
+            @click="handleBatchReject"
+          >
+            一键驳回（{{ pendingApprovals.length }}条）
+          </el-button>
         </div>
       </div>
 
@@ -579,14 +609,35 @@ const handleClose = () => {
   margin-top: 2px;
 }
 
-.reject-input {
-  margin-bottom: 12px;
+/* 统一驳回原因区域 */
+.batch-reject-section {
+  margin-top: 16px;
+  padding: 16px;
+  background: var(--bg-page, #f8fafc);
+  border-radius: 8px;
+  border: 1px solid var(--border-color, #e2e8f0);
 }
 
-.card-actions {
+.reject-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-main, #1e293b);
+  margin-bottom: 8px;
+}
+
+.batch-reject-input {
+  width: 100%;
+}
+
+/* 一键操作按钮 */
+.batch-actions {
   display: flex;
-  gap: 8px;
-  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.batch-actions .el-button {
+  flex: 1;
 }
 
 /* 审计日志区域 */
