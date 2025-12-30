@@ -87,6 +87,12 @@
   const currentTaskIndex = ref(0)
   const isAddingOrEditing = ref(false)
   
+  // 视图模式：table（表格视图）或 card（卡片视图）
+  const viewMode = ref<'table' | 'card'>('table')
+  
+  // 卡片视图当前指标索引
+  const currentIndicatorIndex = ref(0)
+  
   // 职能部门列表
   const functionalDepartments = [
     '党委办公室 | 党委统战部',
@@ -112,9 +118,88 @@
   // 选中的部门 - 默认选中第一个
   const selectedDepartment = ref(functionalDepartments[0])
   
+  // 计算当前选中部门的所有指标权重之和（用于下发验证）
+  // 只计算战略指标（isStrategic=true）且 responsibleDept 匹配的指标
+  const departmentTotalWeight = computed(() => {
+    if (!selectedDepartment.value) return 0
+    
+    const deptIndicators = strategicStore.indicators.filter(i => 
+      (!i.year || i.year === timeContext.currentYear) &&
+      i.isStrategic === true &&  // 只计算战略指标（一级指标）
+      i.responsibleDept === selectedDepartment.value  // 只看 responsibleDept
+    )
+    
+    // 计算权重之和
+    return deptIndicators.reduce((sum, i) => sum + (i.weight || 0), 0)
+  })
+
+  // 计算当前页面整体状态（基于所有指标）
+  const overallStatus = computed(() => {
+    const list = indicators.value
+    if (list.length === 0) return { label: '暂无指标', type: 'info' }
+    
+    const hasPending = list.some(i => i.progressApprovalStatus === 'pending')
+    const hasRejected = list.some(i => i.progressApprovalStatus === 'rejected')
+    const allDistributed = list.every(i => !i.canWithdraw)
+    const anyDistributed = list.some(i => !i.canWithdraw)
+    
+    if (hasPending) return { label: '待审批', type: 'warning' }
+    if (hasRejected) return { label: '有驳回', type: 'danger' }
+    if (allDistributed) return { label: '已下发', type: 'success' }
+    if (anyDistributed) return { label: '部分下发', type: 'info' }
+    return { label: '待下发', type: 'info' }
+  })
+
+  // 判断当前部门是否有指标已下发（用于控制下发/撤回按钮和编辑权限）
+  const hasDistributedIndicators = computed(() => {
+    return indicators.value.some(i => !i.canWithdraw)
+  })
+
+  // 判断是否可以编辑（未下发状态才能编辑）
+  const canEditIndicators = computed(() => {
+    if (isReadOnly.value) return false
+    if (!canEdit.value) return false
+    return !hasDistributedIndicators.value
+  })
+  
   // 表格引用和选中的指标
   const tableRef = ref<InstanceType<typeof ElTable>>()
   const selectedIndicators = ref<StrategicIndicator[]>([])
+  
+  // 当前指标（卡片视图用）
+  const currentIndicator = computed(() => {
+    const list = indicators.value
+    return list[currentIndicatorIndex.value] || null
+  })
+  
+  // 切换视图模式
+  const toggleViewMode = () => {
+    viewMode.value = viewMode.value === 'table' ? 'card' : 'table'
+    // 切换到卡片视图时，如果没有指标则重置索引
+    if (viewMode.value === 'card' && indicators.value.length === 0) {
+      currentIndicatorIndex.value = 0
+    }
+  }
+  
+  // 卡片视图导航
+  const goToPrevIndicator = () => {
+    if (currentIndicatorIndex.value > 0) {
+      currentIndicatorIndex.value--
+    }
+  }
+  
+  const goToNextIndicator = () => {
+    if (currentIndicatorIndex.value < indicators.value.length - 1) {
+      currentIndicatorIndex.value++
+    }
+  }
+  
+  // 跳转到指定指标
+  const goToIndicator = (index: number) => {
+    if (index >= 0 && index < indicators.value.length) {
+      currentIndicatorIndex.value = index
+    }
+  }
   
   // 从 Store 获取任务列表
   const taskList = computed(() => strategicStore.tasks.map(t => ({
@@ -141,11 +226,11 @@
       .filter(i => !i.year || i.year === timeContext.currentYear)
     
     // 根据选中的部门筛选指标
-    // 战略发展部视角：显示下发给该职能部门的指标（ownerDept 或 responsibleDept 匹配）
+    // 战略发展部视角：只显示下发给该职能部门的战略指标（responsibleDept 匹配且 isStrategic=true）
     if (selectedDepartment.value) {
       list = list.filter(i => 
-        i.responsibleDept === selectedDepartment.value || 
-        i.ownerDept === selectedDepartment.value
+        i.responsibleDept === selectedDepartment.value && 
+        i.isStrategic === true  // 只显示战略指标，不显示子指标
       )
     }
     
@@ -172,8 +257,9 @@
   const getSpanMethod = ({ row, column, rowIndex, columnIndex }: { row: any; column: any; rowIndex: number; columnIndex: number }) => {
     const dataList = indicators.value
   
-    // 战略任务列（第0列）和批量操作列（第7列）
-    if (columnIndex === 0 || columnIndex === 7) {
+    // 战略任务列（第0列）需要合并
+    // 列顺序: 0战略任务, 1核心指标, 2说明, 3权重, 4里程碑, 5进度, 6状态, 7操作
+    if (columnIndex === 0) {
       const currentTask = row.taskContent || '未关联任务'
   
       let startIndex = rowIndex
@@ -199,6 +285,84 @@
     const taskContent = row.taskContent || '未命名任务'
     const rows = indicators.value.filter(i => (i.taskContent || '未命名任务') === taskContent)
     return { taskContent, rows }
+  }
+
+  // 获取任务级别状态（基于同一战略任务下所有指标的状态）
+  const getTaskStatus = (row: StrategicIndicator) => {
+    const group = getTaskGroup(row)
+    const allDistributed = group.rows.every(r => !r.canWithdraw)
+    const anyDistributed = group.rows.some(r => !r.canWithdraw)
+    const hasPendingApproval = group.rows.some(r => r.progressApprovalStatus === 'pending')
+    
+    if (hasPendingApproval) {
+      return { label: '待审批', type: 'warning', canWithdraw: false }
+    }
+    if (allDistributed) {
+      return { label: '已下发', type: 'success', canWithdraw: false }
+    }
+    if (anyDistributed) {
+      return { label: '部分下发', type: 'info', canWithdraw: true }
+    }
+    return { label: '待下发', type: 'info', canWithdraw: true }
+  }
+
+  // 撤回整个任务（撤回同一战略任务下的所有指标）
+  const handleWithdrawTask = (row: StrategicIndicator) => {
+    const group = getTaskGroup(row)
+    const distributedRows = group.rows.filter(r => !r.canWithdraw)
+    
+    if (distributedRows.length === 0) {
+      ElMessage.warning('该任务下没有已下发的指标')
+      return
+    }
+    
+    ElMessageBox.confirm(
+      `确认撤回任务 "${group.taskContent}" 下的 ${distributedRows.length} 个已下发指标？`,
+      '撤回确认',
+      {
+        confirmButtonText: '确认撤回',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    ).then(() => {
+      distributedRows.forEach(r => {
+        strategicStore.updateIndicator(r.id.toString(), { canWithdraw: true })
+      })
+      ElMessage.success(`已成功撤回 ${distributedRows.length} 个指标`)
+      updateEditTime()
+    })
+  }
+
+  // 查看任务级别审计日志
+  const taskAuditLogVisible = ref(false)
+  const currentTaskAuditGroup = ref<{ taskContent: string; rows: StrategicIndicator[] } | null>(null)
+  
+  const handleViewTaskAuditLog = (row: StrategicIndicator) => {
+    currentTaskAuditGroup.value = getTaskGroup(row)
+    taskAuditLogVisible.value = true
+  }
+
+  // 查看里程碑
+  const milestoneDrawerVisible = ref(false)
+  const currentMilestoneIndicator = ref<StrategicIndicator | null>(null)
+  
+  const handleViewMilestones = (row: StrategicIndicator) => {
+    currentMilestoneIndicator.value = row
+    milestoneDrawerVisible.value = true
+  }
+
+  // 格式化更新时间
+  const formatUpdateTime = (time: string | Date | undefined) => {
+    if (!time) return '-'
+    const date = new Date(time)
+    return `${date.getMonth() + 1}/${date.getDate()}`
+  }
+
+  // 获取进度数字的样式类
+  const getProgressClass = (progress: number) => {
+    if (progress >= 80) return 'progress-success'
+    if (progress >= 50) return 'progress-warning'
+    return 'progress-danger'
   }
   
   // 按类别筛选指标
@@ -370,6 +534,8 @@
   // 指标双击编辑
   const handleIndicatorDblClick = (row: StrategicIndicator, field: string) => {
     if (!canEdit.value) return
+    // 已下发状态下不允许编辑
+    if (hasDistributedIndicators.value) return
     editingIndicatorId.value = row.id
     editingIndicatorField.value = field
     editingIndicatorValue.value = row[field as keyof StrategicIndicator]
@@ -938,6 +1104,31 @@
       updateEditTime()
     })
   }
+
+  // 全部撤回（撤回当前界面所有已下发的指标）
+  const handleWithdrawAll = () => {
+    const distributedRows = indicators.value.filter(r => !r.canWithdraw)
+    if (distributedRows.length === 0) {
+      ElMessage.warning('当前没有已下发的指标')
+      return
+    }
+    
+    ElMessageBox.confirm(
+      `确认撤回当前部门的全部 ${distributedRows.length} 个已下发指标？`,
+      '全部撤回确认',
+      {
+        confirmButtonText: '确认撤回',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    ).then(() => {
+      distributedRows.forEach(row => {
+        strategicStore.updateIndicator(row.id.toString(), { canWithdraw: true })
+      })
+      ElMessage.success(`已成功撤回 ${distributedRows.length} 个指标`)
+      updateEditTime()
+    })
+  }
   
   // 按任务整体下发（复用下发弹窗）
   const handleBatchDistributeByTask = (group: { taskContent: string; rows: StrategicIndicator[] }) => {
@@ -1107,7 +1298,7 @@
       <!-- 展开箭头独立于侧边栏 - 使用SVG图标 -->
       <div class="sidebar-toggle">
         <svg class="toggle-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M9 6L15 12L9 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M9 6L15 12L9 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
         </svg>
         <span class="toggle-hint">{{ selectedDepartment || '部门' }}</span>
       </div>
@@ -1122,20 +1313,59 @@
         <!-- Excel工具栏 -->
         <div class="excel-toolbar">
           <div class="toolbar-left">
-            <el-button type="primary" size="small" :disabled="isReadOnly" @click.stop="addNewRow">
+            <el-button type="primary" size="small" :disabled="isReadOnly || hasDistributedIndicators" @click.stop="addNewRow">
               <el-icon><Plus /></el-icon>
               新增行
             </el-button>
-            <el-button type="success" size="small" :disabled="isReadOnly" @click.stop="handleDistributeAll">
-              <el-icon><Promotion /></el-icon>
-              下发
+            <!-- 下发/撤回合并按钮 -->
+            <el-button 
+              :type="hasDistributedIndicators ? 'warning' : 'success'" 
+              size="small" 
+              :disabled="isReadOnly" 
+              @click.stop="hasDistributedIndicators ? handleWithdrawAll() : handleDistributeAll()"
+            >
+              <el-icon><component :is="hasDistributedIndicators ? RefreshLeft : Promotion" /></el-icon>
+              {{ hasDistributedIndicators ? '撤回' : '下发' }}
             </el-button>
             <el-button size="small">
               <el-icon><Download /></el-icon>
               导出
             </el-button>
+            <!-- 视图切换按钮 -->
+            <el-button-group style="margin-left: 16px;">
+              <el-button 
+                :type="viewMode === 'table' ? 'primary' : ''" 
+                size="small" 
+                @click="viewMode = 'table'"
+              >
+                <el-icon><View /></el-icon>
+                表格视图
+              </el-button>
+              <el-button 
+                :type="viewMode === 'card' ? 'primary' : ''" 
+                size="small" 
+                @click="viewMode = 'card'"
+              >
+                <el-icon><View /></el-icon>
+                卡片视图
+              </el-button>
+            </el-button-group>
           </div>
           <div class="toolbar-right">
+            <el-tag 
+              :type="overallStatus.type" 
+              size="small" 
+              style="margin-right: 12px;"
+            >
+              状态: {{ overallStatus.label }}
+            </el-tag>
+            <el-tag 
+              :type="departmentTotalWeight === 100 ? 'success' : 'danger'" 
+              size="small" 
+              style="margin-right: 12px;"
+            >
+              权重合计: {{ departmentTotalWeight }} / 100
+            </el-tag>
             <el-tag v-if="isReadOnly" type="warning" size="small" style="margin-right: 12px;">
               历史快照 (只读)
             </el-tag>
@@ -1145,7 +1375,8 @@
   
         <!-- Excel表格 -->
         <div class="excel-table-wrapper">
-          <div class="table-container">
+          <!-- 表格视图 -->
+          <div v-if="viewMode === 'table'" class="table-container">
             <el-table
               ref="tableRef"
               :data="indicators"
@@ -1156,8 +1387,8 @@
               class="unified-table"
             >
 
-              <el-table-column prop="taskContent" label="战略任务" width="150">
-                <template #default="{ row }">
+              <el-table-column prop="taskContent" label="战略任务" width="180">
+                <template #default="{ row, $index }">
                   <div class="task-cell-wrapper">
                     <div class="indicator-name-cell" @dblclick="handleIndicatorDblClick(row, 'taskContent')">
                       <el-input
@@ -1176,9 +1407,10 @@
                         >{{ row.taskContent || '未关联任务' }}</span>
                       </el-tooltip>
                     </div>
+
                     <!-- 右下角新增指标三角形按钮 -->
                     <div 
-                      v-if="!isReadOnly && row.canWithdraw" 
+                      v-if="!isReadOnly && getTaskStatus(row).canWithdraw" 
                       class="add-indicator-trigger"
                       @click="handleAddIndicatorToTask(row)"
                     >
@@ -1199,18 +1431,20 @@
                       @blur="saveIndicatorEdit(row, 'name')"
                     />
                     <template v-else>
-                      <el-tooltip v-if="row.name && row.type1" :content="row.type1 === '定性' ? '定性指标' : '定量指标'" placement="top">
-                        <span
-                          class="indicator-name-text"
-                          :class="row.type1 === '定性' ? 'indicator-qualitative' : 'indicator-quantitative'"
-                        >{{ row.name }}</span>
-                      </el-tooltip>
-                      <span v-else class="indicator-name-text placeholder-text">双击编辑指标，如：党员发展质量达标率95%以上</span>
+                      <template v-if="row.name">
+                        <el-tooltip :content="row.type1 === '定性' ? '定性指标' : (row.type1 === '定量' ? '定量指标' : '未设置类型')" placement="top">
+                          <span
+                            class="indicator-name-text"
+                            :class="row.type1 === '定性' ? 'indicator-qualitative' : (row.type1 === '定量' ? 'indicator-quantitative' : '')"
+                          >{{ row.name }}</span>
+                        </el-tooltip>
+                      </template>
+                      <span v-else class="indicator-name-text placeholder-text">双击编辑指标</span>
                     </template>
                   </div>
                 </template>
               </el-table-column>
-              <el-table-column prop="remark" label="说明" width="130">
+              <el-table-column prop="remark" label="备注" width="130">
                 <template #default="{ row }">
                   <div class="indicator-name-cell" @dblclick="handleIndicatorDblClick(row, 'remark')">
                     <el-input
@@ -1226,25 +1460,24 @@
                   </div>
                 </template>
               </el-table-column>
-                <el-table-column prop="weight" label="权重" width="90" align="center">
+                <el-table-column prop="weight" label="权重" width="80" align="center">
                   <template #default="{ row }">
-                    <span @dblclick="handleIndicatorDblClick(row, 'weight')">
-                      <el-input-number
+                    <div class="weight-cell" @dblclick="handleIndicatorDblClick(row, 'weight')">
+                      <el-input
                         v-if="editingIndicatorId === row.id && editingIndicatorField === 'weight'"
                         v-model="editingIndicatorValue"
                         v-focus
                         size="small"
-                        :controls="false"
                         style="width: 50px"
                         @blur="saveIndicatorEdit(row, 'weight')"
                         @keyup.enter="saveIndicatorEdit(row, 'weight')"
                       />
-                      <span v-else>{{ row.weight }}</span>
-                    </span>
+                      <span v-else class="weight-text">{{ row.weight }}</span>
+                    </div>
                   </template>
                 </el-table-column>
                 <!-- 目标进度列 -->
-                <el-table-column label="目标进度" width="110" align="center">
+                <el-table-column label="里程碑" width="120" align="center">
                   <template #default="{ row }">
                     <el-popover
                       placement="left"
@@ -1282,45 +1515,30 @@
                     </el-popover>
                   </template>
                 </el-table-column>
-                <el-table-column prop="progress" label="进度" width="100" align="center">
+                <el-table-column prop="progress" label="进度" width="100" align="center" class-name="no-ellipsis">
                   <template #default="{ row }">
-                    <span @dblclick="handleIndicatorDblClick(row, 'progress')">
-                      <el-input-number
+                    <div class="progress-cell" @dblclick="handleIndicatorDblClick(row, 'progress')">
+                      <el-input
                         v-if="editingIndicatorId === row.id && editingIndicatorField === 'progress'"
                         v-model="editingIndicatorValue"
                         v-focus
                         size="small"
-                        :min="0"
-                        :max="100"
-                        :controls="false"
                         style="width: 50px"
                         @blur="saveIndicatorEdit(row, 'progress')"
                         @keyup.enter="saveIndicatorEdit(row, 'progress')"
                       />
                       <el-tooltip v-else :content="`当前进度: ${row.progress || 0}%`" placement="top">
-                      <el-progress
-                        :percentage="row.progress || 0"
-                        :stroke-width="8"
-                        :color="getProgressColor(row)"
-                        :show-text="false"
-                        style="width: 80px;"
-                      />
-                    </el-tooltip>
-                  </span>
-                </template>
-              </el-table-column>
-              <el-table-column prop="status" label="状态" width="85" align="center">
-                <template #default="{ row }">
-                  <div class="status-cell">
-                    <!-- 优先显示进度审批状态 -->
-                    <el-tag v-if="row.progressApprovalStatus === 'pending'" type="warning" size="small">待审批</el-tag>
-                    <el-tag v-else-if="row.progressApprovalStatus === 'rejected'" type="danger" size="small">已驳回</el-tag>
-                    <el-tag v-else :type="row.canWithdraw ? 'info' : 'success'" size="small">
-                      {{ row.canWithdraw ? '待下发' : '已下发' }}
-                    </el-tag>
-                  </div>
-                </template>
-              </el-table-column>
+                        <el-progress
+                          :percentage="row.progress || 0"
+                          :stroke-width="10"
+                          :color="getProgressColor(row)"
+                          :show-text="false"
+                          class="progress-bar-inline"
+                        />
+                      </el-tooltip>
+                    </div>
+                  </template>
+                </el-table-column>
               <el-table-column label="操作" width="120" align="center">
                 <template #default="{ row }">
                   <div class="action-buttons-inline">
@@ -1337,34 +1555,211 @@
                   </div>
                 </template>
               </el-table-column>
-              <el-table-column label="批量" width="120" align="center" class-name="batch-column">
-                <template #default="{ row }">
-                  <div class="batch-buttons"> 
-                    <el-button 
-                      v-if="getTaskGroup(row).rows.some(r => r.canWithdraw)" 
-                      type="primary" 
-                      size="small" 
-                      :disabled="isReadOnly" 
-                      @click="handleBatchDistributeByTask(getTaskGroup(row))"
-                    >下发</el-button>
-                    <el-button 
-                      v-if="getTaskGroup(row).rows.some(r => !r.canWithdraw)" 
-                      type="warning" 
-                      size="small" 
-                      :disabled="isReadOnly" 
-                      @click="handleBatchWithdrawByTask(getTaskGroup(row))"
-                    >撤回</el-button>
-                    <el-button 
-                      v-if="getTaskGroup(row).rows.every(r => r.canWithdraw)"
-                      type="danger" 
-                      size="small" 
-                      :disabled="isReadOnly" 
-                      @click="handleBatchDeleteByTask(getTaskGroup(row))"
-                    >删除</el-button>
-                  </div>
-                </template>
-              </el-table-column>
             </el-table>
+          </div>
+
+          <!-- 卡片视图 -->
+          <div v-else-if="viewMode === 'card'" class="card-container">
+            <!-- 卡片导航栏 -->
+            <div v-if="indicators.length > 0" class="card-navigation">
+              <div class="nav-left">
+                <el-button 
+                  :disabled="currentIndicatorIndex === 0" 
+                  @click="goToPrevIndicator"
+                  size="small"
+                >
+                  <el-icon><ArrowDown style="transform: rotate(90deg)" /></el-icon>
+                  上一个
+                </el-button>
+                <span class="nav-info">
+                  {{ currentIndicatorIndex + 1 }} / {{ indicators.length }}
+                </span>
+                <el-button 
+                  :disabled="currentIndicatorIndex === indicators.length - 1" 
+                  @click="goToNextIndicator"
+                  size="small"
+                >
+                  下一个
+                  <el-icon><ArrowDown style="transform: rotate(-90deg)" /></el-icon>
+                </el-button>
+              </div>
+              <div class="nav-right">
+                <el-select 
+                  v-model="currentIndicatorIndex" 
+                  placeholder="快速跳转" 
+                  size="small"
+                  style="width: 200px"
+                >
+                  <el-option
+                    v-for="(indicator, index) in indicators"
+                    :key="indicator.id"
+                    :label="`${index + 1}. ${indicator.name || '未命名指标'}`"
+                    :value="index"
+                  />
+                </el-select>
+              </div>
+            </div>
+
+            <!-- 指标卡片 -->
+            <div v-if="currentIndicator" class="indicator-card">
+              <!-- 卡片头部 -->
+              <div class="card-header">
+                <div class="card-title-section">
+                  <h3 class="card-title">{{ currentIndicator.name || '未命名指标' }}</h3>
+                  <div class="card-tags">
+                    <el-tag 
+                      size="small" 
+                      :type="currentIndicator.type1 === '定量' ? 'primary' : 'warning'"
+                    >
+                      {{ currentIndicator.type1 }}
+                    </el-tag>
+                    <el-tag 
+                      size="small" 
+                      :style="{ backgroundColor: getCategoryColor(currentIndicator.type2), color: '#fff', border: 'none' }"
+                    >
+                      {{ currentIndicator.type2 }}任务
+                    </el-tag>
+                    <el-tag 
+                      size="small" 
+                      :type="currentIndicator.canWithdraw ? 'info' : 'success'"
+                    >
+                      {{ currentIndicator.canWithdraw ? '待下发' : '已下发' }}
+                    </el-tag>
+                    <!-- 进度审批状态标签 -->
+                    <el-tag v-if="currentIndicator.progressApprovalStatus === 'pending'" type="warning" size="small">
+                      待审批
+                    </el-tag>
+                    <el-tag v-else-if="currentIndicator.progressApprovalStatus === 'rejected'" type="danger" size="small">
+                      已驳回
+                    </el-tag>
+                  </div>
+                </div>
+                <div class="card-actions">
+                  <el-button type="primary" size="small" @click="handleViewDetail(currentIndicator)">
+                    <el-icon><View /></el-icon>
+                    详情
+                  </el-button>
+                  <el-button 
+                    v-if="currentIndicator.progressApprovalStatus === 'pending' && !isReadOnly" 
+                    type="success" 
+                    size="small" 
+                    @click="handleOpenApprovalDialog(currentIndicator)"
+                  >
+                    <el-icon><Check /></el-icon>
+                    审批
+                  </el-button>
+                  <el-button 
+                    v-if="currentIndicator.canWithdraw && !isReadOnly" 
+                    type="danger" 
+                    size="small" 
+                    @click="handleDeleteIndicator(currentIndicator)"
+                  >
+                    <el-icon><Delete /></el-icon>
+                    删除
+                  </el-button>
+                </div>
+              </div>
+
+              <!-- 卡片内容 -->
+              <div class="card-content">
+                <!-- 基础信息 -->
+                <div class="info-section">
+                  <h4 class="section-title">基础信息</h4>
+                  <div class="info-grid">
+                    <div class="info-item">
+                      <span class="info-label">战略任务：</span>
+                      <span class="info-value">{{ currentIndicator.taskContent || '未关联任务' }}</span>
+                    </div>
+                    <div class="info-item">
+                      <span class="info-label">权重：</span>
+                      <span class="info-value">{{ currentIndicator.weight }}</span>
+                    </div>
+                    <div class="info-item">
+                      <span class="info-label">责任部门：</span>
+                      <span class="info-value">{{ currentIndicator.responsibleDept }}</span>
+                    </div>
+                    <div class="info-item">
+                      <span class="info-label">责任人：</span>
+                      <span class="info-value">{{ currentIndicator.responsiblePerson }}</span>
+                    </div>
+                    <div class="info-item full-width">
+                      <span class="info-label">说明：</span>
+                      <span class="info-value">{{ currentIndicator.remark || '无说明' }}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 进度信息 -->
+                <div class="progress-section">
+                  <h4 class="section-title">进度信息</h4>
+                  <div class="progress-display">
+                    <div class="progress-main">
+                      <div class="progress-text">
+                        <span class="current-progress">{{ currentIndicator.progress || 0 }}%</span>
+                        <span class="progress-label">当前进度</span>
+                      </div>
+                      <el-progress
+                        :percentage="currentIndicator.progress || 0"
+                        :stroke-width="12"
+                        :color="getProgressColor(currentIndicator)"
+                        class="progress-bar"
+                      />
+                    </div>
+                    <!-- 待审批进度显示 -->
+                    <div v-if="currentIndicator.pendingProgress !== undefined" class="pending-progress">
+                      <div class="pending-info">
+                        <span class="pending-label">申请进度：</span>
+                        <span class="pending-value">{{ currentIndicator.pendingProgress }}%</span>
+                        <span class="progress-change">
+                          ({{ currentIndicator.pendingProgress - (currentIndicator.progress || 0) > 0 ? '+' : '' }}{{ currentIndicator.pendingProgress - (currentIndicator.progress || 0) }}%)
+                        </span>
+                      </div>
+                      <div v-if="currentIndicator.pendingRemark" class="pending-remark">
+                        <span class="remark-label">填报说明：</span>
+                        <span class="remark-text">{{ currentIndicator.pendingRemark }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 里程碑信息 -->
+                <div v-if="currentIndicator.milestones && currentIndicator.milestones.length > 0" class="milestone-section">
+                  <h4 class="section-title">里程碑节点</h4>
+                  <div class="milestone-list">
+                    <div 
+                      v-for="(milestone, index) in currentIndicator.milestones" 
+                      :key="milestone.id"
+                      class="milestone-item-card"
+                    >
+                      <div class="milestone-header">
+                        <span class="milestone-index">{{ index + 1 }}.</span>
+                        <span class="milestone-name">{{ milestone.name }}</span>
+                        <el-tag 
+                          size="small" 
+                          :type="milestone.status === 'completed' ? 'success' : milestone.status === 'overdue' ? 'danger' : 'warning'"
+                        >
+                          {{ milestone.status === 'completed' ? '已完成' : milestone.status === 'overdue' ? '已逾期' : '进行中' }}
+                        </el-tag>
+                      </div>
+                      <div class="milestone-details">
+                        <span class="milestone-progress">目标进度: {{ milestone.targetProgress }}%</span>
+                        <span class="milestone-deadline">截止日期: {{ milestone.deadline }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 空状态 -->
+            <div v-else class="empty-state">
+              <el-empty description="当前部门暂无指标数据" :image-size="120">
+                <el-button v-if="!isReadOnly" type="primary" @click="addNewRow">
+                  <el-icon><Plus /></el-icon>
+                  新增指标
+                </el-button>
+              </el-empty>
+            </div>
           </div>
   
           <!-- 新增行表单 -->
@@ -1881,6 +2276,7 @@
     height: 18px;
     transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
     flex-shrink: 0;
+    color: #fff;
   }
 
   .toggle-hint {
@@ -2704,7 +3100,11 @@
     padding: 8px 12px;
     background: var(--bg-white);
     border-radius: var(--radius-sm);
-    border: 1px solid var(--border-color);
+    border-bottom: 1px dashed var(--border-light, #e2e8f0);
+  }
+
+  .milestone-item:last-child {
+    border-bottom: none;
   }
 
   .milestone-hint {
@@ -3024,17 +3424,58 @@
      进度条样式 - 统一进度条规范
      Requirements: 10.1, 10.2
      ======================================== */
+  
+  /* 进度编辑单元格容器 */
+  .progress-edit-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: 4px 0;
+  }
+
+  /* 进度条样式 - 深色背景 */
+  .progress-bar-dark {
+    width: 80px;
+    cursor: pointer;
+  }
+
+  /* 进度条未完成部分背景色改深 */
+  .progress-bar-dark :deep(.el-progress-bar__outer) {
+    background-color: #c8c4c4ff !important;
+  }
+
+  /* 权重单元格样式 */
+  .weight-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+  }
+
+  .weight-text {
+    font-weight: 500;
+    color: var(--text-main);
+    white-space: nowrap;
+  }
+
+  /* 进度单元格样式 */
   .progress-cell {
     display: flex;
     align-items: center;
-    gap: var(--spacing-sm);
     justify-content: center;
+    width: 100%;
+  }
+
+  .progress-bar-inline {
+    width: 100%;
   }
   
   .progress-text {
     font-size: 12px;
     color: var(--text-regular);
-    min-width: 35px;
+    min-width: 32px;
+    text-align: right;
   }
   
   /* ========================================
@@ -3351,6 +3792,7 @@
     font-size: 12px;
     color: var(--color-qualitative, #9333ea);
     font-weight: 500;
+    white-space: nowrap;
   }
 
   /* 里程碑弹出层 */
@@ -3369,11 +3811,9 @@
 
   .milestone-item {
     padding: 8px 0;
-    border-bottom: 1px dashed var(--border-light, #f1f5f9);
   }
 
   .milestone-item:last-child {
-    border-bottom: none;
   }
 
   .milestone-item-header {
@@ -3408,5 +3848,332 @@
     color: var(--text-placeholder, #94a3b8);
     text-align: center;
     padding: 12px 0;
+  }
+
+  /* ========================================
+     卡片视图样式
+     ======================================== */
+  .card-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* 卡片导航栏 */
+  .card-navigation {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-lg);
+    border-bottom: 1px solid var(--border-color);
+    background: var(--bg-light);
+  }
+
+  .nav-left {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+  }
+
+  .nav-info {
+    font-size: 14px;
+    color: var(--text-regular);
+    font-weight: 500;
+    padding: 0 var(--spacing-md);
+  }
+
+  .nav-right {
+    display: flex;
+    align-items: center;
+  }
+
+  /* 指标卡片 */
+  .indicator-card {
+    flex: 1;
+    margin: var(--spacing-lg);
+    background: var(--bg-white);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-card);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* 卡片头部 */
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: var(--spacing-xl);
+    background: linear-gradient(135deg, var(--bg-blue-light) 0%, rgba(64, 158, 255, 0.1) 100%);
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .card-title-section {
+    flex: 1;
+  }
+
+  .card-title {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text-main);
+    margin: 0 0 var(--spacing-md) 0;
+    line-height: 1.4;
+  }
+
+  .card-tags {
+    display: flex;
+    gap: var(--spacing-sm);
+    flex-wrap: wrap;
+  }
+
+  .card-actions {
+    display: flex;
+    gap: var(--spacing-sm);
+    flex-shrink: 0;
+  }
+
+  /* 卡片内容 */
+  .card-content {
+    flex: 1;
+    padding: var(--spacing-xl);
+    overflow-y: auto;
+  }
+
+  /* 信息区块 */
+  .info-section,
+  .progress-section,
+  .milestone-section {
+    margin-bottom: var(--spacing-2xl);
+  }
+
+  .info-section:last-child,
+  .progress-section:last-child,
+  .milestone-section:last-child {
+    margin-bottom: 0;
+  }
+
+  .section-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-main);
+    margin: 0 0 var(--spacing-lg) 0;
+    padding-bottom: var(--spacing-sm);
+    border-bottom: 2px solid var(--color-primary);
+    display: inline-block;
+  }
+
+  /* 信息网格 */
+  .info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-lg);
+  }
+
+  .info-item {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--spacing-sm);
+  }
+
+  .info-item.full-width {
+    grid-column: 1 / -1;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+  }
+
+  .info-label {
+    font-size: 14px;
+    color: var(--text-secondary);
+    min-width: 80px;
+    flex-shrink: 0;
+  }
+
+  .info-value {
+    font-size: 14px;
+    color: var(--text-main);
+    line-height: 1.5;
+    word-break: break-word;
+  }
+
+  /* 进度显示 */
+  .progress-display {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+  }
+
+  .progress-main {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xl);
+    padding: var(--spacing-lg);
+    background: var(--bg-page);
+    border-radius: var(--radius-md);
+  }
+
+  .progress-text {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 100px;
+  }
+
+  .current-progress {
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--color-primary);
+    line-height: 1;
+  }
+
+  .progress-label {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-top: var(--spacing-xs);
+  }
+
+  .progress-bar {
+    flex: 1;
+  }
+
+  /* 待审批进度 */
+  .pending-progress {
+    padding: var(--spacing-lg);
+    background: rgba(255, 193, 7, 0.1);
+    border-radius: var(--radius-md);
+    border-left: 4px solid var(--color-warning);
+  }
+
+  .pending-info {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-sm);
+  }
+
+  .pending-label {
+    font-size: 14px;
+    color: var(--text-secondary);
+  }
+
+  .pending-value {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--color-warning);
+  }
+
+  .progress-change {
+    font-size: 13px;
+    color: var(--color-success);
+  }
+
+  .pending-remark {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+  }
+
+  .remark-label {
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+
+  .remark-text {
+    font-size: 14px;
+    color: var(--text-regular);
+    line-height: 1.5;
+    white-space: pre-wrap;
+  }
+
+  /* 里程碑列表 */
+  .milestone-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+  }
+
+  .milestone-item-card {
+    padding: var(--spacing-lg);
+    background: var(--bg-page);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+    transition: box-shadow var(--transition-fast);
+  }
+
+  .milestone-item-card:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  .milestone-header {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-sm);
+  }
+
+  .milestone-index {
+    font-size: 14px;
+    color: var(--text-placeholder);
+    font-weight: 600;
+    min-width: 24px;
+  }
+
+  .milestone-name {
+    font-size: 15px;
+    color: var(--text-main);
+    font-weight: 500;
+    flex: 1;
+  }
+
+  .milestone-details {
+    display: flex;
+    gap: var(--spacing-xl);
+    font-size: 13px;
+    color: var(--text-secondary);
+    padding-left: 32px;
+  }
+
+  .milestone-progress,
+  .milestone-deadline {
+    display: flex;
+    align-items: center;
+  }
+
+  /* 空状态 */
+  .empty-state {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-2xl);
+  }
+
+  /* 响应式调整 */
+  @media (max-width: 768px) {
+    .card-navigation {
+      flex-direction: column;
+      gap: var(--spacing-md);
+      align-items: stretch;
+    }
+
+    .nav-left {
+      justify-content: center;
+    }
+
+    .info-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .progress-main {
+      flex-direction: column;
+      text-align: center;
+    }
+
+    .milestone-details {
+      flex-direction: column;
+      gap: var(--spacing-sm);
+    }
   }
   </style>

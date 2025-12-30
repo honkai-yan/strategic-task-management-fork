@@ -134,7 +134,8 @@ const currentTask = computed(() => taskList.value[currentTaskIndex.value] || {
 const indicators = computed(() => {
   let list = strategicStore.indicators.map(i => ({
     ...i,
-    id: Number(i.id)
+    // 保持 id 为字符串类型，避免 "301-1" 这样的 id 转换成 NaN
+    id: String(i.id)
   }))
 
   // 按当前年份过滤
@@ -761,14 +762,39 @@ const reportForm = ref({
   attachments: [] as string[]
 })
 
+// 计算离当前最近的里程碑（未完成且截止日期最近的）
+const nearestMilestone = computed(() => {
+  if (!currentReportIndicator.value?.milestones?.length) return null
+  
+  const now = new Date()
+  const pendingMilestones = currentReportIndicator.value.milestones
+    .filter(m => m.status !== 'completed')
+    .map(m => ({
+      ...m,
+      deadlineDate: new Date(m.deadline)
+    }))
+    .sort((a, b) => a.deadlineDate.getTime() - b.deadlineDate.getTime())
+  
+  // 返回最近的未完成里程碑
+  return pendingMilestones[0] || null
+})
+
+// 格式化里程碑日期
+const formatMilestoneDate = (deadline: string) => {
+  if (!deadline) return ''
+  const date = new Date(deadline)
+  return `${date.getMonth() + 1}月${date.getDate()}日`
+}
+
 // 打开填报弹窗
 const handleOpenReportDialog = (row: StrategicIndicator) => {
   currentReportIndicator.value = row
-  // 初始化表单，新进度默认为当前进度
+  // 如果已有保存的填报数据，则加载之前的数据；否则使用当前进度
+  const hasPendingData = row.pendingProgress !== undefined && row.pendingProgress !== null
   reportForm.value = {
-    newProgress: row.progress || 0,
-    remark: '',
-    attachments: []
+    newProgress: hasPendingData ? row.pendingProgress : (row.progress || 0),
+    remark: row.pendingRemark || '',
+    attachments: row.pendingAttachments || []
   }
   reportDialogVisible.value = true
 }
@@ -822,6 +848,40 @@ const submitProgressReport = () => {
 }
 
 
+// 检查指标是否已填报（有待提交的进度数据或状态为draft/pending）
+const isIndicatorFilled = (row: StrategicIndicator): boolean => {
+  // 状态为 draft 或 pending 表示已填报
+  if (row.progressApprovalStatus === 'draft' || row.progressApprovalStatus === 'pending') {
+    return true
+  }
+  // 有待提交的进度数据（包括0）也表示已填报
+  if (row.pendingProgress !== undefined && row.pendingProgress !== null) {
+    return true
+  }
+  // 有待提交的备注也表示已填报
+  if (row.pendingRemark && row.pendingRemark.trim()) {
+    return true
+  }
+  return false
+}
+
+// 检查所有指标是否都已填报
+const allIndicatorsFilled = computed(() => {
+  if (indicators.value.length === 0) return false
+  return indicators.value.every(row => isIndicatorFilled(row))
+})
+
+// 检查是否所有指标都已提交（待审批状态）
+const allIndicatorsSubmitted = computed(() => {
+  if (indicators.value.length === 0) return false
+  return indicators.value.every(row => row.progressApprovalStatus === 'pending')
+})
+
+// 获取未填报的指标数量
+const unfilledIndicatorsCount = computed(() => {
+  return indicators.value.filter(row => !isIndicatorFilled(row)).length
+})
+
 // 一键提交所有指标（职能部门/二级学院专用）
 const handleSubmitAll = () => {
   if (indicators.value.length === 0) {
@@ -829,10 +889,17 @@ const handleSubmitAll = () => {
     return
   }
 
+  // 检查是否所有指标都已填报
+  if (!allIndicatorsFilled.value) {
+    const unfilled = unfilledIndicatorsCount.value
+    ElMessage.warning(`还有 ${unfilled} 个指标未填报，请先完成所有指标的填报后再进行一键提交`)
+    return
+  }
+
   const indicatorNames = indicators.value.map(ind => ind.name).join('、')
 
   ElMessageBox.confirm(
-    `确认一键提交所有 ${indicators.value.length} 个指标？\n\n${indicatorNames}\n\n注意：这将提交所有指标的当前进度数据。`,
+    `确认一键提交所有 ${indicators.value.length} 个指标？\n\n${indicatorNames}\n\n注意：提交后将无法修改，需等待上级部门审批。`,
     '一键提交确认',
     {
       confirmButtonText: '确定提交',
@@ -865,6 +932,48 @@ const handleSubmitAll = () => {
     })
 
     ElMessage.success(`成功提交所有${indicators.value.length}项指标进度`)
+  })
+}
+
+// 一键撤回所有已提交的指标
+const handleWithdrawAll = () => {
+  const pendingRows = indicators.value.filter(r => r.progressApprovalStatus === 'pending')
+  
+  if (pendingRows.length === 0) {
+    ElMessage.warning('没有待审批的指标可撤回')
+    return
+  }
+
+  const indicatorNames = pendingRows.map(ind => ind.name).join('、')
+
+  ElMessageBox.confirm(
+    `确认一键撤回所有 ${pendingRows.length} 个已提交的指标？\n\n${indicatorNames}\n\n撤回后可重新编辑填报内容。`,
+    '一键撤回确认',
+    {
+      confirmButtonText: '确定撤回',
+      cancelButtonText: '取消',
+      type: 'warning'
+    }
+  ).then(() => {
+    pendingRows.forEach(row => {
+      // 撤回：将状态改回 draft，保留填报数据供修改
+      strategicStore.updateIndicator(row.id.toString(), {
+        progressApprovalStatus: 'draft'
+      })
+
+      // 添加审计日志
+      strategicStore.addStatusAuditEntry(row.id.toString(), {
+        operator: authStore.userName || 'unknown',
+        operatorName: authStore.userName || '未知用户',
+        operatorDept: authStore.userDepartment || '未知部门',
+        action: 'revoke',
+        comment: '一键撤回所有指标进度',
+        previousStatus: 'pending',
+        newStatus: 'draft'
+      })
+    })
+
+    ElMessage.success(`成功撤回${pendingRows.length}项指标提交`)
   })
 }
 </script>
@@ -922,19 +1031,32 @@ const handleSubmitAll = () => {
             <span class="indicator-count">共 {{ indicators.length }} 条记录</span>
             <!-- 职能部门/二级学院的批量操作按钮 -->
             <template v-if="!isStrategicDept">
-              <!-- 一键提交所有指标 -->
+              <!-- 一键提交按钮（所有指标都已填报且未全部提交时显示） -->
               <el-button 
+                v-if="!allIndicatorsSubmitted"
                 type="primary" 
                 size="small" 
-                :disabled="timeContext.isReadOnly || indicators.length === 0"
+                :disabled="timeContext.isReadOnly || indicators.length === 0 || !allIndicatorsFilled"
+                :title="!allIndicatorsFilled ? `还有 ${unfilledIndicatorsCount} 个指标未填报` : ''"
                 @click="handleSubmitAll"
               >
                 <el-icon><Upload /></el-icon>
                 一键提交
               </el-button>
-              <!-- 如果有待审批的指标，显示撤回按钮 -->
+              <!-- 一键撤回按钮（所有指标都已提交时显示） -->
               <el-button 
-                v-if="indicators.some(r => r.progressApprovalStatus === 'pending')"
+                v-if="allIndicatorsSubmitted"
+                type="warning" 
+                size="small" 
+                :disabled="timeContext.isReadOnly"
+                @click="handleWithdrawAll"
+              >
+                <el-icon><RefreshLeft /></el-icon>
+                一键撤回
+              </el-button>
+              <!-- 如果有部分待审批的指标，显示批量撤回按钮 -->
+              <el-button 
+                v-if="!allIndicatorsSubmitted && indicators.some(r => r.progressApprovalStatus === 'pending')"
                 type="warning" 
                 size="small" 
                 :disabled="timeContext.isReadOnly"
@@ -1021,16 +1143,17 @@ const handleSubmitAll = () => {
               <!-- 进度条 - 统一进度条样式 (Requirements: 10.1, 10.2) -->
               <el-table-column prop="progress" label="进度" width="100" align="center">
                 <template #default="{ row }">
-                  <div class="progress-cell">
-                    <el-progress
-                      :percentage="row.progress || 0"
-                      :stroke-width="8"
-                      :status="getProgressStatus(row.progress || 0)"
-                      :show-text="false"
-                      style="width: 50px;"
-                    />
-                    <span class="progress-text">{{ row.progress || 0 }}%</span>
-                  </div>
+                  <el-tooltip :content="`当前进度: ${row.progress || 0}%`" placement="top">
+                    <div class="progress-cell">
+                      <el-progress
+                        :percentage="row.progress || 0"
+                        :stroke-width="10"
+                        :status="getProgressStatus(row.progress || 0)"
+                        :show-text="false"
+                        class="progress-bar-inline"
+                      />
+                    </div>
+                  </el-tooltip>
                 </template>
               </el-table-column>
               <el-table-column prop="responsibleDept" label="责任部门" min-width="140" v-if="showResponsibleDeptColumn">
@@ -1054,15 +1177,16 @@ const handleSubmitAll = () => {
                 <template #default="{ row }">
                   <div class="action-cell">
                     <el-button link type="primary" size="small" @click="handleViewDetail(row)">查看</el-button>
-                    <!-- 职能部门/二级学院显示填报按钮（历史年份禁用，待审批时禁用） -->
+                    <!-- 职能部门/二级学院显示填报/编辑按钮 -->
+                    <!-- 待审批状态禁用编辑，已填报显示"编辑"（info颜色），未填报显示"填报"（success颜色） -->
                     <el-button 
                       v-if="!isStrategicDept" 
                       link 
-                      type="success" 
+                      :type="isIndicatorFilled(row) ? 'info' : 'success'" 
                       size="small" 
                       :disabled="row.progressApprovalStatus === 'pending' || timeContext.isReadOnly"
                       @click="handleOpenReportDialog(row)"
-                    >{{ row.progressApprovalStatus === 'rejected' ? '重新填报' : '填报' }}</el-button>
+                    >{{ row.progressApprovalStatus === 'rejected' ? '重新填报' : (isIndicatorFilled(row) ? '编辑' : '填报') }}</el-button>
 
                     <el-button link type="danger" size="small" @click="handleDeleteIndicator(row)" v-if="canEdit">删除</el-button>
                   </div>
@@ -1277,7 +1401,12 @@ const handleSubmitAll = () => {
           </div>
           <div class="info-row">
             <span class="info-label">目标值：</span>
-            <span class="info-value">{{ currentReportIndicator.targetValue }}{{ currentReportIndicator.unit }}</span>
+            <el-tooltip v-if="nearestMilestone" :content="nearestMilestone.name || '里程碑'" placement="top">
+              <span class="info-value milestone-target">
+                {{ nearestMilestone.targetProgress }}%（{{ formatMilestoneDate(nearestMilestone.deadline) }}）
+              </span>
+            </el-tooltip>
+            <span class="info-value" v-else>{{ currentReportIndicator.targetValue }}{{ currentReportIndicator.unit }}</span>
           </div>
         </div>
 
@@ -1624,14 +1753,33 @@ const handleSubmitAll = () => {
 .progress-cell {
   display: flex;
   align-items: center;
-  gap: var(--spacing-sm);
   justify-content: center;
+  width: 100%;
+  cursor: pointer;
 }
 
-.progress-text {
-  font-size: 12px;
-  color: var(--text-regular);
-  min-width: 35px;
+.progress-bar-inline {
+  width: 100%;
+}
+
+/* 进度条颜色覆盖 - 确保颜色正确显示 */
+.progress-bar-inline :deep(.el-progress-bar__inner) {
+  transition: width 0.3s ease, background-color 0.3s ease;
+}
+
+/* 成功状态 - 绿色 */
+.progress-bar-inline :deep(.el-progress--success .el-progress-bar__inner) {
+  background-color: var(--color-success, #67c23a) !important;
+}
+
+/* 警告状态 - 黄色 */
+.progress-bar-inline :deep(.el-progress--warning .el-progress-bar__inner) {
+  background-color: var(--color-warning, #e6a23c) !important;
+}
+
+/* 异常状态 - 红色 */
+.progress-bar-inline :deep(.el-progress--exception .el-progress-bar__inner) {
+  background-color: var(--color-danger, #f56c6c) !important;
 }
 
 /* ========================================
@@ -2049,6 +2197,11 @@ const handleSubmitAll = () => {
 .report-indicator-info .info-value {
   color: var(--text-main);
   font-size: 14px;
+}
+
+.report-indicator-info .info-value.milestone-target {
+  cursor: help;
+  border-bottom: 1px dashed var(--color-primary);
 }
 
 .report-indicator-info .info-value.highlight {

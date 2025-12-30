@@ -2691,15 +2691,15 @@ const getRowClassName = ({ row }: { row: TableRowData }) => {
 
 .milestone-item {
   padding: 8px 10px;
-  border-bottom: 1px dashed var(--border-light, #f1f5f9);
   border-radius: 6px;
   margin-bottom: 4px;
   transition: background-color 0.2s ease;
+  border-bottom: 1px dashed var(--border-light, #e2e8f0);
 }
 
 .milestone-item:last-child {
-  border-bottom: none;
   margin-bottom: 0;
+  border-bottom: none;
 }
 
 /* 里程碑完成状态样式 */

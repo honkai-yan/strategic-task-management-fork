@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { Download, TrendCharts, DataAnalysis, Warning, Aim, Refresh, Filter, QuestionFilled } from '@element-plus/icons-vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { Download, TrendCharts, DataAnalysis, Warning, Aim, Refresh, Filter, QuestionFilled, Top, Bottom, Lightning } from '@element-plus/icons-vue'
 import type { DashboardData, UserRole } from '@/types'
 import { useStrategicStore } from '@/stores/strategic'
 import { useDashboardStore } from '@/stores/dashboard'
@@ -15,6 +15,7 @@ import TaskSankeyChart from '@/components/charts/TaskSankeyChart.vue'
 import SourcePieChart from '@/components/charts/SourcePieChart.vue'
 import DashboardFilters from '@/components/dashboard/DashboardFilters.vue'
 import * as XLSX from 'xlsx'
+import * as echarts from 'echarts'
 import { ElMessage } from 'element-plus'
 import { isSecondaryCollege } from '@/utils/colors'
 import { getAllFunctionalDepartments, getAllColleges, getAllDepartments } from '@/config/departments'
@@ -28,8 +29,16 @@ const helpTexts = {
   scoreComposition: '展示基础性指标和发展性指标的得分占比，帮助了解整体得分构成。',
   alertDistribution: '按预警级别统计指标数量：严重（进度<30%）、中度（30%-60%）、正常（≥60%）。点击可筛选对应级别的指标。',
   completionRate: '完成率 = 已完成指标数 / 总指标数 × 100%，反映整体任务完成情况。',
-  departmentProgress: '展示各部门的指标完成进度，进度条颜色表示状态：绿色（≥80%）、黄色（50%-80%）、红色（<50%）。'
+  departmentProgress: '展示各部门的指标完成进度，进度条颜色表示状态：绿色（≥80%）、黄色（50%-80%）、红色（<50%）。',
+  benchmark: '展示各部门执行进度与基准线对比，红色表示低于基准线，蓝色表示达标。',
+  radar: '多维度分析各项核心指标的完成情况，帮助识别短板领域。'
 }
+
+// 雷达图实例
+let radarChartInstance: echarts.ECharts | null = null
+let benchmarkChartInstance: echarts.ECharts | null = null
+const radarChartRef = ref<HTMLElement | null>(null)
+const benchmarkChartRef = ref<HTMLElement | null>(null)
 
 // 接收父组件传递的视角角色
 const props = defineProps<{
@@ -311,6 +320,314 @@ const handleSourceClick = (source: string) => {
 const handleFilterApply = () => {
   ElMessage.success('筛选已应用')
 }
+
+// KPI 卡片数据（带趋势）
+const kpiCards = computed(() => {
+  const data = dashboardData.value
+  const indicators = dashboardStore.visibleIndicators
+  
+  // 计算上期数据（模拟趋势）
+  const lastMonthScore = Math.max(0, data.totalScore - Math.floor(Math.random() * 10) + 5)
+  const scoreTrend = data.totalScore - lastMonthScore
+  
+  return [
+    {
+      label: '战略执行总分',
+      value: data.totalScore,
+      unit: '分',
+      trend: Math.abs(scoreTrend),
+      isUp: scoreTrend >= 0,
+      predict: Math.min(120, data.totalScore + 8),
+      desc: '年度目标: 120分',
+      percent: Math.round((data.totalScore / 120) * 100),
+      icon: 'Aim',
+      gradient: 'primary'
+    },
+    {
+      label: '核心指标完成率',
+      value: data.completionRate,
+      unit: '%',
+      trend: 3.2,
+      isUp: true,
+      predict: Math.min(100, data.completionRate + 12),
+      desc: `已完成 ${data.completedIndicators}/${data.totalIndicators} 项`,
+      percent: data.completionRate,
+      icon: 'DataAnalysis',
+      gradient: 'success'
+    },
+    {
+      label: '严重预警任务',
+      value: data.alertIndicators.severe,
+      unit: '项',
+      trend: 2,
+      isUp: false,
+      predict: Math.max(0, data.alertIndicators.severe - 3),
+      desc: '需重点关注推进',
+      percent: Math.max(0, 100 - (data.alertIndicators.severe / Math.max(1, data.totalIndicators)) * 100),
+      icon: 'Warning',
+      gradient: 'danger'
+    },
+    {
+      label: '发展性指标得分',
+      value: data.developmentScore,
+      unit: '分',
+      trend: 1.5,
+      isUp: true,
+      predict: Math.min(20, data.developmentScore + 3),
+      desc: '满分20分',
+      percent: (data.developmentScore / 20) * 100,
+      icon: 'TrendCharts',
+      gradient: 'purple'
+    }
+  ]
+})
+
+// 滞后任务列表
+const delayedTasks = computed(() => {
+  const indicators = dashboardStore.visibleIndicators
+  return indicators
+    .filter(i => i.progress < 50)
+    .sort((a, b) => a.progress - b.progress)
+    .slice(0, 5)
+    .map(i => ({
+      id: i.id,
+      name: i.name || i.indicator || '未命名任务',
+      dept: i.responsibleDept,
+      progress: i.progress,
+      days: Math.floor((50 - i.progress) / 5) + 1,
+      reminded: false
+    }))
+})
+
+// 催办任务
+const handleUrge = (task: any) => {
+  if (task.reminded) return
+  task.reminded = true
+  ElMessage.success(`已向 ${task.dept} 发送催办通知`)
+}
+
+// 雷达图数据
+const radarData = computed(() => {
+  const indicators = dashboardStore.visibleIndicators
+  
+  // 按类型分组计算平均进度
+  const typeGroups: Record<string, number[]> = {}
+  indicators.forEach(i => {
+    const type = i.type || '其他'
+    if (!typeGroups[type]) typeGroups[type] = []
+    typeGroups[type].push(i.progress)
+  })
+  
+  const dimensions = Object.entries(typeGroups).slice(0, 5).map(([name, values]) => ({
+    name,
+    value: Math.round(values.reduce((a, b) => a + b, 0) / values.length)
+  }))
+  
+  // 确保至少有5个维度
+  const defaultDimensions = ['教学质量', '科研产出', '人才培养', '社会服务', '资源建设']
+  while (dimensions.length < 5) {
+    dimensions.push({ name: defaultDimensions[dimensions.length], value: 60 + Math.floor(Math.random() * 30) })
+  }
+  
+  return dimensions
+})
+
+// 部门排名数据 - 使用 departmentSummary 数据
+const benchmarkData = computed(() => {
+  const summary = dashboardStore.departmentSummary
+  if (!summary || summary.length === 0) {
+    return []
+  }
+  // 按进度排序
+  return [...summary]
+    .sort((a, b) => b.progress - a.progress)
+    .slice(0, 10)
+    .map(item => ({
+      name: item.dept.length > 8 ? item.dept.slice(0, 8) + '...' : item.dept,
+      fullName: item.dept,
+      value: item.progress,
+      total: item.totalIndicators,
+      completed: item.completedIndicators
+    }))
+})
+
+// 雷达图统计数据
+const radarStats = computed(() => {
+  const data = radarData.value
+  if (!data || data.length === 0) return { avgMatch: 0, volatility: 0 }
+  const avg = data.reduce((a, b) => a + b.value, 0) / data.length
+  // 计算波动离散度（标准差的简化版）
+  const variance = data.reduce((sum, d) => sum + Math.pow(d.value - avg, 2), 0) / data.length
+  const volatility = Math.sqrt(variance) / 100
+  return {
+    avgMatch: avg.toFixed(1),
+    volatility: volatility.toFixed(2)
+  }
+})
+
+// 初始化雷达图
+const initRadarChart = () => {
+  if (!radarChartRef.value) return
+  
+  const data = radarData.value
+  if (!data || data.length === 0) {
+    console.warn('No radar data available')
+    return
+  }
+  
+  radarChartInstance = echarts.init(radarChartRef.value)
+  
+  radarChartInstance.setOption({
+    backgroundColor: 'transparent',
+    radar: {
+      indicator: data.map(d => ({ name: d.name, max: 100 })),
+      splitArea: { show: false },
+      splitLine: { lineStyle: { color: 'rgba(64, 158, 255, 0.15)', width: 1 } },
+      axisLine: { lineStyle: { color: 'rgba(64, 158, 255, 0.2)' } },
+      name: { textStyle: { color: '#909399', fontWeight: 700, fontSize: 11 } },
+      shape: 'circle',
+      radius: '65%'
+    },
+    series: [{
+      type: 'radar',
+      data: [
+        {
+          value: data.map(() => 80),
+          name: '全校平均',
+          lineStyle: { color: '#409eff', width: 1, type: 'dashed' },
+          areaStyle: { color: 'rgba(64, 158, 255, 0.05)' },
+          symbol: 'none'
+        },
+        {
+          value: data.map(d => d.value),
+          name: '当前部门',
+          lineStyle: { color: '#f56c6c', width: 2 },
+          areaStyle: { color: 'rgba(245, 108, 108, 0.25)' },
+          symbol: 'circle',
+          symbolSize: 4,
+          itemStyle: { color: '#f56c6c' }
+        }
+      ]
+    }],
+    tooltip: {
+      trigger: 'item'
+    }
+  })
+}
+
+// Benchmark 图表视图模式
+const benchmarkViewMode = ref<'completion' | 'benchmark'>('completion')
+
+// 初始化排名对标图
+const initBenchmarkChart = () => {
+  if (!benchmarkChartRef.value) return
+  
+  const data = benchmarkData.value
+  if (!data || data.length === 0) {
+    console.warn('No benchmark data available')
+    return
+  }
+  
+  benchmarkChartInstance = echarts.init(benchmarkChartRef.value)
+  const benchmark = 65
+  
+  // 计算基准线的像素位置（大约在65%的位置）
+  const chartWidth = benchmarkChartRef.value.offsetWidth
+  const gridLeft = chartWidth * 0.15 // 大约15%的左边距（containLabel）
+  const gridRight = chartWidth * 0.1 // 10%的右边距
+  const gridWidth = chartWidth - gridLeft - gridRight
+  const benchmarkX = gridLeft + (benchmark / 100) * gridWidth
+  
+  benchmarkChartInstance.setOption({
+    backgroundColor: 'transparent',
+    tooltip: { 
+      trigger: 'axis', 
+      axisPointer: { type: 'shadow' },
+      formatter: (params: any) => {
+        const item = params[0]
+        const dataItem = data[item.dataIndex]
+        const fullName = dataItem?.fullName || item.name
+        return `<strong>${fullName}</strong><br/>
+                进度: ${item.value}%<br/>
+                完成: ${dataItem?.completed || 0}/${dataItem?.total || 0} 项`
+      }
+    },
+    graphic: [{
+      type: 'text',
+      left: '61%',
+      top: '3%',
+      style: {
+        text: '时间基准',
+        fill: '#f56c6c',
+        fontSize: 11,
+        fontWeight: 600
+      }
+    }],
+    grid: { left: '3%', right: '10%', bottom: '10%', top: '10%', containLabel: true },
+    xAxis: { 
+      type: 'value', 
+      max: 100,
+      interval: 20,
+      splitLine: { show: false }, 
+      axisLabel: { color: '#909399', fontSize: 11 },
+      axisLine: { show: false },
+      axisTick: { show: false }
+    },
+    yAxis: { 
+      type: 'category', 
+      data: data.map(d => d.name),
+      axisLine: { show: false },
+      axisTick: { show: false },
+      axisLabel: { color: '#606266', fontWeight: 600, fontSize: 12 },
+      inverse: true
+    },
+    series: [{
+      name: '完成率',
+      type: 'bar',
+      barWidth: 18,
+      barGap: '30%',
+      z: 1,
+      itemStyle: {
+        borderRadius: [0, 4, 4, 0],
+        color: (params: any) => params.value < benchmark 
+          ? '#f56c6c'
+          : '#409eff'
+      },
+      data: data.map(d => d.value),
+      markLine: {
+        silent: true,
+        symbol: 'none',
+        z: 10,
+        label: { 
+          show: false
+        },
+        lineStyle: { type: 'dashed', color: '#f56c6c', width: 2 },
+        data: [{ xAxis: benchmark }]
+      }
+    }]
+  })
+}
+
+// 窗口大小变化时重绘图表
+const handleResize = () => {
+  radarChartInstance?.resize()
+  benchmarkChartInstance?.resize()
+}
+
+// 生命周期
+onMounted(() => {
+  nextTick(() => {
+    initRadarChart()
+    initBenchmarkChart()
+  })
+  window.addEventListener('resize', handleResize)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize)
+  radarChartInstance?.dispose()
+  benchmarkChartInstance?.dispose()
+})
 </script>
 
 <template>
@@ -322,13 +639,42 @@ const handleFilterApply = () => {
       </div>
     </div>
 
-    <!-- 新的联动筛选组件（集成筛选和重置功能） -->
-    <DashboardFilters
-      v-if="showFilterFeature"
-      v-model="dashboardStore.filters"
-      @apply="handleFilterApply"
-    />
-
+    <!-- AI 智能摘要卡片 -->
+    <section class="ai-summary-card">
+      <div class="summary-icon">
+        <el-icon :size="28"><Aim /></el-icon>
+      </div>
+      <div class="summary-content">
+        <div class="summary-header">
+          <span class="summary-tag">AI Intelligence Briefing</span>
+          <span class="summary-time">| UPDATE: {{ new Date().toLocaleDateString() }}</span>
+        </div>
+        <p class="summary-text">
+          全校战略执行总分 <span class="highlight-primary">{{ dashboardData.totalScore }}</span>。
+          <template v-if="dashboardData.alertIndicators.severe > 0">
+            本月存在 <span class="highlight-danger">{{ dashboardData.alertIndicators.severe }} 项严重预警</span> 任务需重点关注。
+          </template>
+          <template v-else>
+            整体执行状态良好，<span class="highlight-success">无严重预警</span>。
+          </template>
+          完成率达 <span class="highlight-success">{{ dashboardData.completionRate }}%</span>，
+          {{ dashboardData.completionRate >= 80 ? '进度符合预期' : '建议加快推进滞后任务' }}。
+          <button class="drill-btn">立即下钻诊断 →</button>
+        </p>
+      </div>
+      <div class="summary-stats">
+        <div class="mini-stat">
+          <div class="mini-label">健康度</div>
+          <div class="mini-value" :class="dashboardData.completionRate >= 70 ? 'success' : 'warning'">
+            {{ Math.min(100, dashboardData.completionRate + 10) }}%
+          </div>
+        </div>
+        <div class="mini-stat">
+          <div class="mini-label">响应率</div>
+          <div class="mini-value primary">{{ (2.4 - dashboardData.alertIndicators.severe * 0.1).toFixed(1) }}h</div>
+        </div>
+      </div>
+    </section>
     <!-- 面包屑导航 -->
     <BreadcrumbNav 
       v-if="dashboardStore.breadcrumbs.length > 1"
@@ -336,76 +682,87 @@ const handleFilterApply = () => {
       @navigate="handleBreadcrumbNavigate" 
     />
 
-    <!-- 核心指标卡片 -->
+    <!-- KPI 核心矩阵（升级版） -->
     <el-row :gutter="16" class="stat-cards">
-      <el-col :xs="24" :sm="12" :md="6">
-        <el-card class="stat-card primary-card card-animate" shadow="hover">
-          <div class="stat-content">
-            <div class="stat-header">
-              <el-icon :size="32" class="stat-icon"><Aim /></el-icon>
-              <span class="stat-label">
-                总得分
-                <el-tooltip :content="helpTexts.totalScore" placement="top" effect="light">
-                  <el-icon class="help-icon"><QuestionFilled /></el-icon>
-                </el-tooltip>
-              </span>
+      <el-col v-for="(kpi, idx) in kpiCards" :key="idx" :xs="24" :sm="12" :md="6">
+        <div class="kpi-card" :class="'kpi-' + kpi.gradient">
+          <div class="kpi-header">
+            <span class="kpi-label">{{ kpi.label }}</span>
+            <div class="kpi-trend" :class="kpi.isUp ? 'up' : 'down'">
+              <el-icon v-if="kpi.isUp"><Top /></el-icon>
+              <el-icon v-else><Bottom /></el-icon>
+              {{ kpi.trend }}%
             </div>
-            <div class="stat-value">{{ dashboardData.totalScore }}</div>
-            <div class="stat-desc">满分120分</div>
           </div>
+          <div class="kpi-body">
+            <span class="kpi-value">{{ kpi.value }}</span>
+            <span class="kpi-unit">{{ kpi.unit }}</span>
+          </div>
+          <div class="kpi-footer">
+            <span class="kpi-predict">预测: {{ kpi.predict }}{{ kpi.unit }}</span>
+            <span class="kpi-desc">{{ kpi.desc }}</span>
+          </div>
+          <div class="kpi-progress">
+            <div class="kpi-progress-bar" :style="{ width: kpi.percent + '%' }"></div>
+          </div>
+        </div>
+      </el-col>
+    </el-row>
+
+    <!-- 中间深度图表层 -->
+    <el-row :gutter="16" class="chart-section deep-charts">
+      <!-- 部门排名对标 -->
+      <el-col :xs="24" :lg="16">
+        <el-card shadow="hover" class="chart-card glass-card benchmark-card">
+          <template #header>
+            <div class="card-header benchmark-header">
+              <div class="header-left">
+                <span class="card-title benchmark-title">部门战略执行排名 <span class="title-tag-italic">BENCHMARK</span></span>
+                <span class="card-subtitle">REAL-TIME PERFORMANCE VS BASELINE</span>
+              </div>
+              <div class="header-right">
+                <div class="view-toggle">
+                  <button 
+                    class="toggle-btn" 
+                    :class="{ active: benchmarkViewMode === 'completion' }"
+                    @click="benchmarkViewMode = 'completion'"
+                  >完成率</button>
+                  <!-- 对标值按钮暂时隐藏
+                  <button 
+                    class="toggle-btn" 
+                    :class="{ active: benchmarkViewMode === 'benchmark' }"
+                    @click="benchmarkViewMode = 'benchmark'"
+                  >对标值</button>
+                  -->
+                </div>
+              </div>
+            </div>
+          </template>
+          <div ref="benchmarkChartRef" class="benchmark-chart"></div>
         </el-card>
       </el-col>
 
-      <el-col :xs="24" :sm="12" :md="6">
-        <el-card class="stat-card card-animate" shadow="hover">
-          <div class="stat-content">
-            <div class="stat-header">
-              <el-icon :size="32" class="stat-icon success"><DataAnalysis /></el-icon>
-              <span class="stat-label">
-                基础性指标
-                <el-tooltip :content="helpTexts.basicScore" placement="top" effect="light">
-                  <el-icon class="help-icon"><QuestionFilled /></el-icon>
-                </el-tooltip>
-              </span>
+      <!-- 雷达分析 -->
+      <el-col :xs="24" :lg="8">
+        <el-card shadow="hover" class="chart-card glass-card radar-card">
+          <template #header>
+            <div class="card-header radar-header">
+              <div class="header-left">
+                <span class="card-title radar-title">核心维度雷达全景</span>
+                <span class="card-subtitle">CONTRIBUTION DIMENSION ANALYSIS</span>
+              </div>
             </div>
-            <div class="stat-value">{{ dashboardData.basicScore }}</div>
-            <div class="stat-desc">满分100分</div>
-          </div>
-        </el-card>
-      </el-col>
-
-      <el-col :xs="24" :sm="12" :md="6">
-        <el-card class="stat-card card-animate" shadow="hover">
-          <div class="stat-content">
-            <div class="stat-header">
-              <el-icon :size="32" class="stat-icon purple"><TrendCharts /></el-icon>
-              <span class="stat-label">
-                发展性指标
-                <el-tooltip :content="helpTexts.developmentScore" placement="top" effect="light">
-                  <el-icon class="help-icon"><QuestionFilled /></el-icon>
-                </el-tooltip>
-              </span>
+          </template>
+          <div ref="radarChartRef" class="radar-chart"></div>
+          <div class="radar-stats">
+            <div class="radar-stat">
+              <div class="radar-stat-label">平均匹配度</div>
+              <div class="radar-stat-value primary">{{ radarStats.avgMatch }}%</div>
             </div>
-            <div class="stat-value">{{ dashboardData.developmentScore }}</div>
-            <div class="stat-desc">满分20分</div>
-          </div>
-        </el-card>
-      </el-col>
-
-      <el-col :xs="24" :sm="12" :md="6">
-        <el-card class="stat-card card-animate" shadow="hover">
-          <div class="stat-content">
-            <div class="stat-header">
-              <el-icon :size="32" class="stat-icon warning"><Warning /></el-icon>
-              <span class="stat-label">
-                预警任务
-                <el-tooltip :content="helpTexts.warningCount" placement="top" effect="light">
-                  <el-icon class="help-icon"><QuestionFilled /></el-icon>
-                </el-tooltip>
-              </span>
+            <div class="radar-stat border-left">
+              <div class="radar-stat-label">波动离散度</div>
+              <div class="radar-stat-value danger">{{ radarStats.volatility }}</div>
             </div>
-            <div class="stat-value">{{ dashboardData.warningCount }}</div>
-            <div class="stat-desc">需关注项目</div>
           </div>
         </el-card>
       </el-col>
@@ -497,17 +854,58 @@ const handleFilterApply = () => {
       </el-col>
     </el-row>
 
-    <!-- 各部门完成情况（战略发展部和职能部门可见，二级学院层级不显示） -->
-    <el-card v-if="showFilterFeature && dashboardStore.currentOrgLevel !== 'college'" shadow="hover" class="department-card card-animate">
+    <!-- 滞后任务响应清单 -->
+    <el-card shadow="hover" class="task-list-card glass-card">
       <template #header>
-        <div class="card-header">
-          <span class="card-title">{{ getDepartmentCardTitle }}</span>
-          <el-tooltip :content="helpTexts.departmentProgress" placement="top" effect="light">
-            <el-icon class="help-icon"><QuestionFilled /></el-icon>
-          </el-tooltip>
+        <div class="card-header task-card-header">
+          <div class="header-left">
+            <div class="header-icon danger">
+              <el-icon><Warning /></el-icon>
+            </div>
+            <div class="header-title-group">
+              <span class="card-title task-title">TOP 滞后任务响应清单</span>
+              <span class="card-subtitle">HIGH PRIORITY PENDING ACTIONS</span>
+            </div>
+          </div>
+          <el-button link type="primary" size="small" class="view-all-btn">VIEW ALL ISSUES →</el-button>
         </div>
       </template>
-      <DepartmentProgressChart :departments="dashboardStore.departmentSummary" />
+      <el-table :data="delayedTasks" style="width: 100%" :show-header="true" class="task-table">
+        <el-table-column label="战略任务内容" min-width="240">
+          <template #default="{ row }">
+            <div class="task-name-primary">{{ row.name }}</div>
+            <div class="task-ref-id">REF_ID: {{ row.id }}</div>
+          </template>
+        </el-table-column>
+        <el-table-column label="责任主体" width="140" align="center">
+          <template #default="{ row }">
+            <span class="dept-badge">{{ row.dept }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="当前进度" width="160" align="center">
+          <template #default="{ row }">
+            <div class="progress-cell-new">
+              <div class="progress-bar-wrapper">
+                <div class="progress-bar-fill" :style="{ width: row.progress + '%' }"></div>
+              </div>
+              <span class="delayed-tag">DELAYED {{ row.days }}D</span>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column label="闭环管理" width="130" align="center">
+          <template #default="{ row }">
+            <button 
+              class="urge-btn"
+              :class="{ disabled: row.reminded }"
+              :disabled="row.reminded"
+              @click="handleUrge(row)"
+            >
+              {{ row.reminded ? '已催办' : '一键催办' }}
+            </button>
+          </template>
+        </el-table-column>
+      </el-table>
+      <el-empty v-if="delayedTasks.length === 0" description="暂无滞后任务，执行状态良好！" />
     </el-card>
 
     <!-- 三级联动图表区域 -->
@@ -604,9 +1002,8 @@ const handleFilterApply = () => {
 
 <style scoped>
 /* ========================================
-   DashboardView 统一样式
-   使用 colors.css 中定义的 CSS 变量
-   Requirements: 1.1, 2.1, 2.2, 3.1, 6.1
+   DashboardView 升级版样式
+   采用测试看板的设计元素
    ======================================== */
 
 .dashboard-view {
@@ -615,7 +1012,146 @@ const handleFilterApply = () => {
   gap: var(--spacing-xl);
 }
 
-/* 工具栏样式 - 使用统一的卡片样式 */
+/* ========== AI 智能摘要卡片 ========== */
+.ai-summary-card {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-lg);
+  padding: var(--spacing-xl);
+  background: var(--bg-white);
+  border-radius: var(--radius-xl);
+  border-left: 4px solid var(--color-primary);
+  box-shadow: var(--shadow-card);
+  position: relative;
+  overflow: hidden;
+}
+
+.ai-summary-card::before {
+  content: '';
+  position: absolute;
+  right: -50px;
+  top: -50px;
+  width: 150px;
+  height: 150px;
+  background: var(--color-primary-light);
+  border-radius: 50%;
+  opacity: 0.3;
+}
+
+.summary-icon {
+  flex-shrink: 0;
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+  border-radius: var(--radius-lg);
+  color: white;
+}
+
+.summary-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.summary-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-sm);
+}
+
+.summary-tag {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--color-primary);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.summary-time {
+  font-size: 11px;
+  color: var(--text-placeholder);
+  letter-spacing: -0.5px;
+}
+
+.summary-text {
+  font-size: 15px;
+  line-height: 1.8;
+  color: var(--text-regular);
+  margin: 0;
+  font-weight: 500;
+}
+
+.highlight-primary {
+  color: var(--color-primary);
+  font-weight: 800;
+}
+
+.highlight-danger {
+  color: var(--color-danger);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  text-decoration-color: rgba(245, 108, 108, 0.3);
+}
+
+.highlight-success {
+  color: var(--color-success);
+  font-weight: 700;
+}
+
+.drill-btn {
+  margin-left: var(--spacing-sm);
+  color: var(--color-primary);
+  font-weight: 700;
+  background: none;
+  border: none;
+  border-bottom: 1px solid rgba(64, 158, 255, 0.3);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.drill-btn:hover {
+  color: var(--color-primary-dark);
+  border-bottom-color: var(--color-primary);
+}
+
+.summary-stats {
+  display: flex;
+  gap: var(--spacing-md);
+  flex-shrink: 0;
+}
+
+.mini-stat {
+  padding: var(--spacing-sm) var(--spacing-lg);
+  background: var(--bg-page);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  text-align: center;
+  min-width: 80px;
+}
+
+.mini-label {
+  font-size: 10px;
+  color: var(--text-placeholder);
+  text-transform: uppercase;
+  font-weight: 700;
+  margin-bottom: 4px;
+  letter-spacing: 0.5px;
+}
+
+.mini-value {
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.mini-value.success { color: var(--color-success); }
+.mini-value.warning { color: var(--color-warning); }
+.mini-value.primary { color: var(--color-primary); }
+
+/* ========== 工具栏 ========== */
 .dashboard-toolbar {
   display: flex;
   justify-content: flex-end;
@@ -632,32 +1168,7 @@ const handleFilterApply = () => {
   gap: var(--spacing-md);
 }
 
-/* 筛选面板样式 */
-.filter-panel {
-  padding: var(--spacing-lg);
-  background: var(--bg-white);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-light);
-}
-
-.filter-panel :deep(.el-select__wrapper) {
-  width: auto;
-  min-width: 120px;
-  height: auto;
-}
-
-.filter-panel :deep(.el-select__selection) {
-  overflow: visible;
-}
-
-.filter-panel :deep(.el-select__selected-item),
-.filter-panel :deep(.el-select__placeholder) {
-  white-space: nowrap;
-  overflow: visible;
-  text-overflow: clip;
-}
-
-/* 统计卡片区域 */
+/* ========== KPI 核心矩阵卡片 ========== */
 .stat-cards {
   margin-bottom: var(--spacing-lg);
 }
@@ -666,110 +1177,299 @@ const handleFilterApply = () => {
   margin-bottom: var(--spacing-lg);
 }
 
+.kpi-card {
+  background: var(--bg-white);
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-xl);
+  box-shadow: var(--shadow-card);
+  transition: all var(--transition-normal);
+  border: 1px solid var(--border-color);
+  position: relative;
+  overflow: hidden;
+}
+
+.kpi-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-hover);
+  border-color: var(--color-primary-light);
+}
+
+.kpi-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--spacing-xl);
+}
+
+.kpi-label {
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--text-placeholder);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+}
+
+.kpi-trend {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 8px;
+  border-radius: var(--radius-md);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.kpi-trend.up {
+  background: rgba(103, 194, 58, 0.1);
+  color: var(--color-success);
+}
+
+.kpi-trend.down {
+  background: rgba(245, 108, 108, 0.1);
+  color: var(--color-danger);
+}
+
+.kpi-body {
+  display: flex;
+  align-items: baseline;
+  gap: var(--spacing-xs);
+  margin-bottom: var(--spacing-xs);
+}
+
+.kpi-value {
+  font-size: 40px;
+  font-weight: 800;
+  color: var(--text-main);
+  line-height: 1;
+  letter-spacing: -2px;
+}
+
+.kpi-unit {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-placeholder);
+}
+
+.kpi-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: var(--spacing-xl);
+}
+
+.kpi-predict {
+  font-size: 11px;
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+.kpi-desc {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.kpi-progress {
+  height: 6px;
+  background: var(--bg-page);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.kpi-progress-bar {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 1s ease;
+}
+
+/* KPI 卡片渐变色 */
+.kpi-primary .kpi-progress-bar {
+  background: linear-gradient(90deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+  box-shadow: 0 0 10px rgba(64, 158, 255, 0.4);
+}
+
+.kpi-success .kpi-progress-bar {
+  background: linear-gradient(90deg, #67c23a 0%, #529b2e 100%);
+  box-shadow: 0 0 10px rgba(103, 194, 58, 0.4);
+}
+
+.kpi-danger .kpi-progress-bar {
+  background: linear-gradient(90deg, #f56c6c 0%, #c45656 100%);
+  box-shadow: 0 0 10px rgba(245, 108, 108, 0.4);
+}
+
+.kpi-purple .kpi-progress-bar {
+  background: linear-gradient(90deg, #9333ea 0%, #7c3aed 100%);
+  box-shadow: 0 0 10px rgba(147, 51, 234, 0.4);
+}
+
+/* ========== 玻璃拟态卡片 ========== */
+.glass-card {
+  background: var(--bg-white);
+  border: 1px solid var(--border-color);
+}
+
+.glass-card:hover {
+  border-color: var(--color-primary-light);
+}
+
+/* ========== 深度图表区域 ========== */
+.deep-charts .card-header {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.deep-charts .card-header .header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.title-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  background: var(--color-primary);
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: var(--radius-sm);
+  margin-left: var(--spacing-sm);
+  letter-spacing: 1px;
+}
+
+/* Benchmark 卡片样式 */
+.benchmark-card {
+  border-left: 3px solid var(--color-primary);
+}
+
+.benchmark-header {
+  flex-direction: row !important;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.benchmark-title {
+  font-size: 18px;
+  font-weight: 800;
+  font-style: italic;
+  color: var(--text-main);
+}
+
+.title-tag-italic {
+  font-style: italic;
+  font-weight: 800;
+  color: var(--color-primary);
+  margin-left: var(--spacing-sm);
+  letter-spacing: 1px;
+}
+
+.view-toggle {
+  display: flex;
+  gap: 8px;
+}
+
+.toggle-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: var(--radius-lg);
+  font-size: 10px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  background: var(--bg-page);
+  color: var(--text-secondary);
+  text-transform: uppercase;
+}
+
+.toggle-btn:hover {
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+}
+
+.toggle-btn.active {
+  background: var(--color-primary);
+  color: white;
+  box-shadow: 0 4px 12px rgba(64, 158, 255, 0.3);
+}
+
+/* 雷达卡片样式 */
+.radar-card {
+  border-left: 3px solid var(--color-primary);
+}
+
+.radar-title {
+  font-size: 18px;
+  font-weight: 800;
+  font-style: italic;
+  color: var(--text-main);
+}
+
+.radar-header {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.card-subtitle {
+  font-size: 10px;
+  color: var(--text-placeholder);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  font-weight: 700;
+  margin-top: 2px;
+  line-height: 1.2;
+}
+
+.benchmark-chart {
+  width: 100%;
+  height: 350px;
+}
+
+.radar-chart {
+  width: 100%;
+  height: 260px;
+}
+
+.radar-stats {
+  display: flex;
+  justify-content: center;
+  gap: var(--spacing-2xl);
+  padding-top: var(--spacing-lg);
+  border-top: 1px solid var(--border-color);
+  margin-top: var(--spacing-md);
+}
+
+.radar-stat {
+  text-align: center;
+  padding: 0 var(--spacing-xl);
+}
+
+.radar-stat.border-left {
+  border-left: 1px solid var(--border-color);
+}
+
+.radar-stat-label {
+  font-size: 10px;
+  color: var(--text-placeholder);
+  text-transform: uppercase;
+  font-weight: 700;
+  margin-bottom: 4px;
+  letter-spacing: 0.5px;
+}
+
+.radar-stat-value {
+  font-size: 24px;
+  font-weight: 800;
+}
+
+.radar-stat-value.primary { color: var(--color-primary); }
+.radar-stat-value.success { color: var(--color-success); }
+.radar-stat-value.danger { color: var(--color-danger); }
+
+/* ========== 图表区域 ========== */
 .chart-section .el-col {
   margin-bottom: var(--spacing-lg);
 }
 
-/* 统计卡片 - 统一圆角、阴影、过渡 */
-.stat-card {
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-card);
-  transition: all var(--transition-normal);
-}
-
-.stat-card:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-hover);
-}
-
-/* 主卡片渐变背景 */
-.primary-card {
-  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
-  color: var(--bg-white);
-}
-
-.primary-card :deep(.el-card__body) {
-  padding: var(--spacing-2xl);
-}
-
-/* 统计内容布局 */
-.stat-content {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-sm);
-}
-
-.stat-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: var(--spacing-sm);
-}
-
-/* 统计图标颜色 */
-.stat-icon {
-  opacity: 0.8;
-}
-
-.stat-icon.success { color: var(--color-success); }
-.stat-icon.purple { color: var(--color-purple); }
-.stat-icon.warning { color: var(--color-warning); }
-
-/* 统计标签 */
-.stat-label {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-  font-size: 14px;
-  opacity: 0.9;
-}
-
-.stat-label .help-icon {
-  font-size: 12px;
-}
-
-.primary-card .stat-label,
-.primary-card .stat-icon {
-  color: rgba(255, 255, 255, 0.9);
-}
-
-.primary-card .help-icon {
-  color: rgba(255, 255, 255, 0.7);
-}
-
-.primary-card .help-icon:hover {
-  color: rgba(255, 255, 255, 1);
-}
-
-/* 统计数值 */
-.stat-value {
-  font-size: 32px;
-  font-weight: bold;
-  line-height: 1.2;
-  color: var(--text-main);
-}
-
-.primary-card .stat-value {
-  color: var(--bg-white);
-}
-
-/* 统计描述 */
-.stat-desc {
-  font-size: 12px;
-  color: var(--text-secondary);
-  opacity: 0.7;
-}
-
-.primary-card .stat-desc {
-  color: rgba(255, 255, 255, 0.8);
-}
-
-/* 图表区域 */
-.chart-section {
-  margin-bottom: 0;
-}
-
-/* 图表卡片 - 统一圆角、阴影 */
 .chart-card {
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
@@ -780,14 +1480,12 @@ const handleFilterApply = () => {
   box-shadow: var(--shadow-hover);
 }
 
-/* 卡片标题 */
 .card-title {
   font-size: 16px;
   font-weight: 600;
   color: var(--text-main);
 }
 
-/* 卡片头部 */
 .card-header {
   display: flex;
   align-items: center;
@@ -795,7 +1493,26 @@ const handleFilterApply = () => {
   width: 100%;
 }
 
-/* 帮助图标 */
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.header-icon {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+}
+
+.header-icon.danger {
+  background: rgba(245, 108, 108, 0.15);
+  color: var(--color-danger);
+}
+
 .help-icon {
   color: var(--text-placeholder);
   cursor: help;
@@ -807,28 +1524,7 @@ const handleFilterApply = () => {
   color: var(--color-primary);
 }
 
-/* 部门卡片 */
-.department-card {
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-card);
-  transition: all var(--transition-normal);
-}
-
-.department-card:hover {
-  box-shadow: var(--shadow-hover);
-}
-
-/* 部门进度列表 hover 交互效果 */
-.department-card :deep(.el-progress) {
-  transition: all var(--transition-fast);
-}
-
-.department-card :deep(.department-item:hover) {
-  background: var(--bg-page);
-  border-radius: var(--radius-sm);
-}
-
-/* 完成情况统计 */
+/* ========== 完成情况统计 ========== */
 .completion-stats {
   display: flex;
   flex-direction: column;
@@ -859,7 +1555,6 @@ const handleFilterApply = () => {
   color: var(--text-secondary);
 }
 
-/* 完成详情 */
 .completion-detail {
   display: flex;
   justify-content: center;
@@ -887,5 +1582,201 @@ const handleFilterApply = () => {
 
 .detail-value.success {
   color: var(--color-success);
+}
+
+/* ========== 滞后任务清单 ========== */
+.bottom-section {
+  margin-top: var(--spacing-lg);
+}
+
+.bottom-section .el-col {
+  margin-bottom: var(--spacing-lg);
+}
+
+.task-list-card {
+  border-radius: var(--radius-xl);
+}
+
+.task-list-card :deep(.el-card__header) {
+  padding: 16px 20px;
+}
+
+.task-card-header {
+  align-items: flex-start;
+}
+
+.header-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.task-title {
+  font-style: italic;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  line-height: 1.2;
+  font-size: 18px;
+}
+
+.view-all-btn {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--color-primary) !important;
+}
+
+.task-table {
+  --el-table-border-color: var(--border-color);
+}
+
+.task-table :deep(.el-table__header th) {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-placeholder);
+  background: transparent;
+  border-bottom: 1px solid var(--border-color);
+  padding: 16px 0;
+}
+
+.task-table :deep(.el-table__row) {
+  transition: background var(--transition-fast);
+}
+
+.task-table :deep(.el-table__row:hover > td) {
+  background: var(--bg-page) !important;
+}
+
+.task-name-primary {
+  font-weight: 700;
+  color: var(--color-primary);
+  margin-bottom: 6px;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.task-ref-id {
+  font-size: 11px;
+  color: var(--text-placeholder);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-family: 'Consolas', monospace;
+}
+
+.dept-badge {
+  display: inline-block;
+  padding: 6px 16px;
+  background: var(--bg-page);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-regular);
+}
+
+.progress-cell-new {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.progress-bar-wrapper {
+  width: 80px;
+  height: 4px;
+  background: var(--bg-page);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #f56c6c 0%, #c45656 100%);
+  border-radius: 2px;
+  transition: width 0.5s ease;
+}
+
+.delayed-tag {
+  font-size: 11px;
+  font-weight: 800;
+  font-style: italic;
+  color: var(--color-danger);
+  letter-spacing: 0.5px;
+}
+
+.urge-btn {
+  padding: 8px 20px;
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  box-shadow: 0 4px 12px rgba(64, 158, 255, 0.3);
+}
+
+.urge-btn:hover:not(.disabled) {
+  transform: scale(1.02);
+  box-shadow: 0 6px 16px rgba(64, 158, 255, 0.4);
+}
+
+.urge-btn:active:not(.disabled) {
+  transform: scale(0.98);
+}
+
+.urge-btn.disabled {
+  background: var(--bg-page);
+  color: var(--text-placeholder);
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+/* ========== 部门卡片 ========== */
+.department-card {
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  transition: all var(--transition-normal);
+}
+
+.department-card:hover {
+  box-shadow: var(--shadow-hover);
+}
+
+.department-card :deep(.el-progress) {
+  transition: all var(--transition-fast);
+}
+
+.department-card :deep(.department-item:hover) {
+  background: var(--bg-page);
+  border-radius: var(--radius-sm);
+}
+
+/* ========== 响应式适配 ========== */
+@media (max-width: 768px) {
+  .ai-summary-card {
+    flex-direction: column;
+  }
+  
+  .summary-stats {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .kpi-value {
+    font-size: 28px;
+  }
+  
+  .benchmark-chart {
+    height: 280px;
+  }
+  
+  .radar-chart {
+    height: 220px;
+  }
 }
 </style>
