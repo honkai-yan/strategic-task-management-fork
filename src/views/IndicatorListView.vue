@@ -184,6 +184,20 @@ const indicators = computed(() => {
   })
 })
 
+const overallStatus = computed(() => {
+  const list = indicators.value
+  if (list.length === 0) return 'draft'
+  const hasPending = list.some(i => i.progressApprovalStatus === 'pending')
+  if (hasPending) return 'pending'
+  const hasRejected = list.some(i => i.progressApprovalStatus === 'rejected')
+  if (hasRejected) return 'rejected'
+  const allApproved = list.every(i => i.progressApprovalStatus === 'approved')
+  if (allApproved) return 'approved'
+  const hasActive = list.some(i => i.status === 'active')
+  if (hasActive) return 'active'
+  return 'draft'
+})
+
 // 计算单元格合并信息
 const getSpanMethod = ({ row, column, rowIndex, columnIndex }: { row: any; column: any; rowIndex: number; columnIndex: number }) => {
   const dataList = indicators.value
@@ -1042,9 +1056,13 @@ const handleWithdrawAll = () => {
 
       <!-- 指标表格卡片 - 统一表格样式 (Requirements: 4.1, 4.2, 4.3) -->
       <div class="table-card card-base card-animate" style="animation-delay: 0.1s;">
-        <div class="card-header">
-          <span class="card-title">指标列表</span>
-          <div class="header-actions">
+<div class="card-header">
+            <span class="card-title">指标列表</span>
+            <el-tag v-if="overallStatus === 'pending'" type="warning" size="small" class="overall-status-tag">待审批</el-tag>
+            <el-tag v-else-if="overallStatus === 'rejected'" type="danger" size="small" class="overall-status-tag">已驳回</el-tag>
+            <el-tag v-else-if="overallStatus === 'approved'" type="success" size="small" class="overall-status-tag">已通过</el-tag>
+            <el-tag v-else type="info" size="small" class="overall-status-tag">{{ overallStatus === 'active' ? '进行中' : '草稿' }}</el-tag>
+            <div class="header-actions">
             <span class="indicator-count">共 {{ indicators.length }} 条记录</span>
             <!-- 职能部门/二级学院的批量操作按钮 -->
             <template v-if="!isStrategicDept">
@@ -1213,18 +1231,7 @@ const handleWithdrawAll = () => {
                   <span class="dept-text">{{ row.responsibleDept || '未分配' }}</span>
                 </template>
               </el-table-column>
-              <el-table-column prop="status" label="状态" width="85" align="center">
-                <template #default="{ row }">
-                  <div class="status-cell">
-                    <!-- 优先显示进度审批状态（draft状态不显示，仍显示原状态） -->
-                    <el-tag v-if="row.progressApprovalStatus === 'pending'" type="warning" size="small">待审批</el-tag>
-                    <el-tag v-else-if="row.progressApprovalStatus === 'rejected'" type="danger" size="small">已驳回</el-tag>
-                    <el-tag v-else :type="getStatusTagType(row.status)" size="small">
-                      {{ row.status === 'active' ? '进行中' : row.status }}
-                    </el-tag>
-                  </div>
-                </template>
-              </el-table-column>
+
               <el-table-column label="操作" width="160" align="center">
                 <template #default="{ row }">
                   <div class="action-cell">
@@ -1628,6 +1635,10 @@ const handleWithdrawAll = () => {
   font-size: 16px;
   font-weight: 600;
   color: var(--text-main);
+}
+
+.overall-status-tag {
+  margin-left: var(--spacing-md);
 }
 
 .header-actions {
