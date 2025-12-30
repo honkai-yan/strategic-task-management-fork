@@ -1125,7 +1125,7 @@ const handleWithdrawAll = () => {
                   </div>
                 </template>
               </el-table-column>
-              <el-table-column prop="weight" label="权重" width="80" align="center">
+              <el-table-column prop="weight" label="权重" width="100" align="center">
                 <template #default="{ row }">
                   <div class="weight-cell" @dblclick="handleIndicatorDblClick(row, 'weight')">
                     <el-input
