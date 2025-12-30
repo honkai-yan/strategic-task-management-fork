@@ -449,12 +449,9 @@ const handleBatchApprove = (group: { strategicTask: string; rows: ApprovalItem[]
                   </td>
                   <!-- 权重 -->
                   <td class="cell-center"><span class="weight-value">{{ row.weight }}</span></td>
-                  <!-- 里程碑进度 -->
+                  <!-- 进度 -->
                   <td class="cell-center">
-                    <div class="progress-cell">
-                      <el-progress :percentage="row.progress || 0" :stroke-width="10" :color="getProgressColor(row)" :show-text="false" style="width: 80px;" />
-                      <span class="progress-text">{{ row.progress || 0 }}%</span>
-                    </div>
+                    <span class="progress-number">{{ row.progress || 0 }}</span>
                   </td>
                   <!-- 说明 -->
                   <td>{{ row.remark }}</td>
@@ -498,12 +495,9 @@ const handleBatchApprove = (group: { strategicTask: string; rows: ApprovalItem[]
                   </td>
                   <!-- 权重 -->
                   <td class="cell-center"><span class="weight-value">{{ row.weight }}</span></td>
-                  <!-- 里程碑进度 -->
+                  <!-- 进度 -->
                   <td class="cell-center">
-                    <div class="progress-cell">
-                      <el-progress :percentage="row.progress || 0" :stroke-width="10" :color="getProgressColor(row)" :show-text="false" style="width: 80px;" />
-                      <span class="progress-text">{{ row.progress || 0 }}%</span>
-                    </div>
+                    <span class="progress-number">{{ row.progress || 0 }}</span>
                   </td>
                   <!-- 说明 -->
                   <td>{{ row.remark }}</td>
@@ -580,10 +574,7 @@ const handleBatchApprove = (group: { strategicTask: string; rows: ApprovalItem[]
                   </td>
                   <td class="cell-center"><span class="weight-value">{{ row.weight }}</span></td>
                   <td class="cell-center">
-                    <div class="progress-cell">
-                      <el-progress :percentage="row.progress || 0" :stroke-width="10" :color="getProgressColor(row)" :show-text="false" style="width: 80px;" />
-                      <span class="progress-text">{{ row.progress || 0 }}%</span>
-                    </div>
+                    <span class="progress-number">{{ row.progress || 0 }}</span>
                   </td>
                   <td class="cell-center">{{ row.submitter }}</td>
                   <td class="cell-center">
@@ -612,10 +603,7 @@ const handleBatchApprove = (group: { strategicTask: string; rows: ApprovalItem[]
                   </td>
                   <td class="cell-center"><span class="weight-value">{{ row.weight }}</span></td>
                   <td class="cell-center">
-                    <div class="progress-cell">
-                      <el-progress :percentage="row.progress || 0" :stroke-width="10" :color="getProgressColor(row)" :show-text="false" style="width: 80px;" />
-                      <span class="progress-text">{{ row.progress || 0 }}%</span>
-                    </div>
+                    <span class="progress-number">{{ row.progress || 0 }}</span>
                   </td>
                   <td class="cell-center">{{ row.submitter }}</td>
                   <td class="cell-center">
@@ -931,6 +919,12 @@ const handleBatchApprove = (group: { strategicTask: string; rows: ApprovalItem[]
   align-items: center;
   gap: var(--spacing-sm);
   justify-content: center;
+}
+
+.progress-number {
+  font-weight: 500;
+  color: var(--text-main);
+  font-size: 14px;
 }
 
 .progress-text {

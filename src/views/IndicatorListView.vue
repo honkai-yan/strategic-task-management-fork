@@ -1140,20 +1140,10 @@ const handleWithdrawAll = () => {
                   </div>
                 </template>
               </el-table-column>
-              <!-- 进度条 - 统一进度条样式 (Requirements: 10.1, 10.2) -->
-              <el-table-column prop="progress" label="进度" width="100" align="center">
+              <!-- 进度 - 显示数字 -->
+              <el-table-column prop="progress" label="进度" width="120" align="center">
                 <template #default="{ row }">
-                  <el-tooltip :content="`当前进度: ${row.progress || 0}%`" placement="top">
-                    <div class="progress-cell">
-                      <el-progress
-                        :percentage="row.progress || 0"
-                        :stroke-width="10"
-                        :status="getProgressStatus(row.progress || 0)"
-                        :show-text="false"
-                        class="progress-bar-inline"
-                      />
-                    </div>
-                  </el-tooltip>
+                  <span class="progress-number">{{ row.progress || 0 }}</span>
                 </template>
               </el-table-column>
               <el-table-column prop="responsibleDept" label="责任部门" min-width="140" v-if="showResponsibleDeptColumn">
@@ -1755,7 +1745,12 @@ const handleWithdrawAll = () => {
   align-items: center;
   justify-content: center;
   width: 100%;
-  cursor: pointer;
+}
+
+.progress-number {
+  font-weight: 500;
+  color: var(--text-main);
+  font-size: 14px;
 }
 
 .progress-bar-inline {

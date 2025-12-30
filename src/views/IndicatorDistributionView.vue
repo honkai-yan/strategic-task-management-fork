@@ -1460,7 +1460,7 @@ const getRowClassName = ({ row }: { row: TableRowData }) => {
                 </el-table-column>
 
                 <!-- 进度列 -->
-                <el-table-column label="进度" width="100" align="center">
+                <el-table-column label="进度" width="120" align="center">
                   <template #default="{ row }">
                     <template v-if="row.type === 'indicator-only'">
                       <span class="progress-text">-</span>
@@ -1867,7 +1867,7 @@ const getRowClassName = ({ row }: { row: TableRowData }) => {
                 </el-table-column>
 
                 <!-- 进度列 -->
-                <el-table-column label="进度" width="100" align="center">
+                <el-table-column label="进度" width="120" align="center">
                   <template #default="{ row }">
                     <template v-if="row.type === 'indicator-only'">
                       <span class="progress-text">-</span>

@@ -1515,7 +1515,7 @@
                     </el-popover>
                   </template>
                 </el-table-column>
-                <el-table-column prop="progress" label="进度" width="100" align="center" class-name="no-ellipsis">
+                <el-table-column prop="progress" label="进度" width="120" align="center">
                   <template #default="{ row }">
                     <div class="progress-cell" @dblclick="handleIndicatorDblClick(row, 'progress')">
                       <el-input
@@ -1527,15 +1527,7 @@
                         @blur="saveIndicatorEdit(row, 'progress')"
                         @keyup.enter="saveIndicatorEdit(row, 'progress')"
                       />
-                      <el-tooltip v-else :content="`当前进度: ${row.progress || 0}%`" placement="top">
-                        <el-progress
-                          :percentage="row.progress || 0"
-                          :stroke-width="10"
-                          :color="getProgressColor(row)"
-                          :show-text="false"
-                          class="progress-bar-inline"
-                        />
-                      </el-tooltip>
+                      <span v-else class="progress-number">{{ row.progress || 0 }}</span>
                     </div>
                   </template>
                 </el-table-column>
@@ -3465,6 +3457,12 @@
     align-items: center;
     justify-content: center;
     width: 100%;
+  }
+
+  .progress-number {
+    font-weight: 500;
+    color: var(--text-main);
+    font-size: 14px;
   }
 
   .progress-bar-inline {
