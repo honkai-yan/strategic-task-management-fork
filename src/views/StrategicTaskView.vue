@@ -1341,7 +1341,11 @@
               <el-icon><component :is="hasDistributedIndicators ? RefreshLeft : Promotion" /></el-icon>
               {{ hasDistributedIndicators ? '撤回' : '下发' }}
             </el-button>
-
+            <!-- 审批按钮 -->
+            <el-button size="small" type="primary" @click="handleOpenApproval">
+              <el-icon><Check /></el-icon>
+              审批
+            </el-button>
             <el-button size="small">
               <el-icon><Download /></el-icon>
               导出
