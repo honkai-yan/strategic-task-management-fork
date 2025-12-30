@@ -653,6 +653,23 @@ const getMilestoneProgressText = (indicator: StrategicIndicator): string => {
   }
 }
 
+// 获取里程碑列表用于tooltip显示
+interface MilestoneTooltipItem {
+  id: string | number
+  name: string
+  expectedDate: string
+  progress: number
+}
+
+const getMilestonesTooltip = (indicator: StrategicIndicator): MilestoneTooltipItem[] => {
+  return (indicator.milestones || []).map(m => ({
+    id: m.id || '',
+    name: m.name,
+    expectedDate: m.deadline || '',
+    progress: m.targetProgress || 0
+  }))
+}
+
 const selectDepartment = (dept: string) => {
   selectedDepartment.value = dept
 }
@@ -1141,6 +1158,51 @@ const handleWithdrawAll = () => {
                 </template>
               </el-table-column>
               <!-- 进度 - 显示数字 -->
+              <el-table-column label="里程碑" width="120" align="center">
+                <template #default="{ row }">
+                  <el-popover
+                    placement="left"
+                    :width="320"
+                    trigger="hover"
+                    :disabled="!row.milestones?.length"
+                  >
+                    <template #reference>
+                      <div class="milestone-cell">
+                        <span class="milestone-count">
+                          {{ row.milestones?.length || 0 }} 个里程碑
+                        </span>
+                      </div>
+                    </template>
+                    <div class="milestone-popover">
+                      <div class="milestone-popover-title">里程碑列表</div>
+                      <div 
+                        v-for="(ms, idx) in getMilestonesTooltip(row)" 
+                        :key="ms.id"
+                        class="milestone-item"
+                        :class="{ 'milestone-completed': (row.progress || 0) >= ms.progress }"
+                      >
+                        <div class="milestone-item-header">
+                          <span class="milestone-index">{{ idx + 1 }}.</span>
+                          <span class="milestone-name">{{ ms.name || '未命名' }}</span>
+                          <el-icon 
+                            v-if="(row.progress || 0) >= ms.progress" 
+                            class="milestone-check-icon"
+                          >
+                            <Check />
+                          </el-icon>
+                        </div>
+                        <div class="milestone-item-info">
+                          <span>预期: {{ ms.expectedDate || '未设置' }}</span>
+                          <span>进度: {{ ms.progress }}%</span>
+                        </div>
+                      </div>
+                      <div v-if="!row.milestones?.length" class="milestone-empty">
+                        暂无里程碑
+                      </div>
+                    </div>
+                  </el-popover>
+                </template>
+              </el-table-column>
               <el-table-column prop="progress" label="进度" width="120" align="center">
                 <template #default="{ row }">
                   <span class="progress-number">{{ row.progress || 0 }}</span>
@@ -2227,5 +2289,104 @@ const handleWithdrawAll = () => {
 
 .report-tips :deep(.el-alert) {
   border-radius: var(--radius-sm);
+}
+
+/* ========================================
+   里程碑列样式
+   ======================================== */
+.milestone-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 8px;
+  cursor: default;
+}
+
+.milestone-count {
+  font-size: 13px;
+  color: var(--text-regular, #475569);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* 里程碑弹出层 */
+.milestone-popover {
+  padding: 4px 0;
+}
+
+.milestone-popover-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-main, #1e293b);
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-light, #f1f5f9);
+}
+
+.milestone-item {
+  padding: 8px 10px;
+  border-radius: 6px;
+  margin-bottom: 6px;
+  background: var(--bg-white, #fff);
+  border: 1px solid transparent;
+  transition: all 0.2s;
+}
+
+.milestone-item:last-child {
+  margin-bottom: 0;
+}
+
+/* 里程碑完成状态样式 */
+.milestone-item.milestone-completed {
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.08) 0%, rgba(34, 197, 94, 0.15) 100%);
+  border-color: rgba(34, 197, 94, 0.2);
+}
+
+.milestone-item.milestone-completed .milestone-index {
+  color: var(--el-color-success, #67c23a);
+}
+
+.milestone-item.milestone-completed .milestone-name {
+  color: var(--el-color-success-dark-2, #529b2e);
+}
+
+.milestone-check-icon {
+  color: var(--el-color-success, #67c23a);
+  font-size: 16px;
+  margin-left: auto;
+}
+
+.milestone-item-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.milestone-index {
+  font-size: 12px;
+  color: var(--text-placeholder, #94a3b8);
+  font-weight: 500;
+}
+
+.milestone-name {
+  font-size: 13px;
+  color: var(--text-main, #1e293b);
+  font-weight: 500;
+}
+
+.milestone-item-info {
+  display: flex;
+  gap: 16px;
+  font-size: 12px;
+  color: var(--text-secondary, #64748b);
+  padding-left: 18px;
+}
+
+.milestone-empty {
+  font-size: 12px;
+  color: var(--text-placeholder, #94a3b8);
+  text-align: center;
+  padding: 12px 0;
 }
 </style>

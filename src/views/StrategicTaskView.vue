@@ -9,6 +9,7 @@
   import { useTimeContextStore } from '@/stores/timeContext'
   import AuditLogDrawer from '@/components/task/AuditLogDrawer.vue'
   import TaskApprovalDrawer from '@/components/task/TaskApprovalDrawer.vue'
+  import MilestoneList from '@/components/milestone/MilestoneList.vue'
   
   // --- 新增：自定义指令，用于自动聚焦 ---
   const vFocus = {
@@ -1619,10 +1620,17 @@
                           v-for="(ms, idx) in getMilestonesTooltip(row)" 
                           :key="ms.id"
                           class="milestone-item"
+                          :class="{ 'milestone-completed': (row.progress || 0) >= ms.progress }"
                         >
                           <div class="milestone-item-header">
                             <span class="milestone-index">{{ idx + 1 }}.</span>
                             <span class="milestone-name">{{ ms.name || '未命名' }}</span>
+                            <el-icon 
+                              v-if="(row.progress || 0) >= ms.progress" 
+                              class="milestone-check-icon"
+                            >
+                              <Check />
+                            </el-icon>
                           </div>
                           <div class="milestone-item-info">
                             <span>预期: {{ ms.expectedDate || '未设置' }}</span>
@@ -1871,7 +1879,7 @@
                     </el-select>
                   </el-form-item>
                 </el-col>
-                <el-col :span="8">
+                <el-col :span="12">
                   <el-form-item label="战略任务">
                     <el-select
                       ref="taskSelectRef"
@@ -1902,23 +1910,35 @@
                     </el-select>
                   </el-form-item>
                 </el-col>
-                <el-col :span="8">
-                  <el-form-item label="核心指标">
-                    <el-input v-model="newRow.name" placeholder="设置核心指标内容" />
+                <el-col :span="4">
+                  <el-form-item label="权重">
+                    <el-input-number v-model="newRow.weight" :min="0" placeholder="权重" :controls="false" style="width: 100%" />
                   </el-form-item>
                 </el-col>
               </el-row>
               <el-row :gutter="16">
-                <el-col :span="16">
-                  <el-form-item label="说明">
-                    <el-input v-model="newRow.remark" placeholder="输入指标说明" />
+                <el-col :span="24">
+                  <el-form-item label="核心指标">
+                    <el-input 
+                      v-model="newRow.name" 
+                      type="textarea"
+                      :autosize="{ minRows: 2, maxRows: 10 }"
+                      placeholder="设置核心指标内容"
+                    />
                   </el-form-item>
                 </el-col>
-                  <el-col :span="4">
-                    <el-form-item label="权重">
-                      <el-input-number v-model="newRow.weight" :min="0" placeholder="权重" :controls="false" style="width: 100%" />
-                    </el-form-item>
-                  </el-col>
+              </el-row>
+              <el-row :gutter="16">
+                <el-col :span="24">
+                  <el-form-item label="说明">
+                    <el-input 
+                      v-model="newRow.remark" 
+                      type="textarea"
+                      :autosize="{ minRows: 3, maxRows: 15 }"
+                      placeholder="输入指标说明"
+                    />
+                  </el-form-item>
+                </el-col>
               </el-row>
               <el-row :gutter="16">
                 <el-col :span="24">
@@ -1928,7 +1948,7 @@
                         <el-icon><Plus /></el-icon> 添加里程碑
                       </el-button>
                       <div v-if="newRow.milestones.length > 0" class="milestone-list">
-                        <div v-for="(ms, idx) in newRow.milestones" :key="ms.id" class="milestone-item">
+                        <div v-for="(ms, idx) in newRow.milestones" :key="ms.id" class="milestone-form-item">
                           <span class="milestone-index">{{ idx + 1 }}.</span>
                           <el-input v-model="ms.name" placeholder="里程碑名称" style="width: 160px" size="small" />
                           <el-input-number v-model="ms.targetProgress" :min="0" :max="100" placeholder="目标进度%" size="small" style="width: 110px" />
@@ -2349,12 +2369,14 @@
               description="暂无里程碑，点击上方按钮添加"
               :image-size="80"
             />
+            
+            <!-- 里程碑编辑表单 -->
             <div 
               v-for="(ms, idx) in editingMilestones" 
               :key="ms.id" 
               class="milestone-edit-item"
             >
-              <div class="milestone-index">{{ idx + 1 }}</div>
+              <div class="milestone-index">{{ idx + 1 }}.</div>
               <div class="milestone-fields">
                 <el-input 
                   v-model="ms.name" 
@@ -3226,6 +3248,27 @@
     background: rgba(64, 158, 255, 0.08);
     padding: var(--spacing-lg);
     border-top: 1px solid var(--color-primary-light);
+    max-height: 600px;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  .add-row-form::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .add-row-form::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 4px;
+  }
+
+  .add-row-form::-webkit-scrollbar-thumb {
+    background: var(--color-primary-light, #93c5fd);
+    border-radius: 4px;
+  }
+
+  .add-row-form::-webkit-scrollbar-thumb:hover {
+    background: var(--color-primary, #2c5282);
   }
   
   .form-title {
@@ -3301,7 +3344,7 @@
     min-width: 20px;
   }
 
-  .milestone-item {
+  .milestone-form-item {
     display: flex;
     align-items: center;
     gap: 8px;
@@ -3311,7 +3354,7 @@
     border-bottom: 1px dashed var(--border-light, #e2e8f0);
   }
 
-  .milestone-item:last-child {
+  .milestone-form-item:last-child {
     border-bottom: none;
   }
 
@@ -4024,10 +4067,36 @@
   }
 
   .milestone-item {
-    padding: 8px 0;
+    padding: 8px 10px;
+    border-radius: 6px;
+    margin-bottom: 6px;
+    background: var(--bg-white, #fff);
+    border: 1px solid transparent;
+    transition: all 0.2s;
   }
 
   .milestone-item:last-child {
+    margin-bottom: 0;
+  }
+
+  /* 里程碑完成状态样式 */
+  .milestone-item.milestone-completed {
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.08) 0%, rgba(34, 197, 94, 0.15) 100%);
+    border-color: rgba(34, 197, 94, 0.2);
+  }
+
+  .milestone-item.milestone-completed .milestone-index {
+    color: var(--el-color-success, #67c23a);
+  }
+
+  .milestone-item.milestone-completed .milestone-name {
+    color: var(--el-color-success-dark-2, #529b2e);
+  }
+
+  .milestone-check-icon {
+    color: var(--el-color-success, #67c23a);
+    font-size: 16px;
+    margin-left: auto;
   }
 
   .milestone-item-header {
@@ -4411,7 +4480,7 @@
   }
 
   .milestone-edit-list {
-    max-height: 400px;
+    max-height: 500px;
     overflow-y: auto;
     padding: 4px;
   }
