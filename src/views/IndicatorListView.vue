@@ -1058,12 +1058,13 @@ const handleWithdrawAll = () => {
       <div class="table-card card-base card-animate" style="animation-delay: 0.1s;">
 <div class="card-header">
             <span class="card-title">指标列表</span>
-            <el-tag v-if="overallStatus === 'pending'" type="warning" size="small" class="overall-status-tag">待审批</el-tag>
-            <el-tag v-else-if="overallStatus === 'rejected'" type="danger" size="small" class="overall-status-tag">已驳回</el-tag>
-            <el-tag v-else-if="overallStatus === 'approved'" type="success" size="small" class="overall-status-tag">已通过</el-tag>
-            <el-tag v-else type="info" size="small" class="overall-status-tag">{{ overallStatus === 'active' ? '进行中' : '草稿' }}</el-tag>
             <div class="header-actions">
-            <span class="indicator-count">共 {{ indicators.length }} 条记录</span>
+              <el-tag v-if="overallStatus === 'pending'" type="warning" size="small" class="overall-status-tag">待审批</el-tag>
+              <el-tag v-else-if="overallStatus === 'rejected'" type="danger" size="small" class="overall-status-tag">已驳回</el-tag>
+              <el-tag v-else-if="overallStatus === 'approved'" type="success" size="small" class="overall-status-tag">已通过</el-tag>
+              <el-tag v-else type="info" size="small" class="overall-status-tag">{{ overallStatus === 'active' ? '进行中' : '草稿' }}</el-tag>
+              <span class="indicator-count">共 {{ indicators.length }} 条记录</span>
+
             <!-- 职能部门/二级学院的批量操作按钮 -->
             <template v-if="!isStrategicDept">
               <!-- 一键提交按钮（所有指标都已填报且未全部提交时显示） -->
@@ -1638,7 +1639,7 @@ const handleWithdrawAll = () => {
 }
 
 .overall-status-tag {
-  margin-left: var(--spacing-md);
+  /* Let flex gap handle spacing */
 }
 
 .header-actions {
