@@ -140,10 +140,13 @@ const approvalIndicators = computed(() => {
     })
   }
 
-  // 审批人：只返回待审批的指标
+  // 审批人：返回待审批的指标 + 有历史记录的指标（确保历史记录能正常显示）
   // 填报人：返回所有有审批状态的指标（用于查看审批进度）
   if (isStrategicDept.value) {
-    return list.filter(i => i.progressApprovalStatus === 'pending')
+    return list.filter(i => 
+      i.progressApprovalStatus === 'pending' || 
+      (i.statusAudit && i.statusAudit.length > 0)
+    )
   } else {
     return list.filter(i => i.progressApprovalStatus && i.progressApprovalStatus !== 'draft')
   }

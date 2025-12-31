@@ -920,11 +920,11 @@
   // 任务审批抽屉状态
   const taskApprovalVisible = ref(false)
 
-  // 专门用于审批抽屉的指标列表（包含所有待审批的指标，不受部门筛选影响）
+  // 专门用于审批抽屉的指标列表（包含所有待审批的指标，以及有历史记录的指标，确保历史记录能正常显示）
   const approvalIndicators = computed(() => {
     return strategicStore.indicators
       .filter(i => !i.year || i.year === timeContext.currentYear)
-      .filter(i => i.progressApprovalStatus === 'pending')
+      .filter(i => i.progressApprovalStatus === 'pending' || (i.statusAudit && i.statusAudit.length > 0))
       .map(i => ({
         ...i,
         id: Number(i.id)
