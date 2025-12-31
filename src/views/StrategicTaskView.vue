@@ -920,6 +920,17 @@
   // 任务审批抽屉状态
   const taskApprovalVisible = ref(false)
 
+  // 专门用于审批抽屉的指标列表（包含所有待审批的指标，不受部门筛选影响）
+  const approvalIndicators = computed(() => {
+    return strategicStore.indicators
+      .filter(i => !i.year || i.year === timeContext.currentYear)
+      .filter(i => i.progressApprovalStatus === 'pending')
+      .map(i => ({
+        ...i,
+        id: Number(i.id)
+      }))
+  })
+
   // 查看审计日志
   const handleViewAuditLog = (row: StrategicIndicator) => {
     currentAuditIndicator.value = row
@@ -1441,9 +1452,14 @@
               {{ hasDistributedIndicators ? '撤回' : '下发' }}
             </el-button>
             <!-- 审批按钮 -->
-            <el-button size="small" type="primary" @click="handleOpenApproval">
+            <el-button 
+              v-if="approvalIndicators.length > 0"
+              size="small" 
+              type="primary" 
+              @click="handleOpenApproval"
+            >
               <el-icon><Check /></el-icon>
-              审批
+              审批 ({{ approvalIndicators.length }})
             </el-button>
             <el-button size="small">
               <el-icon><Download /></el-icon>
@@ -2307,8 +2323,9 @@
       <!-- 任务审批抽屉 -->
       <TaskApprovalDrawer
         v-model:visible="taskApprovalVisible"
-        :indicators="indicators"
-        :department-name="selectedDepartment"
+        :indicators="approvalIndicators"
+        :department-name="'战略发展部'"
+        :show-approval-section="true"
         @close="taskApprovalVisible = false"
         @refresh="handleApprovalRefresh"
       />

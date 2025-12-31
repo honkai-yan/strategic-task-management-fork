@@ -290,8 +290,12 @@ const formatRelativeTime = (timestamp: Date | string) => {
 }
 
 // 关闭抽屉
-const handleClose = () => {
+const handleClose = (done?: any) => {
+  drawerVisible.value = false
   emit('close')
+  if (typeof done === 'function') {
+    done()
+  }
 }
 </script>
 
