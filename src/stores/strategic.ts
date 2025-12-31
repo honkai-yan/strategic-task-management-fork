@@ -1789,6 +1789,18 @@ export const useStrategicStore = defineStore('strategic', () => {
     }
   }
 
+  // 根据学院获取子指标
+  const getChildIndicatorsByCollege = (college: string) => {
+    return indicators.value.filter(i => {
+      if (i.isStrategic) return false
+      // 支持字符串或数组格式的 responsibleDept
+      if (Array.isArray(i.responsibleDept)) {
+        return i.responsibleDept.includes(college)
+      }
+      return i.responsibleDept === college
+    })
+  }
+
   // 初始化字段
   initializeIndicatorFields()
 
@@ -1805,6 +1817,7 @@ export const useStrategicStore = defineStore('strategic', () => {
     getIndicatorsByTask,
     getOverdueMilestones,
     getUpcomingMilestones,
+    getChildIndicatorsByCollege,
     // 按年份过滤
     tasksByCurrentYear,
     indicatorsByCurrentYear,

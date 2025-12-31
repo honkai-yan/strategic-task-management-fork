@@ -412,9 +412,9 @@ const handleUrge = (task: any) => {
   ElMessage.success(`已向 ${task.dept} 发送催办通知`)
 }
 
-// 雷达图数据
+// 雷达图数据（支持历史数据）
 const radarData = computed(() => {
-  const indicators = dashboardStore.visibleIndicators
+  const indicators = dashboardStore.visibleIndicatorsWithHistory
   
   // 按类型分组计算平均进度
   const typeGroups: Record<string, number[]> = {}

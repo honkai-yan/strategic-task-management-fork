@@ -92,16 +92,14 @@ export const useDashboardStore = defineStore('dashboard', () => {
     return result
   })
   
-  // 部门汇总数据
+  // 部门汇总数据（支持历史数据）
   const departmentSummary = computed<DepartmentProgress[]>(() => {
     const authStore = useAuthStore()
-    const strategicStore = useStrategicStore()
     const role = authStore.user?.role
     const userDept = authStore.user?.department
 
-    const indicators = filteredIndicators.value.length > 0
-      ? filteredIndicators.value
-      : strategicStore.indicators
+    // 使用带历史数据支持的指标
+    const indicators = visibleIndicatorsWithHistory.value
 
     // 根据下钻状态和角色确定要显示的部门和过滤的指标
     let targetIndicators = indicators
@@ -276,6 +274,58 @@ export const useDashboardStore = defineStore('dashboard', () => {
     }
 
     return indicators
+  })
+
+  // 辅助函数：获取指标在指定时间点的进度
+  const getIndicatorProgressAtDate = (indicator: StrategicIndicator, targetDate: Date): number => {
+    // 如果没有审批记录，返回当前进度
+    if (!indicator.statusAudit || indicator.statusAudit.length === 0) {
+      return indicator.progress
+    }
+
+    // 找到目标时间之前最近的一次审批记录
+    const targetTime = targetDate.getTime()
+    let latestProgress = 0 // 默认初始进度为0
+    
+    // 按时间排序审批记录
+    const sortedAudits = [...indicator.statusAudit].sort((a, b) => 
+      new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    )
+
+    // 找到目标时间之前的最后一次进度更新
+    for (const audit of sortedAudits) {
+      const auditTime = new Date(audit.timestamp).getTime()
+      if (auditTime <= targetTime) {
+        // 如果是审批通过，使用newProgress
+        if (audit.action === 'approve' && audit.newProgress !== undefined) {
+          latestProgress = audit.newProgress
+        }
+      } else {
+        break // 已经超过目标时间，停止查找
+      }
+    }
+
+    return latestProgress
+  }
+
+  // 带历史数据支持的可见指标（用于图表展示）
+  const visibleIndicatorsWithHistory = computed<StrategicIndicator[]>(() => {
+    const indicators = visibleIndicators.value
+    const timeContext = useTimeContextStore()
+    
+    // 如果是当前年份，直接返回当前数据
+    if (timeContext.isCurrentYear) {
+      return indicators
+    }
+
+    // 如果是历史年份，获取该年份12月31日的历史数据
+    const targetDate = new Date(timeContext.currentYear, 11, 31, 23, 59, 59) // 该年份的最后一刻
+
+    // 返回带有历史进度的指标副本
+    return indicators.map(indicator => ({
+      ...indicator,
+      progress: getIndicatorProgressAtDate(indicator, targetDate)
+    }))
   })
 
   // 辅助函数：按部门聚合数据
@@ -727,6 +777,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
     alertDistribution,
     // 三级联动 Getters
     visibleIndicators,
+    visibleIndicatorsWithHistory,
     departmentComparison,
     sankeyData,
     taskSourceDistribution,
