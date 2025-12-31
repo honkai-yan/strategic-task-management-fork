@@ -10,6 +10,7 @@ import { useTimeContextStore } from '@/stores/timeContext'
 import { getProgressStatus, getProgressColor, getStatusTagType } from '@/utils'
 import type { StatusAuditEntry } from '@/types'
 import { FUNCTIONAL_DEPARTMENTS } from '@/config/departments'
+import TaskApprovalDrawer from '@/components/task/TaskApprovalDrawer.vue'
 
 // --- 自定义指令，用于自动聚焦 ---
 const vFocus = {
@@ -111,6 +112,7 @@ const functionalDepartments = [...FUNCTIONAL_DEPARTMENTS]
 // 表格引用和选中的指标
 const tableRef = ref<InstanceType<typeof ElTable>>()
 const selectedIndicators = ref<StrategicIndicator[]>([])
+const approvalDrawerVisible = ref(false)
 
 // 从 Store 获取任务列表
 const taskList = computed(() => strategicStore.tasks.map(t => ({
@@ -1100,20 +1102,31 @@ const handleWithdrawAll = () => {
                 <el-icon><Upload /></el-icon>
                 一键提交
               </el-button>
-              <!-- 一键撤回按钮（所有指标都已提交时显示） -->
-              <el-button 
-                v-if="allIndicatorsSubmitted"
-                type="warning" 
-                size="small" 
-                :disabled="timeContext.isReadOnly"
-                @click="handleWithdrawAll"
-              >
-                <el-icon><RefreshLeft /></el-icon>
-                一键撤回
-              </el-button>
-              <!-- 如果有部分待审批的指标，显示批量撤回按钮 -->
-              <el-button 
-                v-if="!allIndicatorsSubmitted && indicators.some(r => r.progressApprovalStatus === 'pending')"
+                <!-- 一键撤回按钮（所有指标都已提交时显示） -->
+                <el-button 
+                  v-if="allIndicatorsSubmitted"
+                  type="warning" 
+                  size="small" 
+                  :disabled="timeContext.isReadOnly"
+                  @click="handleWithdrawAll"
+                >
+                  <el-icon><RefreshLeft /></el-icon>
+                  一键撤回
+                </el-button>
+                <!-- 审批进度按钮 -->
+                <el-button 
+                  v-if="indicators.some(r => r.progressApprovalStatus === 'pending')"
+                  type="primary" 
+                  plain
+                  size="small" 
+                  @click="approvalDrawerVisible = true"
+                >
+                  <el-icon><View /></el-icon>
+                  审批进度
+                </el-button>
+                <!-- 如果有部分待审批的指标，显示批量撤回按钮 -->
+                <el-button 
+                  v-if="!allIndicatorsSubmitted && indicators.some(r => r.progressApprovalStatus === 'pending')"
                 type="warning" 
                 size="small" 
                 :disabled="timeContext.isReadOnly"
@@ -1546,6 +1559,13 @@ const handleWithdrawAll = () => {
         <el-button type="primary" @click="submitProgressReport">保存</el-button>
       </template>
     </el-dialog>
+
+    <!-- 任务审批进度抽屉 -->
+    <TaskApprovalDrawer
+      v-model:visible="approvalDrawerVisible"
+      :indicators="indicators"
+      :department-name="authStore.userDepartment || '当前部门'"
+    />
   </div>
 </template>
 
