@@ -264,15 +264,22 @@ const handleBatchFillByTask = (group: { taskContent: string; rows: StrategicIndi
 
   const indicatorNames = pendingRows.map(ind => ind.name).join('、')
 
-  ElMessageBox.confirm(
-    `确认对任务 "${group.taskContent}" 下的 ${pendingRows.length} 个指标进行批量提交？\n\n${indicatorNames}`,
+  ElMessageBox.prompt(
+    `确认对任务 "${group.taskContent}" 下的 ${pendingRows.length} 个指标进行批量提交？\n\n指标列表：${indicatorNames}\n\n请输入提交说明：`,
     '批量提交确认',
     {
       confirmButtonText: '确定提交',
       cancelButtonText: '取消',
-      type: 'info'
+      inputPlaceholder: '请输入提交说明',
+      inputType: 'textarea',
+      inputValidator: (value) => {
+        if (!value || !value.trim()) {
+          return '请输入提交说明'
+        }
+        return true
+      }
     }
-  ).then(() => {
+  ).then(({ value: submitComment }) => {
     pendingRows.forEach(row => {
       // 更新指标状态为待审批
       strategicStore.updateIndicator(row.id.toString(), {
@@ -285,7 +292,7 @@ const handleBatchFillByTask = (group: { taskContent: string; rows: StrategicIndi
         operatorName: authStore.userName || '未知用户',
         operatorDept: authStore.userDepartment || '未知部门',
         action: 'submit',
-        comment: '批量提交进度填报',
+        comment: submitComment || '批量提交进度填报',
         previousProgress: row.progress,
         newProgress: row.pendingProgress,
         previousStatus: row.progressApprovalStatus,
@@ -355,15 +362,22 @@ const handleBatchSubmitAll = () => {
 
   const indicatorNames = pendingRows.map(ind => ind.name).join('、')
 
-  ElMessageBox.confirm(
-    `确认批量提交 ${pendingRows.length} 个指标的进度填报？\n\n${indicatorNames}`,
+  ElMessageBox.prompt(
+    `确认批量提交 ${pendingRows.length} 个指标的进度填报？\n\n指标列表：${indicatorNames}\n\n请输入提交说明：`,
     '批量提交确认',
     {
       confirmButtonText: '确定提交',
       cancelButtonText: '取消',
-      type: 'warning'
+      inputPlaceholder: '请输入提交说明',
+      inputType: 'textarea',
+      inputValidator: (value) => {
+        if (!value || !value.trim()) {
+          return '请输入提交说明'
+        }
+        return true
+      }
     }
-  ).then(() => {
+  ).then(({ value: submitComment }) => {
     pendingRows.forEach(row => {
       // 提交：将状态改为 pending，并将 pendingProgress 等数据提交审批
       strategicStore.updateIndicator(row.id.toString(), {
@@ -378,7 +392,7 @@ const handleBatchSubmitAll = () => {
         operatorName: authStore.userName || '未知用户',
         operatorDept: authStore.userDepartment || '未知部门',
         action: 'submit',
-        comment: '批量提交进度填报',
+        comment: submitComment || '批量提交进度填报',
         previousStatus: row.progressApprovalStatus,
         newStatus: 'pending',
         previousProgress: row.progress,
@@ -929,15 +943,22 @@ const handleSubmitAll = () => {
 
   const indicatorNames = indicators.value.map(ind => ind.name).join('、')
 
-  ElMessageBox.confirm(
-    `确认一键提交所有 ${indicators.value.length} 个指标？\n\n${indicatorNames}\n\n注意：提交后将无法修改，需等待上级部门审批。`,
+  ElMessageBox.prompt(
+    `确认一键提交所有 ${indicators.value.length} 个指标？\n\n指标列表：${indicatorNames}\n\n注意：提交后将无法修改，需等待上级部门审批。\n\n请输入提交说明：`,
     '一键提交确认',
     {
       confirmButtonText: '确定提交',
       cancelButtonText: '取消',
-      type: 'warning'
+      inputPlaceholder: '请输入提交说明',
+      inputType: 'textarea',
+      inputValidator: (value) => {
+        if (!value || !value.trim()) {
+          return '请输入提交说明'
+        }
+        return true
+      }
     }
-  ).then(() => {
+  ).then(({ value: submitComment }) => {
     indicators.value.forEach(row => {
       // 提交：将状态改为 pending，使用当前进度数据
       strategicStore.updateIndicator(row.id.toString(), {
@@ -953,7 +974,7 @@ const handleSubmitAll = () => {
         operatorName: authStore.userName || '未知用户',
         operatorDept: authStore.userDepartment || '未知部门',
         action: 'submit',
-        comment: '一键提交所有指标进度',
+        comment: submitComment || '一键提交所有指标进度',
         previousStatus: row.progressApprovalStatus,
         newStatus: 'pending',
         previousProgress: row.progress,
