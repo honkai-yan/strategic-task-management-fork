@@ -1148,17 +1148,16 @@ const handleWithdrawAll = () => {
                   <el-icon><RefreshLeft /></el-icon>
                   一键撤回
                 </el-button>
-                    <!-- 审批进度按钮 -->
-                    <el-button 
-                      v-if="approvalIndicators.length > 0"
-                      link
-                      type="primary"
-                      style="margin-left: 8px;"
-                      @click="approvalDrawerVisible = true"
-                    >
-                      <el-icon style="margin-right: 4px;"><View /></el-icon>
-                      审批进度
-                    </el-button>
+                      <!-- 审批进度按钮 -->
+                      <el-button 
+                        link
+                        type="primary"
+                        style="margin-left: 8px;"
+                        @click="approvalDrawerVisible = true"
+                      >
+                        <el-icon style="margin-right: 4px;"><View /></el-icon>
+                        审批进度 ({{ approvalIndicators.length }})
+                      </el-button>
                 <!-- 如果有部分待审批的指标，显示批量撤回按钮 -->
                 <el-button 
                   v-if="!allIndicatorsSubmitted && approvalIndicators.length > 0"
