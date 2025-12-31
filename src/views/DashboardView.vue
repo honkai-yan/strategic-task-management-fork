@@ -647,15 +647,15 @@ onUnmounted(() => {
 
     <!-- AI 智能摘要卡片 -->
     <section class="ai-summary-card">
+      <el-tooltip :content="helpTexts.aiBriefing" placement="top" effect="light">
+        <el-icon class="help-icon absolute-help"><QuestionFilled /></el-icon>
+      </el-tooltip>
       <div class="summary-icon">
         <el-icon :size="28"><Aim /></el-icon>
       </div>
       <div class="summary-content">
           <div class="summary-header">
             <span class="summary-tag">AI Intelligence Briefing</span>
-            <el-tooltip :content="helpTexts.aiBriefing" placement="top" effect="light">
-              <el-icon class="help-icon ai-help" style="margin-right: 4px;"><QuestionFilled /></el-icon>
-            </el-tooltip>
             <span class="summary-time">| UPDATE: {{ new Date().toLocaleDateString() }}</span>
           </div>
         <p class="summary-text">
@@ -695,14 +695,14 @@ onUnmounted(() => {
     <el-row :gutter="16" class="stat-cards">
       <el-col v-for="(kpi, idx) in kpiCards" :key="idx" :xs="24" :sm="12" :md="6">
         <div class="kpi-card" :class="'kpi-' + kpi.gradient">
-            <div class="kpi-header">
-              <div class="header-left" style="display: flex; align-items: center;">
-                <span class="kpi-label">{{ kpi.label }}</span>
-                <el-tooltip :content="kpi.helpText" placement="top" effect="light">
-                  <el-icon class="help-icon kpi-help" style="margin-left: 4px; cursor: help; color: var(--text-placeholder); font-size: 14px;"><QuestionFilled /></el-icon>
-                </el-tooltip>
-              </div>
-              <div class="kpi-trend" :class="kpi.isUp ? 'up' : 'down'">
+          <el-tooltip :content="kpi.helpText" placement="top" effect="light">
+            <el-icon class="help-icon absolute-help"><QuestionFilled /></el-icon>
+          </el-tooltip>
+          <div class="kpi-header">
+            <div class="header-left" style="display: flex; align-items: center;">
+              <span class="kpi-label">{{ kpi.label }}</span>
+            </div>
+            <div class="kpi-trend" :class="kpi.isUp ? 'up' : 'down'">
               <el-icon v-if="kpi.isUp"><Top /></el-icon>
               <el-icon v-else><Bottom /></el-icon>
               {{ kpi.trend }}%
@@ -728,16 +728,16 @@ onUnmounted(() => {
       <!-- 部门排名对标 -->
       <el-col :xs="24" :lg="16">
         <el-card shadow="hover" class="chart-card glass-card benchmark-card">
-            <template #header>
-              <div class="card-header benchmark-header">
-                <div class="header-left">
-                  <span class="card-title benchmark-title">部门战略执行排名 <span class="title-tag-italic">BENCHMARK</span></span>
-                  <el-tooltip :content="helpTexts.benchmark" placement="top" effect="light">
-                    <el-icon class="help-icon" style="margin-left: 4px; cursor: help;"><QuestionFilled /></el-icon>
-                  </el-tooltip>
-                  <span class="card-subtitle">REAL-TIME PERFORMANCE VS BASELINE</span>
-                </div>
-                <div class="header-right">
+          <el-tooltip :content="helpTexts.benchmark" placement="top" effect="light">
+            <el-icon class="help-icon absolute-help"><QuestionFilled /></el-icon>
+          </el-tooltip>
+          <template #header>
+            <div class="card-header benchmark-header">
+              <div class="header-left">
+                <span class="card-title benchmark-title">部门战略执行排名 <span class="title-tag-italic">BENCHMARK</span></span>
+                <span class="card-subtitle">REAL-TIME PERFORMANCE VS BASELINE</span>
+              </div>
+              <div class="header-right">
                 <div class="view-toggle">
                   <button 
                     class="toggle-btn" 
@@ -762,13 +762,13 @@ onUnmounted(() => {
       <!-- 雷达分析 -->
       <el-col :xs="24" :lg="8">
         <el-card shadow="hover" class="chart-card glass-card radar-card">
+          <el-tooltip :content="helpTexts.radar" placement="top" effect="light">
+            <el-icon class="help-icon absolute-help"><QuestionFilled /></el-icon>
+          </el-tooltip>
           <template #header>
             <div class="card-header radar-header">
               <div class="header-left">
                 <span class="card-title radar-title">核心维度雷达全景</span>
-                <el-tooltip :content="helpTexts.radar" placement="top" effect="light">
-                  <el-icon class="help-icon" style="margin-left: 4px; cursor: help;"><QuestionFilled /></el-icon>
-                </el-tooltip>
                 <span class="card-subtitle">CONTRIBUTION DIMENSION ANALYSIS</span>
               </div>
             </div>
@@ -793,12 +793,12 @@ onUnmounted(() => {
       <!-- 得分构成 -->
       <el-col :xs="24" :md="8">
         <el-card shadow="hover" class="chart-card card-animate">
+          <el-tooltip :content="helpTexts.scoreComposition" placement="top" effect="light">
+            <el-icon class="help-icon absolute-help"><QuestionFilled /></el-icon>
+          </el-tooltip>
           <template #header>
             <div class="card-header">
               <span class="card-title">得分构成</span>
-              <el-tooltip :content="helpTexts.scoreComposition" placement="top" effect="light">
-                <el-icon class="help-icon"><QuestionFilled /></el-icon>
-              </el-tooltip>
             </div>
           </template>
           <ScoreCompositionChart 
@@ -811,12 +811,12 @@ onUnmounted(() => {
       <!-- 预警分布 -->
       <el-col :xs="24" :md="8">
         <el-card shadow="hover" class="chart-card card-animate">
+          <el-tooltip :content="helpTexts.alertDistribution" placement="top" effect="light">
+            <el-icon class="help-icon absolute-help"><QuestionFilled /></el-icon>
+          </el-tooltip>
           <template #header>
             <div class="card-header">
               <span class="card-title">预警分布</span>
-              <el-tooltip :content="helpTexts.alertDistribution" placement="top" effect="light">
-                <el-icon class="help-icon"><QuestionFilled /></el-icon>
-              </el-tooltip>
             </div>
           </template>
           <AlertDistributionChart 
@@ -831,12 +831,12 @@ onUnmounted(() => {
       <!-- 完成率统计 -->
       <el-col :xs="24" :md="8">
         <el-card shadow="hover" class="chart-card card-animate">
+          <el-tooltip :content="helpTexts.completionRate" placement="top" effect="light">
+            <el-icon class="help-icon absolute-help"><QuestionFilled /></el-icon>
+          </el-tooltip>
           <template #header>
             <div class="card-header">
               <span class="card-title">完成情况</span>
-              <el-tooltip :content="helpTexts.completionRate" placement="top" effect="light">
-                <el-icon class="help-icon"><QuestionFilled /></el-icon>
-              </el-tooltip>
             </div>
           </template>
           <div class="completion-stats">
@@ -876,6 +876,9 @@ onUnmounted(() => {
 
     <!-- 滞后任务响应清单 -->
     <el-card shadow="hover" class="task-list-card glass-card">
+      <el-tooltip :content="helpTexts.delayedTasks" placement="top" effect="light">
+        <el-icon class="help-icon absolute-help"><QuestionFilled /></el-icon>
+      </el-tooltip>
       <template #header>
         <div class="card-header task-card-header">
           <div class="header-left">
@@ -885,9 +888,6 @@ onUnmounted(() => {
               <div class="header-title-group">
                 <div style="display: flex; align-items: center; gap: 4px;">
                   <span class="card-title task-title">TOP 滞后任务响应清单</span>
-                  <el-tooltip :content="helpTexts.delayedTasks" placement="top" effect="light">
-                    <el-icon class="help-icon" style="cursor: help;"><QuestionFilled /></el-icon>
-                  </el-tooltip>
                 </div>
                 <span class="card-subtitle">HIGH PRIORITY PENDING ACTIONS</span>
               </div>
@@ -941,12 +941,12 @@ onUnmounted(() => {
         <!-- 全校任务流转图 -->
         <el-col :span="24">
           <el-card shadow="hover" class="chart-card card-animate">
+            <el-tooltip content="显示战略处到职能部门到学院的任务分发情况，点击节点可下钻" placement="top" effect="light">
+              <el-icon class="help-icon absolute-help"><QuestionFilled /></el-icon>
+            </el-tooltip>
             <template #header>
               <div class="card-header">
                 <span class="card-title">全校任务流转图</span>
-                <el-tooltip content="显示战略处到职能部门到学院的任务分发情况，点击节点可下钻" placement="top" effect="light">
-                  <el-icon class="help-icon"><QuestionFilled /></el-icon>
-                </el-tooltip>
               </div>
             </template>
             <TaskSankeyChart
@@ -966,12 +966,12 @@ onUnmounted(() => {
         <!-- 本部门任务下发流向 -->
         <el-col :span="24">
           <el-card shadow="hover" class="chart-card card-animate">
+            <el-tooltip content="显示本部门向各学院分发的任务情况" placement="top" effect="light">
+              <el-icon class="help-icon absolute-help"><QuestionFilled /></el-icon>
+            </el-tooltip>
             <template #header>
               <div class="card-header">
                 <span class="card-title">本部门任务下发流向</span>
-                <el-tooltip content="显示本部门向各学院分发的任务情况" placement="top" effect="light">
-                  <el-icon class="help-icon"><QuestionFilled /></el-icon>
-                </el-tooltip>
               </div>
             </template>
             <TaskSankeyChart
@@ -990,12 +990,12 @@ onUnmounted(() => {
         <!-- 任务来源分布 -->
         <el-col :xs="24" :md="10">
           <el-card shadow="hover" class="chart-card card-animate">
+            <el-tooltip content="显示本学院承接的任务来自哪些职能部门，点击可筛选" placement="top" effect="light">
+              <el-icon class="help-icon absolute-help"><QuestionFilled /></el-icon>
+            </el-tooltip>
             <template #header>
               <div class="card-header">
                 <span class="card-title">任务来源分布</span>
-                <el-tooltip content="显示本学院承接的任务来自哪些职能部门，点击可筛选" placement="top" effect="light">
-                  <el-icon class="help-icon"><QuestionFilled /></el-icon>
-                </el-tooltip>
               </div>
             </template>
             <SourcePieChart
@@ -1009,12 +1009,12 @@ onUnmounted(() => {
         <!-- 承接任务汇总 -->
         <el-col :xs="24" :md="14">
           <el-card shadow="hover" class="chart-card card-animate">
+            <el-tooltip content="本学院承接的所有任务进度汇总" placement="top" effect="light">
+              <el-icon class="help-icon absolute-help"><QuestionFilled /></el-icon>
+            </el-tooltip>
             <template #header>
               <div class="card-header">
                 <span class="card-title">承接任务汇总</span>
-                <el-tooltip content="本学院承接的所有任务进度汇总" placement="top" effect="light">
-                  <el-icon class="help-icon"><QuestionFilled /></el-icon>
-                </el-tooltip>
               </div>
             </template>
             <DepartmentProgressChart :departments="dashboardStore.departmentSummary" />
@@ -1499,6 +1499,22 @@ onUnmounted(() => {
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
   transition: all var(--transition-normal);
+  position: relative;
+}
+
+.absolute-help {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 10;
+  color: var(--text-placeholder);
+  cursor: help;
+  font-size: 14px;
+  transition: color var(--transition-fast);
+}
+
+.absolute-help:hover {
+  color: var(--color-primary);
 }
 
 .chart-card:hover {
