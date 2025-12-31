@@ -27,6 +27,7 @@ const props = defineProps<{
   visible: boolean
   indicators: StrategicIndicator[]
   departmentName: string
+  showApprovalSection?: boolean // 是否显示待审批区域（默认true，审批人需要，填报人不需要）
 }>()
 
 const emit = defineEmits<{
@@ -307,17 +308,22 @@ const handleClose = () => {
       <div class="drawer-header">
         <div class="header-title">
           <el-icon><Check /></el-icon>
-          <span>任务审批</span>
+          <span>{{ props.showApprovalSection !== false ? '任务审批' : '审批进度' }}</span>
         </div>
         <div class="header-subtitle">
-          {{ departmentName }} - 待审批 {{ pendingApprovals.length }} 条
+          <template v-if="props.showApprovalSection !== false">
+            {{ departmentName }} - 待审批 {{ pendingApprovals.length }} 条
+          </template>
+          <template v-else>
+            {{ departmentName }} - 查看提交的审批进度
+          </template>
         </div>
       </div>
     </template>
 
     <div class="drawer-content">
-      <!-- 待审批记录区域 -->
-      <div class="pending-section">
+      <!-- 待审批记录区域（仅审批人可见） -->
+      <div v-if="props.showApprovalSection !== false" class="pending-section">
         <div class="section-title">
           <el-icon><Warning /></el-icon>
           <span>待审批记录</span>
@@ -399,8 +405,8 @@ const handleClose = () => {
         </div>
       </div>
 
-      <!-- 分隔线 -->
-      <el-divider />
+      <!-- 分隔线（仅在显示待审批区域时显示） -->
+      <el-divider v-if="props.showApprovalSection !== false" />
 
       <!-- 审批流程区域 -->
       <div class="approval-flow-section">
@@ -411,37 +417,37 @@ const handleClose = () => {
             <div v-if="currentSubmissions.length === 0" class="empty-state">
               <el-empty description="暂无提交记录" :image-size="80" />
             </div>
-            <div v-else class="flow-timeline">
-              <!-- 发起申请节点 -->
-              <div class="flow-node">
-                <div class="node-icon submit-icon">
-                  <el-icon><Upload /></el-icon>
-                </div>
-                <div class="node-content">
-                  <div class="node-title">发起申请</div>
-                  <div class="node-user">
-                    {{
-                      currentSubmissions[0]?.submitLog?.operatorName || '提交人'
-                    }}
+              <div v-else class="flow-timeline">
+                <!-- 发起申请节点 -->
+                <div class="flow-node">
+                  <div class="node-icon submit-icon is-completed">
+                    <el-icon><Upload /></el-icon>
                   </div>
-                  <div class="node-time">
-                    {{
-                      currentSubmissions[0]?.submitLog
-                        ? formatTime(currentSubmissions[0].submitLog.timestamp)
-                        : ''
-                    }}
+                  <div class="node-content">
+                    <div class="node-title">发起申请</div>
+                    <div class="node-user">
+                      {{
+                        currentSubmissions[0]?.submitLog?.operatorName || '提交人'
+                      }}
+                    </div>
+                    <div class="node-time">
+                      {{
+                        currentSubmissions[0]?.submitLog
+                          ? formatTime(currentSubmissions[0].submitLog.timestamp)
+                          : ''
+                      }}
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <!-- 连接线 -->
-              <div class="flow-line"></div>
+                <!-- 连接线 -->
+                <div class="flow-line"></div>
 
-              <!-- 主管审批节点 -->
-              <div class="flow-node">
-                <div class="node-icon pending-icon">
-                  <el-icon><User /></el-icon>
-                </div>
+                <!-- 主管审批节点 -->
+                <div class="flow-node">
+                  <div class="node-icon pending-icon">
+                    <el-icon><User /></el-icon>
+                  </div>
                 <div class="node-content">
                   <div class="node-title">主管审批</div>
                   <div class="node-user">
@@ -533,46 +539,48 @@ const handleClose = () => {
                   </el-tag>
                 </div>
 
-                <!-- 流程时间线 -->
-                <div class="flow-timeline">
-                  <!-- 发起申请节点 -->
-                  <div class="flow-node">
-                    <div class="node-icon submit-icon">
-                      <el-icon><Upload /></el-icon>
-                    </div>
-                    <div class="node-content">
-                      <div class="node-title">发起申请</div>
-                      <div v-if="batch.submitters.length > 0" class="submitters-list">
-                        <div
-                          v-for="(submitter, idx) in batch.submitters"
-                          :key="idx"
-                          class="submitter-item"
-                        >
-                          <span class="node-user">{{ submitter.operatorName }}</span>
-                          <span class="node-dept">{{ submitter.operatorDept }}</span>
+                  <!-- 流程时间线 -->
+                  <div class="flow-timeline">
+                    <!-- 发起申请节点 -->
+                    <div class="flow-node">
+                      <div class="node-icon submit-icon is-completed">
+                        <el-icon><Upload /></el-icon>
+                      </div>
+                      <div class="node-content">
+                        <div class="node-title">发起申请</div>
+                        <div v-if="batch.submitters.length > 0" class="submitters-list">
+                          <div
+                            v-for="(submitter, idx) in batch.submitters"
+                            :key="idx"
+                            class="submitter-item"
+                          >
+                            <span class="node-user">{{ submitter.operatorName }}</span>
+                            <span class="node-dept">{{ submitter.operatorDept }}</span>
+                          </div>
+                        </div>
+                        <div v-else class="node-user">提交人</div>
+                        <div v-if="batch.submitters.length > 0" class="node-time">
+                          {{ formatTime(batch.submitters[0].timestamp) }}
                         </div>
                       </div>
-                      <div v-else class="node-user">提交人</div>
-                      <div v-if="batch.submitters.length > 0" class="node-time">
-                        {{ formatTime(batch.submitters[0].timestamp) }}
+                    </div>
+
+                    <!-- 连接线 -->
+                    <div class="flow-line"></div>
+
+                    <!-- 主管审批节点 -->
+                    <div class="flow-node">
+                      <div
+                        class="node-icon"
+                        :class="[
+                          batch.action === 'approve' ? 'approve-icon is-completed' : 'reject-icon',
+                        ]"
+                      >
+                        <el-icon>
+                          <Check v-if="batch.action === 'approve'" />
+                          <Close v-else />
+                        </el-icon>
                       </div>
-                    </div>
-                  </div>
-
-                  <!-- 连接线 -->
-                  <div class="flow-line"></div>
-
-                  <!-- 主管审批节点 -->
-                  <div class="flow-node">
-                    <div
-                      class="node-icon"
-                      :class="batch.action === 'approve' ? 'approve-icon' : 'reject-icon'"
-                    >
-                      <el-icon>
-                        <Check v-if="batch.action === 'approve'" />
-                        <Close v-else />
-                      </el-icon>
-                    </div>
                     <div class="node-content">
                       <div class="node-title">主管审批</div>
                       <div class="node-user">
@@ -638,9 +646,12 @@ const handleClose = () => {
 
     <template #footer>
       <div class="drawer-footer">
-        <span class="footer-info"
+        <span v-if="props.showApprovalSection !== false" class="footer-info"
           >待审批 {{ pendingApprovals.length }} 条 · 历史记录
           {{ historyApprovalBatches.length }} 批次</span
+        >
+        <span v-else class="footer-info"
+          >历史记录 {{ historyApprovalBatches.length }} 批次</span
         >
         <el-button @click="handleClose">关闭</el-button>
       </div>
@@ -917,7 +928,7 @@ const handleClose = () => {
   background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
 }
 
-.node-icon::after {
+.node-icon.is-completed::after {
   content: '';
   position: absolute;
   bottom: -2px;

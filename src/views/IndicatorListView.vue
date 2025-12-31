@@ -114,6 +114,41 @@ const tableRef = ref<InstanceType<typeof ElTable>>()
 const selectedIndicators = ref<StrategicIndicator[]>([])
 const approvalDrawerVisible = ref(false)
 
+// 专门用于审批抽屉的指标列表
+// - 审批人（战略发展部）：只显示待审批的指标
+// - 填报人（职能部门/二级学院）：显示所有已提交的指标（待审批+已审批+已驳回）
+const approvalIndicators = computed(() => {
+  let list = strategicStore.indicators.map(i => ({
+    ...i,
+    id: String(i.id)
+  }))
+
+  // 按当前年份过滤
+  const currentYear = timeContext.currentYear
+  const realYear = timeContext.realCurrentYear
+  list = list.filter(i => {
+    const indicatorYear = i.year || realYear
+    return indicatorYear === currentYear
+  })
+
+  // 根据当前角色过滤数据
+  if (!isStrategicDept.value && props.viewingRole) {
+    list = list.filter(i => {
+      const isResponsible = i.responsibleDept === props.viewingRole
+      const isOwner = i.ownerDept === props.viewingRole
+      return isResponsible || isOwner
+    })
+  }
+
+  // 审批人：只返回待审批的指标
+  // 填报人：返回所有有审批状态的指标（用于查看审批进度）
+  if (isStrategicDept.value) {
+    return list.filter(i => i.progressApprovalStatus === 'pending')
+  } else {
+    return list.filter(i => i.progressApprovalStatus && i.progressApprovalStatus !== 'draft')
+  }
+})
+
 // 从 Store 获取任务列表
 const taskList = computed(() => strategicStore.tasks.map(t => ({
   id: Number(t.id),
@@ -1113,19 +1148,20 @@ const handleWithdrawAll = () => {
                   <el-icon><RefreshLeft /></el-icon>
                   一键撤回
                 </el-button>
-                  <!-- 审批进度按钮 -->
-                  <el-button 
-                    v-if="indicators.some(r => r.progressApprovalStatus === 'pending')"
-                    link
-                    style="padding: 0; margin-left: 8px;"
-                    @click="approvalDrawerVisible = true"
-                    title="审批进度"
-                  >
-                    <el-icon :size="20" style="color: #409eff;"><View /></el-icon>
-                  </el-button>
+                    <!-- 审批进度按钮 -->
+                    <el-button 
+                      v-if="approvalIndicators.length > 0"
+                      link
+                      type="primary"
+                      style="margin-left: 8px;"
+                      @click="approvalDrawerVisible = true"
+                    >
+                      <el-icon style="margin-right: 4px;"><View /></el-icon>
+                      审批进度
+                    </el-button>
                 <!-- 如果有部分待审批的指标，显示批量撤回按钮 -->
                 <el-button 
-                  v-if="!allIndicatorsSubmitted && indicators.some(r => r.progressApprovalStatus === 'pending')"
+                  v-if="!allIndicatorsSubmitted && approvalIndicators.length > 0"
                 type="warning" 
                 size="small" 
                 :disabled="timeContext.isReadOnly"
@@ -1562,8 +1598,9 @@ const handleWithdrawAll = () => {
     <!-- 任务审批进度抽屉 -->
     <TaskApprovalDrawer
       v-model:visible="approvalDrawerVisible"
-      :indicators="indicators"
+      :indicators="approvalIndicators"
       :department-name="authStore.userDepartment || '当前部门'"
+      :show-approval-section="isStrategicDept"
     />
   </div>
 </template>
