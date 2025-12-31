@@ -152,6 +152,31 @@ const approvalIndicators = computed(() => {
   }
 })
 
+// 仅计算待审批的数量，用于按钮上的数字显示
+const pendingApprovalCount = computed(() => {
+  let list = strategicStore.indicators
+
+  // 按当前年份过滤
+  const currentYear = timeContext.currentYear
+  const realYear = timeContext.realCurrentYear
+  list = list.filter(i => {
+    const indicatorYear = i.year || realYear
+    return indicatorYear === currentYear
+  })
+
+  // 根据当前角色过滤数据
+  if (!isStrategicDept.value && props.viewingRole) {
+    list = list.filter(i => {
+      const isResponsible = i.responsibleDept === props.viewingRole
+      const isOwner = i.ownerDept === props.viewingRole
+      return isResponsible || isOwner
+    })
+  }
+
+  // 只统计待审批状态的指标数量
+  return list.filter(i => i.progressApprovalStatus === 'pending').length
+})
+
 // 从 Store 获取任务列表
 const taskList = computed(() => strategicStore.tasks.map(t => ({
   id: Number(t.id),
@@ -1151,24 +1176,24 @@ const handleWithdrawAll = () => {
                   <el-icon><RefreshLeft /></el-icon>
                   一键撤回
                 </el-button>
-                      <!-- 审批进度按钮 -->
-                      <el-button 
-                        link
-                        type="primary"
-                        style="margin-left: 8px;"
-                        @click="approvalDrawerVisible = true"
-                      >
-                        <el-icon style="margin-right: 4px;"><View /></el-icon>
-                        审批进度 ({{ approvalIndicators.length }})
-                      </el-button>
-                <!-- 如果有部分待审批的指标，显示批量撤回按钮 -->
-                <el-button 
-                  v-if="!allIndicatorsSubmitted && approvalIndicators.length > 0"
-                type="warning" 
-                size="small" 
-                :disabled="timeContext.isReadOnly"
-                @click="handleBatchRevokeAll"
-              >
+                        <!-- 审批进度按钮 -->
+                        <el-button 
+                          link
+                          type="primary"
+                          style="margin-left: 8px;"
+                          @click="approvalDrawerVisible = true"
+                        >
+                          <el-icon style="margin-right: 4px;"><View /></el-icon>
+                          审批进度 ({{ pendingApprovalCount }})
+                        </el-button>
+                  <!-- 如果有部分待审批的指标，显示批量撤回按钮 -->
+                  <el-button 
+                    v-if="!allIndicatorsSubmitted && pendingApprovalCount > 0"
+                  type="warning" 
+                  size="small" 
+                  :disabled="timeContext.isReadOnly"
+                  @click="handleBatchRevokeAll"
+                >
                 <el-icon><RefreshLeft /></el-icon>
                 批量撤回
               </el-button>

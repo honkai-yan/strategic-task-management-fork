@@ -931,6 +931,14 @@
       }))
   })
 
+  // 仅计算待审批的数量，用于按钮上的数字显示
+  const pendingApprovalCount = computed(() => {
+    return strategicStore.indicators
+      .filter(i => !i.year || i.year === timeContext.currentYear)
+      .filter(i => i.progressApprovalStatus === 'pending')
+      .length
+  })
+
   // 查看审计日志
   const handleViewAuditLog = (row: StrategicIndicator) => {
     currentAuditIndicator.value = row
@@ -1451,15 +1459,15 @@
               <el-icon><component :is="hasDistributedIndicators ? RefreshLeft : Promotion" /></el-icon>
               {{ hasDistributedIndicators ? '撤回' : '下发' }}
             </el-button>
-              <!-- 审批按钮 -->
-              <el-button 
-                size="small" 
-                type="primary" 
-                @click="handleOpenApproval"
-              >
-                <el-icon><Check /></el-icon>
-                审批 ({{ approvalIndicators.length }})
-              </el-button>
+                <!-- 审批按钮 -->
+                <el-button 
+                  size="small" 
+                  type="primary" 
+                  @click="handleOpenApproval"
+                >
+                  <el-icon><Check /></el-icon>
+                  审批 ({{ pendingApprovalCount }})
+                </el-button>
             <el-button size="small">
               <el-icon><Download /></el-icon>
               导出
