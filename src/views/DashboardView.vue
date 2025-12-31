@@ -647,9 +647,6 @@ onUnmounted(() => {
 
     <!-- AI 智能摘要卡片 -->
     <section class="ai-summary-card">
-      <el-tooltip :content="helpTexts.aiBriefing" placement="top" effect="light">
-        <el-icon class="help-icon absolute-help"><QuestionFilled /></el-icon>
-      </el-tooltip>
       <div class="summary-icon">
         <el-icon :size="28"><Aim /></el-icon>
       </div>
@@ -876,9 +873,6 @@ onUnmounted(() => {
 
     <!-- 滞后任务响应清单 -->
     <el-card shadow="hover" class="task-list-card glass-card">
-      <el-tooltip :content="helpTexts.delayedTasks" placement="top" effect="light">
-        <el-icon class="help-icon absolute-help"><QuestionFilled /></el-icon>
-      </el-tooltip>
       <template #header>
         <div class="card-header task-card-header">
           <div class="header-left">
