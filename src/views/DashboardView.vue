@@ -31,7 +31,9 @@ const helpTexts = {
   completionRate: '完成率 = 已完成指标数 / 总指标数 × 100%，反映整体任务完成情况。',
   departmentProgress: '展示各部门的指标完成进度，进度条颜色表示状态：绿色（≥80%）、黄色（50%-80%）、红色（<50%）。',
   benchmark: '展示各部门执行进度与基准线对比，红色表示低于基准线，蓝色表示达标。',
-  radar: '多维度分析各项核心指标的完成情况，帮助识别短板领域。'
+  radar: '多维度分析各项核心指标的完成情况，帮助识别短板领域。',
+  delayedTasks: '展示当前进度滞后、且需优先处理的任务清单，支持一键发送催办提醒。',
+  aiBriefing: '基于大模型分析，实时提炼全校及部门战略执行的核心动态与风险提示。'
 }
 
 // 雷达图实例
@@ -330,56 +332,60 @@ const kpiCards = computed(() => {
   const lastMonthScore = Math.max(0, data.totalScore - Math.floor(Math.random() * 10) + 5)
   const scoreTrend = data.totalScore - lastMonthScore
   
-  return [
-    {
-      label: '战略执行总分',
-      value: data.totalScore,
-      unit: '分',
-      trend: Math.abs(scoreTrend),
-      isUp: scoreTrend >= 0,
-      predict: Math.min(120, data.totalScore + 8),
-      desc: '年度目标: 120分',
-      percent: Math.round((data.totalScore / 120) * 100),
-      icon: 'Aim',
-      gradient: 'primary'
-    },
-    {
-      label: '核心指标完成率',
-      value: data.completionRate,
-      unit: '%',
-      trend: 3.2,
-      isUp: true,
-      predict: Math.min(100, data.completionRate + 12),
-      desc: `已完成 ${data.completedIndicators}/${data.totalIndicators} 项`,
-      percent: data.completionRate,
-      icon: 'DataAnalysis',
-      gradient: 'success'
-    },
-    {
-      label: '严重预警任务',
-      value: data.alertIndicators.severe,
-      unit: '项',
-      trend: 2,
-      isUp: false,
-      predict: Math.max(0, data.alertIndicators.severe - 3),
-      desc: '需重点关注推进',
-      percent: Math.max(0, 100 - (data.alertIndicators.severe / Math.max(1, data.totalIndicators)) * 100),
-      icon: 'Warning',
-      gradient: 'danger'
-    },
-    {
-      label: '发展性指标得分',
-      value: data.developmentScore,
-      unit: '分',
-      trend: 1.5,
-      isUp: true,
-      predict: Math.min(20, data.developmentScore + 3),
-      desc: '满分20分',
-      percent: (data.developmentScore / 20) * 100,
-      icon: 'TrendCharts',
-      gradient: 'purple'
-    }
-  ]
+    return [
+      {
+        label: '战略执行总分',
+        helpText: helpTexts.totalScore,
+        value: data.totalScore,
+        unit: '分',
+        trend: Math.abs(scoreTrend),
+        isUp: scoreTrend >= 0,
+        predict: Math.min(120, data.totalScore + 8),
+        desc: '年度目标: 120分',
+        percent: Math.round((data.totalScore / 120) * 100),
+        icon: 'Aim',
+        gradient: 'primary'
+      },
+      {
+        label: '核心指标完成率',
+        helpText: helpTexts.completionRate,
+        value: data.completionRate,
+        unit: '%',
+        trend: 3.2,
+        isUp: true,
+        predict: Math.min(100, data.completionRate + 12),
+        desc: `已完成 ${data.completedIndicators}/${data.totalIndicators} 项`,
+        percent: data.completionRate,
+        icon: 'DataAnalysis',
+        gradient: 'success'
+      },
+      {
+        label: '严重预警任务',
+        helpText: helpTexts.warningCount,
+        value: data.alertIndicators.severe,
+        unit: '项',
+        trend: 2,
+        isUp: false,
+        predict: Math.max(0, data.alertIndicators.severe - 3),
+        desc: '需重点关注推进',
+        percent: Math.max(0, 100 - (data.alertIndicators.severe / Math.max(1, data.totalIndicators)) * 100),
+        icon: 'Warning',
+        gradient: 'danger'
+      },
+      {
+        label: '发展性指标得分',
+        helpText: helpTexts.developmentScore,
+        value: data.developmentScore,
+        unit: '分',
+        trend: 1.5,
+        isUp: true,
+        predict: Math.min(20, data.developmentScore + 3),
+        desc: '满分20分',
+        percent: (data.developmentScore / 20) * 100,
+        icon: 'TrendCharts',
+        gradient: 'purple'
+      }
+    ]
 })
 
 // 滞后任务列表
@@ -645,10 +651,13 @@ onUnmounted(() => {
         <el-icon :size="28"><Aim /></el-icon>
       </div>
       <div class="summary-content">
-        <div class="summary-header">
-          <span class="summary-tag">AI Intelligence Briefing</span>
-          <span class="summary-time">| UPDATE: {{ new Date().toLocaleDateString() }}</span>
-        </div>
+          <div class="summary-header">
+            <span class="summary-tag">AI Intelligence Briefing</span>
+            <el-tooltip :content="helpTexts.aiBriefing" placement="top" effect="light">
+              <el-icon class="help-icon ai-help" style="margin-right: 4px;"><QuestionFilled /></el-icon>
+            </el-tooltip>
+            <span class="summary-time">| UPDATE: {{ new Date().toLocaleDateString() }}</span>
+          </div>
         <p class="summary-text">
           全校战略执行总分 <span class="highlight-primary">{{ dashboardData.totalScore }}</span>。
           <template v-if="dashboardData.alertIndicators.severe > 0">
@@ -686,9 +695,14 @@ onUnmounted(() => {
     <el-row :gutter="16" class="stat-cards">
       <el-col v-for="(kpi, idx) in kpiCards" :key="idx" :xs="24" :sm="12" :md="6">
         <div class="kpi-card" :class="'kpi-' + kpi.gradient">
-          <div class="kpi-header">
-            <span class="kpi-label">{{ kpi.label }}</span>
-            <div class="kpi-trend" :class="kpi.isUp ? 'up' : 'down'">
+            <div class="kpi-header">
+              <div class="header-left" style="display: flex; align-items: center;">
+                <span class="kpi-label">{{ kpi.label }}</span>
+                <el-tooltip :content="kpi.helpText" placement="top" effect="light">
+                  <el-icon class="help-icon kpi-help" style="margin-left: 4px; cursor: help; color: var(--text-placeholder); font-size: 14px;"><QuestionFilled /></el-icon>
+                </el-tooltip>
+              </div>
+              <div class="kpi-trend" :class="kpi.isUp ? 'up' : 'down'">
               <el-icon v-if="kpi.isUp"><Top /></el-icon>
               <el-icon v-else><Bottom /></el-icon>
               {{ kpi.trend }}%
@@ -714,13 +728,16 @@ onUnmounted(() => {
       <!-- 部门排名对标 -->
       <el-col :xs="24" :lg="16">
         <el-card shadow="hover" class="chart-card glass-card benchmark-card">
-          <template #header>
-            <div class="card-header benchmark-header">
-              <div class="header-left">
-                <span class="card-title benchmark-title">部门战略执行排名 <span class="title-tag-italic">BENCHMARK</span></span>
-                <span class="card-subtitle">REAL-TIME PERFORMANCE VS BASELINE</span>
-              </div>
-              <div class="header-right">
+            <template #header>
+              <div class="card-header benchmark-header">
+                <div class="header-left">
+                  <span class="card-title benchmark-title">部门战略执行排名 <span class="title-tag-italic">BENCHMARK</span></span>
+                  <el-tooltip :content="helpTexts.benchmark" placement="top" effect="light">
+                    <el-icon class="help-icon" style="margin-left: 4px; cursor: help;"><QuestionFilled /></el-icon>
+                  </el-tooltip>
+                  <span class="card-subtitle">REAL-TIME PERFORMANCE VS BASELINE</span>
+                </div>
+                <div class="header-right">
                 <div class="view-toggle">
                   <button 
                     class="toggle-btn" 
@@ -749,6 +766,9 @@ onUnmounted(() => {
             <div class="card-header radar-header">
               <div class="header-left">
                 <span class="card-title radar-title">核心维度雷达全景</span>
+                <el-tooltip :content="helpTexts.radar" placement="top" effect="light">
+                  <el-icon class="help-icon" style="margin-left: 4px; cursor: help;"><QuestionFilled /></el-icon>
+                </el-tooltip>
                 <span class="card-subtitle">CONTRIBUTION DIMENSION ANALYSIS</span>
               </div>
             </div>
@@ -862,10 +882,15 @@ onUnmounted(() => {
             <div class="header-icon danger">
               <el-icon><Warning /></el-icon>
             </div>
-            <div class="header-title-group">
-              <span class="card-title task-title">TOP 滞后任务响应清单</span>
-              <span class="card-subtitle">HIGH PRIORITY PENDING ACTIONS</span>
-            </div>
+              <div class="header-title-group">
+                <div style="display: flex; align-items: center; gap: 4px;">
+                  <span class="card-title task-title">TOP 滞后任务响应清单</span>
+                  <el-tooltip :content="helpTexts.delayedTasks" placement="top" effect="light">
+                    <el-icon class="help-icon" style="cursor: help;"><QuestionFilled /></el-icon>
+                  </el-tooltip>
+                </div>
+                <span class="card-subtitle">HIGH PRIORITY PENDING ACTIONS</span>
+              </div>
           </div>
           <el-button link type="primary" size="small" class="view-all-btn">VIEW ALL ISSUES →</el-button>
         </div>
