@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import type { StrategicTask, StrategicIndicator, Milestone, StatusAuditEntry } from '@/types'
 import { useTimeContextStore } from './timeContext'
+import { indicators2023, indicators2024, indicators2026 } from '@/data/historicalIndicators'
 
 export const useStrategicStore = defineStore('strategic', () => {
   // State
@@ -1771,6 +1772,47 @@ export const useStrategicStore = defineStore('strategic', () => {
     })
   }
 
+  // 保存 2025 年的当前数据（工作模式数据）
+  const current2025Indicators = ref<StrategicIndicator[]>([])
+  
+  // 保存初始数据
+  const saveCurrentIndicators = () => {
+    current2025Indicators.value = JSON.parse(JSON.stringify(indicators.value))
+  }
+
+  // 根据年份加载对应数据
+  const loadIndicatorsByYear = (year: number) => {
+    if (year === 2025) {
+      // 2025 年：加载当前工作数据
+      indicators.value = JSON.parse(JSON.stringify(current2025Indicators.value))
+    } else if (year === 2023) {
+      // 2023 年：加载历史数据
+      indicators.value = JSON.parse(JSON.stringify(indicators2023))
+    } else if (year === 2024) {
+      // 2024 年：加载历史数据
+      indicators.value = JSON.parse(JSON.stringify(indicators2024))
+    } else if (year === 2026) {
+      // 2026 年：加载历史数据
+      indicators.value = JSON.parse(JSON.stringify(indicators2026))
+    } else {
+      // 其他年份：显示空数据
+      indicators.value = []
+    }
+  }
+
+  // 监听年份变化，动态切换数据
+  const timeContext = getTimeContext()
+  watch(() => timeContext.currentYear, (newYear) => {
+    loadIndicatorsByYear(newYear)
+  })
+
+  // 初始化字段
+  initializeIndicatorFields()
+  // 保存 2025 年当前数据
+  saveCurrentIndicators()
+  // 根据当前年份加载数据
+  loadIndicatorsByYear(timeContext.currentYear)
+
   // 添加审计日志条目
   const addStatusAuditEntry = (
     indicatorId: string,
@@ -1801,9 +1843,6 @@ export const useStrategicStore = defineStore('strategic', () => {
     })
   }
 
-  // 初始化字段
-  initializeIndicatorFields()
-
   return {
     // State
     tasks,
@@ -1831,6 +1870,8 @@ export const useStrategicStore = defineStore('strategic', () => {
     deleteIndicator,
     updateMilestoneStatus,
     addStatusAuditEntry,
-    initializeIndicatorFields
+    initializeIndicatorFields,
+    loadIndicatorsByYear,
+    saveCurrentIndicators
   }
 })
