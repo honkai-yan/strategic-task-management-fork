@@ -1,5 +1,5 @@
 <script setup lang="ts">
-  import { ref, computed, onMounted, onUnmounted } from 'vue'
+  import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
   import { Plus, View, Download, Delete, ArrowDown, Promotion, RefreshLeft, Check, Close, Upload, Edit, Refresh, User, ChatDotRound, Right, Timer } from '@element-plus/icons-vue'
   import { ElMessage, ElMessageBox } from 'element-plus'
   import type { ElTable } from 'element-plus'
@@ -143,12 +143,10 @@
     const hasPending = list.some(i => i.progressApprovalStatus === 'pending')
     const hasRejected = list.some(i => i.progressApprovalStatus === 'rejected')
     const allDistributed = list.every(i => !i.canWithdraw)
-    const anyDistributed = list.some(i => !i.canWithdraw)
     
     if (hasPending) return { label: '待审批', type: 'warning' }
     if (hasRejected) return { label: '有驳回', type: 'danger' }
     if (allDistributed) return { label: '已下发', type: 'success' }
-    if (anyDistributed) return { label: '部分下发', type: 'info' }
     return { label: '待下发', type: 'info' }
   })
 
@@ -293,7 +291,6 @@
   const getTaskStatus = (row: StrategicIndicator) => {
     const group = getTaskGroup(row)
     const allDistributed = group.rows.every(r => !r.canWithdraw)
-    const anyDistributed = group.rows.some(r => !r.canWithdraw)
     const hasPendingApproval = group.rows.some(r => r.progressApprovalStatus === 'pending')
     
     if (hasPendingApproval) {
@@ -301,9 +298,6 @@
     }
     if (allDistributed) {
       return { label: '已下发', type: 'success', canWithdraw: false }
-    }
-    if (anyDistributed) {
-      return { label: '部分下发', type: 'info', canWithdraw: true }
     }
     return { label: '待下发', type: 'info', canWithdraw: true }
   }
@@ -926,23 +920,26 @@
   // 任务审批抽屉状态
   const taskApprovalVisible = ref(false)
 
-  // 专门用于审批抽屉的指标列表（包含所有待审批的指标，以及有历史记录的指标，确保历史记录能正常显示）
+  // 专门用于审批抽屉的指标列表（显示当前选中部门的所有指标，一个部门的所有指标状态应该统一）
   const approvalIndicators = computed(() => {
+    if (!selectedDepartment.value) return []
     return strategicStore.indicators
       .filter(i => !i.year || i.year === timeContext.currentYear)
-      .filter(i => i.progressApprovalStatus === 'pending' || (i.statusAudit && i.statusAudit.length > 0))
-      .map(i => ({
-        ...i,
-        id: Number(i.id)
-      }))
+      .filter(i => i.responsibleDept === selectedDepartment.value)  // 只显示当前选中部门的指标
+      .filter(i => i.isStrategic === true)  // 只显示战略指标（一级指标）
   })
 
-  // 仅计算待审批的数量，用于按钮上的数字显示
+  // 判断当前选中部门是否有待审批的指标（用于按钮显示和状态判断）
+  const hasPendingApproval = computed(() => {
+    if (!selectedDepartment.value) return false
+    return approvalIndicators.value.some(i => i.progressApprovalStatus === 'pending')
+  })
+
+  // 待审批数量：如果部门有任何一个指标待审批，则显示该部门的总指标数（因为要一起审批）
   const pendingApprovalCount = computed(() => {
-    return strategicStore.indicators
-      .filter(i => !i.year || i.year === timeContext.currentYear)
-      .filter(i => i.progressApprovalStatus === 'pending')
-      .length
+    if (!selectedDepartment.value) return 0
+    if (!hasPendingApproval.value) return 0
+    return approvalIndicators.value.length  // 显示该部门的总指标数
   })
 
   // 查看审计日志
@@ -958,7 +955,11 @@
 
   // 审批后刷新
   const handleApprovalRefresh = () => {
-    updateEditTime()
+    // 强制关闭并重新打开抽屉以刷新数据
+    taskApprovalVisible.value = false
+    nextTick(() => {
+      updateEditTime()
+    })
   }
 
   // 下发弹窗状态
@@ -1487,11 +1488,11 @@
                   <!-- 审批按钮 -->
                   <el-button 
                     size="small" 
-                    type="primary" 
+                    :type="pendingApprovalCount > 0 ? 'primary' : 'default'"
                     @click="handleOpenApproval"
                   >
                     <el-icon><Check /></el-icon>
-                    审批
+                    审批{{ pendingApprovalCount > 0 ? ` (${pendingApprovalCount})` : '' }}
                   </el-button>
             <el-button size="small">
               <el-icon><Download /></el-icon>

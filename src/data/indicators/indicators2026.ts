@@ -1404,9 +1404,9 @@ export const indicators2026: StrategicIndicator[] = [
     isStrategic: true,
     ownerDept: '战略发展部',
     year: 2026,
-    progressApprovalStatus: 'approved',
-    pendingProgress: 25,
-    pendingRemark: 'Q1党员发展工作顺利完成，发展党员12名',
+    progressApprovalStatus: 'pending',
+    pendingProgress: 28,
+    pendingRemark: 'Q1党员发展工作顺利完成，发展党员12名，待审批',
     statusAudit: [
       {
         id: 'audit-501-1',
@@ -1430,23 +1430,14 @@ export const indicators2026: StrategicIndicator[] = [
       },
       {
         id: 'audit-501-3',
-        timestamp: new Date('2026-01-20'),
+        timestamp: new Date('2026-01-28'),
         operator: 'li-shuji',
         operatorName: '李书记',
         operatorDept: '党委办公室 | 党委统战部',
         action: 'submit',
-        comment: '更新进度，党员发展培训完成',
+        comment: '更新进度，党员发展培训完成，待审批',
         previousProgress: 10,
-        newProgress: 25
-      },
-      {
-        id: 'audit-501-4',
-        timestamp: new Date('2026-01-22'),
-        operator: 'strategy-admin',
-        operatorName: '战略发展部管理员',
-        operatorDept: '战略发展部',
-        action: 'approve',
-        comment: '审批通过，Q1目标达成'
+        newProgress: 28
       }
     ]
   },
@@ -1529,9 +1520,9 @@ export const indicators2026: StrategicIndicator[] = [
     isStrategic: true,
     ownerDept: '战略发展部',
     year: 2026,
-    progressApprovalStatus: 'approved',
-    pendingProgress: 30,
-    pendingRemark: '廉政建设责任书签订完成，培训覆盖率100%',
+    progressApprovalStatus: 'pending',
+    pendingProgress: 35,
+    pendingRemark: '廉政建设责任书签订完成，培训覆盖率100%，待审批',
     statusAudit: [
       {
         id: 'audit-503-1',
@@ -1580,18 +1571,9 @@ export const indicators2026: StrategicIndicator[] = [
         operatorName: '李书记',
         operatorDept: '党委办公室 | 党委统战部',
         action: 'submit',
-        comment: '更新进度，廉政培训全覆盖完成',
+        comment: '更新进度，廉政培训全覆盖完成，待审批',
         previousProgress: 18,
-        newProgress: 30
-      },
-      {
-        id: 'audit-503-6',
-        timestamp: new Date('2026-01-30'),
-        operator: 'strategy-admin',
-        operatorName: '战略发展部管理员',
-        operatorDept: '战略发展部',
-        action: 'approve',
-        comment: '审批通过，Q1目标超额完成'
+        newProgress: 35
       }
     ]
   },
@@ -1616,9 +1598,9 @@ export const indicators2026: StrategicIndicator[] = [
     isStrategic: true,
     ownerDept: '战略发展部',
     year: 2026,
-    progressApprovalStatus: 'approved',
-    pendingProgress: 22,
-    pendingRemark: '舆情监测机制建立，处置流程完善',
+    progressApprovalStatus: 'pending',
+    pendingProgress: 25,
+    pendingRemark: '舆情监测机制建立，处置流程完善，待审批',
     statusAudit: [
       {
         id: 'audit-506-1',
@@ -1647,18 +1629,9 @@ export const indicators2026: StrategicIndicator[] = [
         operatorName: '李书记',
         operatorDept: '党委办公室 | 党委统战部',
         action: 'submit',
-        comment: '更新进度，舆情监测系统上线运行',
+        comment: '更新进度，舆情监测系统上线运行，待审批',
         previousProgress: 20,
-        newProgress: 22
-      },
-      {
-        id: 'audit-506-4',
-        timestamp: new Date('2026-01-28'),
-        operator: 'strategy-admin',
-        operatorName: '战略发展部管理员',
-        operatorDept: '战略发展部',
-        action: 'approve',
-        comment: '审批通过'
+        newProgress: 25
       }
     ]
   },

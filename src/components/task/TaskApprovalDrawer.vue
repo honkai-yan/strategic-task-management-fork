@@ -45,11 +45,18 @@ const drawerVisible = computed({
   set: (val) => emit('update:visible', val)
 })
 
-// 待审批记录（只显示 pending 状态的指标）
+// 待审批记录（只显示 pending 状态的指标，去重后显示）
 const pendingApprovals = computed(() => {
-  return props.indicators.filter(
-    (indicator) => indicator.progressApprovalStatus === 'pending'
-  )
+  // 使用 Map 去重，key 为指标 id
+  const uniqueMap = new Map()
+  props.indicators
+    .filter(indicator => indicator.progressApprovalStatus === 'pending')  // 只显示待审批的
+    .forEach(indicator => {
+      if (!uniqueMap.has(indicator.id)) {
+        uniqueMap.set(indicator.id, indicator)
+      }
+    })
+  return Array.from(uniqueMap.values())
 })
 
 // 标签页切换

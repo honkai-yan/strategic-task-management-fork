@@ -70,11 +70,11 @@ const approvalIndicators = computed(() => {
   }) as StrategicIndicator[]
 })
 
-// 待审批数量（用于按钮显示）
+// 待审批数量（用于按钮显示）- 基于 progressApprovalStatus === 'pending'
 const pendingApprovalCount = computed(() => {
   if (!selectedCollege.value) return 0
-  const status = getCollegeStatus(selectedCollege.value)
-  return status.pending
+  // 统计当前部门下发给该学院的、进度待审批的指标数量
+  return approvalIndicators.value.filter(i => i.progressApprovalStatus === 'pending').length
 })
 
 // 打开任务审批抽屉
@@ -2244,6 +2244,38 @@ const getRowClassName = ({ row }: { row: TableRowData }) => {
                     </el-form-item>
                   </el-col>
                 </el-row>
+            </el-form>
+        </div>
+        
+        <!-- 添加更多指标按钮 -->
+        <div class="add-more-btn">
+          <el-button type="primary" plain @click="addNewIndicatorRow">
+            <el-icon><Plus /></el-icon>
+            添加更多指标
+          </el-button>
+        </div>
+      </div>
+      
+      <template #footer>
+        <el-button @click="closeAddIndicatorDialog">取消</el-button>
+        <el-button type="primary" @click="handleAddIndicators">确认添加</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 选择关联核心指标弹框 -->
+    <el-dialog
+      v-model="selectParentDialogVisible"
+      title="选择关联的核心指标"
+      width="700px"
+      :close-on-click-modal="false"
+    >
+      <div class="select-parent-content">
+        <el-table
+          :data="selectParentTableData"
+          border
+          max-height="400px"
+          class="select-parent-table"
+        >
           <!-- 核心指标列 - 可选择 -->
           <el-table-column label="核心指标" min-width="280">
             <template #default="{ row }">
