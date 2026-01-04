@@ -1165,17 +1165,17 @@ const handleWithdrawAll = () => {
                 <el-icon><Upload /></el-icon>
                 一键提交
               </el-button>
-                <!-- 一键撤回按钮（所有指标都已提交时显示） -->
-                <el-button 
-                  v-if="allIndicatorsSubmitted"
-                  type="warning" 
-                  size="small" 
-                  :disabled="timeContext.isReadOnly"
-                  @click="handleWithdrawAll"
-                >
-                  <el-icon><RefreshLeft /></el-icon>
-                  一键撤回
-                </el-button>
+              <!-- 一键撤回按钮（所有指标都已提交时显示） -->
+              <el-button 
+                v-if="allIndicatorsSubmitted"
+                type="warning" 
+                size="small" 
+                :disabled="timeContext.isReadOnly"
+                @click="handleWithdrawAll"
+              >
+                <el-icon><RefreshLeft /></el-icon>
+                一键撤回
+              </el-button>
                         <!-- 审批进度按钮 -->
                         <el-button 
                           link
@@ -1186,17 +1186,6 @@ const handleWithdrawAll = () => {
                           <el-icon style="margin-right: 4px;"><View /></el-icon>
                           审批进度
                         </el-button>
-                  <!-- 如果有部分待审批的指标，显示批量撤回按钮 -->
-                  <el-button 
-                    v-if="!allIndicatorsSubmitted && pendingApprovalCount > 0"
-                  type="warning" 
-                  size="small" 
-                  :disabled="timeContext.isReadOnly"
-                  @click="handleBatchRevokeAll"
-                >
-                <el-icon><RefreshLeft /></el-icon>
-                批量撤回
-              </el-button>
             </template>
           </div>
         </div>

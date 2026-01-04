@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { Download, TrendCharts, DataAnalysis, Warning, Aim, Refresh, Filter, QuestionFilled, Top, Bottom, Lightning } from '@element-plus/icons-vue'
 import type { DashboardData, UserRole } from '@/types'
 import { useStrategicStore } from '@/stores/strategic'
@@ -52,11 +52,11 @@ const dashboardStore = useDashboardStore()
 const authStore = useAuthStore()
 const timeContext = useTimeContextStore()
 
-// 当前视角角色（优先使用父组件传递的，否则使用用户实际角色）
+// 当前视角角色（优先使用父组件传递的，否则使用有效角色）
 const currentRole = computed<UserRole>(() => 
-  (props.viewingRole as UserRole) || authStore.user?.role || 'strategic_dept'
+  (props.viewingRole as UserRole) || authStore.effectiveRole || 'strategic_dept'
 )
-const currentDepartment = computed(() => authStore.user?.department || '')
+const currentDepartment = computed(() => authStore.effectiveDepartment || '')
 
 // 是否显示筛选功能（二级学院不显示）
 const showFilterFeature = computed(() => currentRole.value !== 'secondary_college')
@@ -70,6 +70,17 @@ const getDepartmentCardTitle = computed(() => {
     return `${dashboardStore.selectedFunctionalDept} 任务下发情况`
   }
   return canViewAllDepartments.value ? '各部门完成情况' : '下属单位完成情况'
+})
+
+// 排名看板标题（根据角色动态显示）
+const getBenchmarkTitle = computed(() => {
+  if (currentRole.value === 'strategic_dept') {
+    return '职能部门执行排名'
+  } else if (currentRole.value === 'functional_dept') {
+    return '学院执行排名'
+  } else {
+    return '学院执行排名'
+  }
 })
 
 // 筛选面板
@@ -444,10 +455,9 @@ const benchmarkData = computed(() => {
   if (!summary || summary.length === 0) {
     return []
   }
-  // 按进度排序
+  // 按进度排序，显示所有部门
   return [...summary]
     .sort((a, b) => b.progress - a.progress)
-    .slice(0, 10)
     .map(item => ({
       name: item.dept.length > 8 ? item.dept.slice(0, 8) + '...' : item.dept,
       fullName: item.dept,
@@ -524,6 +534,12 @@ const initRadarChart = () => {
 // Benchmark 图表视图模式
 const benchmarkViewMode = ref<'completion' | 'benchmark'>('completion')
 
+// 动态计算图表高度（每个部门30px，最小400px）
+const benchmarkChartHeight = computed(() => {
+  const dataLength = benchmarkData.value.length
+  return Math.max(400, dataLength * 30)
+})
+
 // 初始化排名对标图
 const initBenchmarkChart = () => {
   if (!benchmarkChartRef.value) return
@@ -533,6 +549,9 @@ const initBenchmarkChart = () => {
     console.warn('No benchmark data available')
     return
   }
+  
+  // 设置容器高度
+  benchmarkChartRef.value.style.height = `${benchmarkChartHeight.value}px`
   
   benchmarkChartInstance = echarts.init(benchmarkChartRef.value)
   const benchmark = 65
@@ -563,7 +582,7 @@ const initBenchmarkChart = () => {
       left: '61%',
       top: '3%',
       style: {
-        text: '时间基准',
+        text: '权值基准',
         fill: '#f56c6c',
         fontSize: 11,
         fontWeight: 600
@@ -619,6 +638,14 @@ const handleResize = () => {
   radarChartInstance?.resize()
   benchmarkChartInstance?.resize()
 }
+
+// 监听数据变化，重新渲染图表
+watch([benchmarkData, radarData], () => {
+  nextTick(() => {
+    initBenchmarkChart()
+    initRadarChart()
+  })
+})
 
 // 生命周期
 onMounted(() => {
@@ -724,14 +751,14 @@ onUnmounted(() => {
 
     <!-- 中间深度图表层 -->
     <el-row :gutter="16" class="chart-section deep-charts">
-      <!-- 部门排名对标 -->
-      <el-col :xs="24" :lg="16">
+      <!-- 部门排名对标（二级学院不显示） -->
+      <el-col v-if="currentRole !== 'secondary_college'" :xs="24" :lg="16">
         <el-card shadow="hover" class="chart-card glass-card benchmark-card">
           <template #header>
             <div class="card-header benchmark-header">
               <div class="header-left">
                 <div style="display: flex; align-items: center; gap: 4px;">
-                  <span class="card-title benchmark-title">部门战略执行排名 <span class="title-tag-italic">BENCHMARK</span></span>
+                  <span class="card-title benchmark-title">{{ getBenchmarkTitle }} <span class="title-tag-italic">BENCHMARK</span></span>
                   <el-tooltip :content="helpTexts.benchmark" placement="top" effect="light">
                     <el-icon class="help-icon"><QuestionFilled /></el-icon>
                   </el-tooltip>
@@ -761,7 +788,7 @@ onUnmounted(() => {
       </el-col>
 
       <!-- 雷达分析 -->
-      <el-col :xs="24" :lg="8">
+      <!-- <el-col :xs="24" :lg="8">
         <el-card shadow="hover" class="chart-card glass-card radar-card">
           <template #header>
             <div class="card-header radar-header">
@@ -788,7 +815,7 @@ onUnmounted(() => {
             </div>
           </div>
         </el-card>
-      </el-col>
+      </el-col> -->
     </el-row>
 
     <!-- 图表区域 -->
@@ -883,8 +910,8 @@ onUnmounted(() => {
       </el-col>
     </el-row>
 
-    <!-- 滞后任务响应清单 -->
-    <el-card shadow="hover" class="task-list-card glass-card">
+    <!-- 滞后任务响应清单（二级学院不显示） -->
+    <el-card v-if="currentRole !== 'secondary_college'" shadow="hover" class="task-list-card glass-card">
       <template #header>
         <div class="card-header task-card-header">
           <div class="header-left">

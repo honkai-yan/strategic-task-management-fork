@@ -383,8 +383,8 @@ const handleClose = (done?: any) => {
           </div>
         </div>
 
-        <!-- 统一驳回原因输入 -->
-        <div class="batch-reject-section">
+        <!-- 统一驳回原因输入（仅在有待审批记录时显示） -->
+        <div v-if="pendingApprovals.length > 0" class="batch-reject-section">
           <div class="reject-label">驳回原因（一键驳回时必填）：</div>
           <el-input
             v-model="batchRejectReason"
@@ -395,8 +395,8 @@ const handleClose = (done?: any) => {
           />
         </div>
 
-        <!-- 一键操作按钮 -->
-        <div class="batch-actions">
+        <!-- 一键操作按钮（仅在有待审批记录时显示） -->
+        <div v-if="pendingApprovals.length > 0" class="batch-actions">
           <el-button
             type="success"
             size="large"

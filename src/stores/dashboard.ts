@@ -95,8 +95,8 @@ export const useDashboardStore = defineStore('dashboard', () => {
   // 部门汇总数据（支持历史数据）
   const departmentSummary = computed<DepartmentProgress[]>(() => {
     const authStore = useAuthStore()
-    const role = authStore.user?.role
-    const userDept = authStore.user?.department
+    const role = authStore.effectiveRole  // 使用有效角色（考虑视角切换）
+    const userDept = authStore.effectiveDepartment  // 使用有效部门（考虑视角切换）
 
     // 使用带历史数据支持的指标
     const indicators = visibleIndicatorsWithHistory.value
@@ -119,8 +119,8 @@ export const useDashboardStore = defineStore('dashboard', () => {
     } else {
       // 根据角色获取应该显示的所有部门
       if (role === 'strategic_dept') {
-        // 战略发展部看所有部门
-        getAllDepartments().forEach(d => targetDepartments.add(d))
+        // 战略发展部只看职能部门（不包含学院）
+        getAllFunctionalDepartments().forEach(d => targetDepartments.add(d))
       } else if (role === 'functional_dept') {
         // 职能部门只看它实际下发任务的目标部门（二级学院）
         // 筛选该职能部门下发的指标，获取实际的目标部门
@@ -146,6 +146,12 @@ export const useDashboardStore = defineStore('dashboard', () => {
     // 统计实际指标数据
     targetIndicators.forEach(indicator => {
       const dept = indicator.responsibleDept || '未分配'
+      
+      // 战略发展部：只统计职能部门的指标，跳过学院
+      if (role === 'strategic_dept' && !targetDepartments.has(dept)) {
+        return
+      }
+      
       if (!deptMap.has(dept)) {
         // 下钻模式下只统计目标部门，非下钻模式可以添加新部门
         if (currentOrgLevel.value !== 'functional') {
@@ -161,11 +167,16 @@ export const useDashboardStore = defineStore('dashboard', () => {
       if (indicator.progress < 60) data.alerts += 1
     })
 
-    // 生成结果列表（只包含有任务的部门）
+    // 生成结果列表
     const result: DepartmentProgress[] = []
     deptMap.forEach((data, dept) => {
       // 下钻模式下只显示有任务的部门
       if (currentOrgLevel.value === 'functional' && data.count === 0) {
+        return
+      }
+      // 战略发展部：显示所有职能部门，即使没有指标
+      // 职能部门和学院：只显示有指标的部门
+      if (role !== 'strategic_dept' && data.count === 0) {
         return
       }
       const avgProgress = data.count > 0 ? Math.round(data.progress / data.count) : 0
