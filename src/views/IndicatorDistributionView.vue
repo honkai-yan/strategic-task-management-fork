@@ -1668,7 +1668,7 @@ const getRowClassName = ({ row }: { row: TableRowData }) => {
                           type="textarea"
                           :rows="1"
                           autosize
-                          placeholder="输入说明（选填）"
+                          placeholder="输入备注（选填）"
                           class="new-child-editing textarea-cell"
                         />
                         <span 
@@ -2249,8 +2249,8 @@ const getRowClassName = ({ row }: { row: TableRowData }) => {
               </div>
             </template>
           </el-table-column>
-          <!-- 说明列 -->
-          <el-table-column label="说明" width="150">
+          <!-- 备注列 -->
+          <el-table-column label="备注" width="150">
             <template #default="{ row }">
               <span class="indicator-remark">{{ row.indicator.remark || '-' }}</span>
             </template>

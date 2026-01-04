@@ -1184,7 +1184,7 @@ const handleWithdrawAll = () => {
                           @click="approvalDrawerVisible = true"
                         >
                           <el-icon style="margin-right: 4px;"><View /></el-icon>
-                          审批进度 ({{ pendingApprovalCount }})
+                          审批进度
                         </el-button>
                   <!-- 如果有部分待审批的指标，显示批量撤回按钮 -->
                   <el-button 
