@@ -223,7 +223,7 @@ const handleExport = () => {
         '审批状态': item.approvalStatus === 'approved' ? '已通过' :
                      item.approvalStatus === 'pending' ? '待审批' :
                      item.approvalStatus === 'rejected' ? '已驳回' : '草稿',
-        '说明': item.description || ''
+        '备注': item.description || ''
       }))
 
       fileName = `学院任务分配表_${authStore.user?.department}_${new Date().toLocaleDateString()}.xlsx`
@@ -253,7 +253,7 @@ const handleExport = () => {
         '审批状态': item.approvalStatus === 'approved' ? '已通过' :
                      item.approvalStatus === 'pending' ? '待审批' :
                      item.approvalStatus === 'rejected' ? '已驳回' : '草稿',
-        '说明': item.description || ''
+        '备注': item.description || ''
       }))
 
       fileName = `承接任务汇总_${authStore.user?.department}_${new Date().toLocaleDateString()}.xlsx`
@@ -688,7 +688,8 @@ onUnmounted(() => {
       @navigate="handleBreadcrumbNavigate" 
     />
 
-    <!-- KPI 核心矩阵（升级版） -->
+    <!-- KPI 核心矩阵（升级版）- 暂时隐藏 -->
+    <!--
     <el-row :gutter="16" class="stat-cards">
       <el-col v-for="(kpi, idx) in kpiCards" :key="idx" :xs="24" :sm="12" :md="6">
         <div class="kpi-card" :class="'kpi-' + kpi.gradient">
@@ -719,6 +720,7 @@ onUnmounted(() => {
         </div>
       </el-col>
     </el-row>
+    -->
 
     <!-- 中间深度图表层 -->
     <el-row :gutter="16" class="chart-section deep-charts">

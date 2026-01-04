@@ -330,16 +330,16 @@ const handleBatchFillByTask = (group: { taskContent: string; rows: StrategicIndi
   const indicatorNames = pendingRows.map(ind => ind.name).join('、')
 
   ElMessageBox.prompt(
-    `确认对任务 "${group.taskContent}" 下的 ${pendingRows.length} 个指标进行批量提交？\n\n指标列表：${indicatorNames}\n\n请输入提交说明：`,
+    `确认对任务 "${group.taskContent}" 下的 ${pendingRows.length} 个指标进行批量提交？\n\n指标列表：${indicatorNames}\n\n请输入提交备注：`,
     '批量提交确认',
     {
       confirmButtonText: '确定提交',
       cancelButtonText: '取消',
-      inputPlaceholder: '请输入提交说明',
+      inputPlaceholder: '请输入提交备注',
       inputType: 'textarea',
       inputValidator: (value) => {
         if (!value || !value.trim()) {
-          return '请输入提交说明'
+          return '请输入提交备注'
         }
         return true
       }
@@ -428,16 +428,16 @@ const handleBatchSubmitAll = () => {
   const indicatorNames = pendingRows.map(ind => ind.name).join('、')
 
   ElMessageBox.prompt(
-    `确认批量提交 ${pendingRows.length} 个指标的进度填报？\n\n指标列表：${indicatorNames}\n\n请输入提交说明：`,
+    `确认批量提交 ${pendingRows.length} 个指标的进度填报？\n\n指标列表：${indicatorNames}\n\n请输入提交备注：`,
     '批量提交确认',
     {
       confirmButtonText: '确定提交',
       cancelButtonText: '取消',
-      inputPlaceholder: '请输入提交说明',
+      inputPlaceholder: '请输入提交备注',
       inputType: 'textarea',
       inputValidator: (value) => {
         if (!value || !value.trim()) {
-          return '请输入提交说明'
+          return '请输入提交备注'
         }
         return true
       }
@@ -941,7 +941,7 @@ const submitProgressReport = () => {
 
   // 验证：必须填写说明
   if (!reportForm.value.remark.trim()) {
-    ElMessage.warning('请填写进度说明')
+    ElMessage.warning('请填写进度备注')
     return
   }
 
@@ -1009,16 +1009,16 @@ const handleSubmitAll = () => {
   const indicatorNames = indicators.value.map(ind => ind.name).join('、')
 
   ElMessageBox.prompt(
-    `确认一键提交所有 ${indicators.value.length} 个指标？\n\n指标列表：${indicatorNames}\n\n注意：提交后将无法修改，需等待上级部门审批。\n\n请输入提交说明：`,
+    `确认一键提交所有 ${indicators.value.length} 个指标？\n\n指标列表：${indicatorNames}\n\n注意：提交后将无法修改，需等待上级部门审批。\n\n请输入提交备注：`,
     '一键提交确认',
     {
       confirmButtonText: '确定提交',
       cancelButtonText: '取消',
-      inputPlaceholder: '请输入提交说明',
+      inputPlaceholder: '请输入提交备注',
       inputType: 'textarea',
       inputValidator: (value) => {
         if (!value || !value.trim()) {
-          return '请输入提交说明'
+          return '请输入提交备注'
         }
         return true
       }
@@ -1242,7 +1242,7 @@ const handleWithdrawAll = () => {
                   </div>
                 </template>
               </el-table-column>
-              <el-table-column prop="remark" label="说明" width="130">
+              <el-table-column prop="remark" label="备注" width="130">
                 <template #default="{ row }">
                   <div class="indicator-name-cell" @dblclick="handleIndicatorDblClick(row, 'remark')">
                     <el-input
@@ -1441,7 +1441,7 @@ const handleWithdrawAll = () => {
           <el-descriptions-item label="责任部门">{{ currentDetail.responsibleDept || '未分配' }}</el-descriptions-item>
           <el-descriptions-item label="责任人">{{ currentDetail.responsiblePerson || '未分配' }}</el-descriptions-item>
           <el-descriptions-item label="创建时间" :span="2">{{ currentDetail.createTime }}</el-descriptions-item>
-          <el-descriptions-item label="说明" :span="2">{{ currentDetail.remark || '暂无说明' }}</el-descriptions-item>
+          <el-descriptions-item label="备注" :span="2">{{ currentDetail.remark || '暂无说明' }}</el-descriptions-item>
         </el-descriptions>
 
         <!-- 里程碑信息 -->
@@ -1580,7 +1580,7 @@ const handleWithdrawAll = () => {
             />
             <span class="form-hint">%（只能递增，不能低于当前进度）</span>
           </el-form-item>
-          <el-form-item label="进度说明" required>
+          <el-form-item label="进度备注" required>
             <el-input
               v-model="reportForm.remark"
               type="textarea"

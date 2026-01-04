@@ -1978,7 +1978,7 @@
               </el-row>
               <el-row :gutter="16">
                 <el-col :span="24">
-                  <el-form-item label="说明">
+                  <el-form-item label="备注">
                     <el-input 
                       v-model="newRow.remark" 
                       type="textarea"
@@ -2100,7 +2100,7 @@
             <el-descriptions-item label="责任部门">{{ currentDetail.responsibleDept }}</el-descriptions-item>
             <el-descriptions-item label="责任人">{{ currentDetail.responsiblePerson }}</el-descriptions-item>
             <el-descriptions-item label="创建时间" :span="2">{{ currentDetail.createTime }}</el-descriptions-item>
-            <el-descriptions-item label="说明" :span="2">{{ currentDetail.remark }}</el-descriptions-item>
+            <el-descriptions-item label="备注" :span="2">{{ currentDetail.remark }}</el-descriptions-item>
           </el-descriptions>
   
           <!-- 里程碑信息 -->
