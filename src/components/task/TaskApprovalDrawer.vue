@@ -314,14 +314,14 @@ const handleClose = (done?: any) => {
           <el-icon><Check /></el-icon>
           <span>{{ props.showApprovalSection !== false ? '任务审批' : '审批进度' }}</span>
         </div>
-        <div class="header-subtitle">
+        <!-- <div class="header-subtitle">
           <template v-if="props.showApprovalSection !== false">
             {{ departmentName }} - 待审批 {{ pendingApprovals.length }} 条
           </template>
           <template v-else>
             {{ departmentName }} - 查看提交的审批进度
           </template>
-        </div>
+        </div> -->
       </div>
     </template>
 
@@ -331,7 +331,7 @@ const handleClose = (done?: any) => {
         <div class="section-title">
           <el-icon><Warning /></el-icon>
           <span>待审批记录</span>
-          <el-badge :value="pendingApprovals.length" :max="99" class="badge" />
+          <!-- <el-badge :value="pendingApprovals.length" :max="99" class="badge" /> -->
         </div>
 
         <!-- 空状态 -->
@@ -396,7 +396,7 @@ const handleClose = (done?: any) => {
             :icon="Check"
             @click="handleBatchApprove"
           >
-            一键审批通过（{{ pendingApprovals.length }}条）
+            一键审批通过
           </el-button>
           <el-button
             type="danger"
@@ -404,7 +404,7 @@ const handleClose = (done?: any) => {
             :icon="Close"
             @click="handleBatchReject"
           >
-            一键驳回（{{ pendingApprovals.length }}条）
+            一键驳回
           </el-button>
         </div>
       </div>
@@ -455,14 +455,14 @@ const handleClose = (done?: any) => {
                 <div class="node-content">
                   <div class="node-title">主管审批</div>
                   <div class="node-user">
-                    {{ authStore.userName || '审批人' }} (待审批)
+                    {{ authStore.userName || '审批人' }}
                   </div>
                   
                   <!-- 待审批说明 -->
-                  <div class="pending-notice">
+                  <!-- <div class="pending-notice">
                     <el-icon><Warning /></el-icon>
                     <span>待审批 {{ pendingApprovals.length }} 条指标</span>
-                  </div>
+                  </div> -->
 
                   <!-- 指标列表折叠 -->
                   <el-collapse class="indicators-collapse">

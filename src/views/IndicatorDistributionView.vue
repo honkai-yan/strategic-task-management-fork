@@ -12,6 +12,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useTimeContextStore } from '@/stores/timeContext'
 import { getAllColleges } from '@/config/departments'
 import AuditLogDrawer from '@/components/task/AuditLogDrawer.vue'
+import TaskApprovalDrawer from '@/components/task/TaskApprovalDrawer.vue'
 
 // Stores
 const strategicStore = useStrategicStore()
@@ -52,6 +53,40 @@ const searchKeyword = ref('')
 const auditLogVisible = ref(false)
 const currentAuditIndicator = ref<StrategicIndicator | null>(null)
 
+// 任务审批抽屉状态
+const taskApprovalVisible = ref(false)
+
+// 专门用于审批抽屉的指标列表（当前选中学院的所有子指标，只显示当前部门下发的）
+const approvalIndicators = computed(() => {
+  if (!selectedCollege.value) return []
+  // 只返回当前部门下发给该学院的指标
+  return strategicStore.indicators.filter(i => {
+    if (i.isStrategic) return false
+    if (i.ownerDept !== currentDept.value) return false
+    if (Array.isArray(i.responsibleDept)) {
+      return i.responsibleDept.includes(selectedCollege.value!)
+    }
+    return i.responsibleDept === selectedCollege.value
+  }) as StrategicIndicator[]
+})
+
+// 待审批数量（用于按钮显示）
+const pendingApprovalCount = computed(() => {
+  if (!selectedCollege.value) return 0
+  const status = getCollegeStatus(selectedCollege.value)
+  return status.pending
+})
+
+// 打开任务审批抽屉
+const handleOpenApproval = () => {
+  taskApprovalVisible.value = true
+}
+
+// 审批后刷新
+const handleApprovalRefresh = () => {
+  // 刷新数据
+}
+
 // ================== 数据获取 ==================
 
 // 筛选后的学院列表（用于侧边栏搜索）
@@ -61,10 +96,12 @@ const filteredColleges = computed(() => {
   return colleges.filter(c => c.toLowerCase().includes(keyword))
 })
 
-// 获取学院的子指标数量
+// 获取学院的子指标数量（只统计当前部门下发的）
 const getCollegeChildCount = (college: string) => {
   return strategicStore.indicators.filter(i => {
     if (i.isStrategic) return false
+    // 只统计当前部门下发的指标
+    if (i.ownerDept !== currentDept.value) return false
     // 支持字符串或数组格式的 responsibleDept
     if (Array.isArray(i.responsibleDept)) {
       return i.responsibleDept.includes(college)
@@ -73,13 +110,15 @@ const getCollegeChildCount = (college: string) => {
   }).length
 }
 
-// 获取选中学院的所有子指标（按父指标分组）
+// 获取选中学院的所有子指标（按父指标分组，只显示当前部门下发的）
 const collegeIndicators = computed(() => {
   if (!selectedCollege.value) return []
   
-  // 获取所有下发给该学院的子指标
+  // 获取当前部门下发给该学院的子指标
   const childIndicators = strategicStore.indicators.filter(i => {
     if (i.isStrategic) return false
+    // 只显示当前部门下发的指标
+    if (i.ownerDept !== currentDept.value) return false
     // 支持字符串或数组格式的 responsibleDept
     if (Array.isArray(i.responsibleDept)) {
       return i.responsibleDept.includes(selectedCollege.value!)
@@ -96,10 +135,10 @@ const collegeIndicators = computed(() => {
   return parentIndicators
 })
 
-// 获取指标的子指标
+// 获取指标的子指标（只显示当前部门下发的）
 const getChildIndicators = (parentId: string) => {
   return strategicStore.indicators.filter(i => 
-    i.parentIndicatorId === parentId && !i.isStrategic
+    i.parentIndicatorId === parentId && !i.isStrategic && i.ownerDept === currentDept.value
   )
 }
 
@@ -210,7 +249,7 @@ const openAddIndicatorDialog = () => {
     parentIndicatorId: '',
     parentIndicatorName: '',
     taskContent: '',
-    type1: '定量',
+    type1: '定性',
     name: '',
     remark: '',
     weight: 10,
@@ -227,7 +266,7 @@ const addNewIndicatorRow = () => {
     parentIndicatorId: '',
     parentIndicatorName: '',
     taskContent: '',
-    type1: '定量',
+    type1: '定性',
     name: '',
     remark: '',
     weight: 10,
@@ -505,8 +544,8 @@ const addNewChildRow = (parentIndicatorId: string) => {
     targetValue: 100,
     unit: '%',
     weight: 10,
-    remark: parentIndicator?.remark || '',  // 继承父指标说明
-    type1: '定量',  // 默认定量指标
+    remark: parentIndicator?.remark || '',  // 继承父指标备注
+    type1: '定性',  // 默认定性指标
     targetProgress: 100,  // 定量指标默认目标进度100%
     milestones: [],  // 定性指标里程碑列表
     isNew: true
@@ -773,9 +812,21 @@ const cancelChildEdit = () => {
 
 // ================== 审批相关 ==================
 
+// 辅助函数：获取当前部门下发给指定学院的子指标
+const getMyCollegeIndicators = (college: string) => {
+  return strategicStore.indicators.filter(i => {
+    if (i.isStrategic) return false
+    if (i.ownerDept !== currentDept.value) return false
+    if (Array.isArray(i.responsibleDept)) {
+      return i.responsibleDept.includes(college)
+    }
+    return i.responsibleDept === college
+  })
+}
+
 // 批量审批：针对学院下所有待审批的子指标
 const handleBatchApprove = (college: string) => {
-  const childIndicators = strategicStore.getChildIndicatorsByCollege(college)
+  const childIndicators = getMyCollegeIndicators(college)
   const pendingIndicators = childIndicators.filter(i => getChildStatus(i as StrategicIndicator) === 'pending')
   
   if (pendingIndicators.length === 0) {
@@ -812,7 +863,7 @@ const handleBatchApprove = (college: string) => {
 
 // 批量打回：针对学院下所有待审批的子指标
 const handleBatchReject = (college: string) => {
-  const childIndicators = strategicStore.getChildIndicatorsByCollege(college)
+  const childIndicators = getMyCollegeIndicators(college)
   const pendingIndicators = childIndicators.filter(i => getChildStatus(i as StrategicIndicator) === 'pending')
   
   if (pendingIndicators.length === 0) {
@@ -849,12 +900,13 @@ const handleBatchReject = (college: string) => {
   })
 }
 
-// 批量撤销：针对学院下所有已下发或待审批的子指标，撤销后可编辑删除
+// 批量撤销：针对学院下所有已下发、待审批或已通过的子指标，撤销后可编辑删除
 const handleBatchWithdraw = (college: string) => {
-  const childIndicators = strategicStore.getChildIndicatorsByCollege(college)
+  const childIndicators = getMyCollegeIndicators(college)
   const withdrawableIndicators = childIndicators.filter(i => {
     const status = getChildStatus(i as StrategicIndicator)
-    return status === 'distributed' || status === 'pending'
+    // 进行中状态包含 distributed 和 approved，都可以撤回
+    return status === 'distributed' || status === 'pending' || status === 'approved'
   })
   
   if (withdrawableIndicators.length === 0) {
@@ -891,7 +943,7 @@ const handleBatchWithdraw = (college: string) => {
 
 // 批量下发：针对学院下所有草稿状态的子指标
 const handleBatchDistribute = (college: string) => {
-  const childIndicators = strategicStore.getChildIndicatorsByCollege(college)
+  const childIndicators = getMyCollegeIndicators(college)
   const draftIndicators = childIndicators.filter(i => getChildStatus(i as StrategicIndicator) === 'draft')
   
   if (draftIndicators.length === 0) {
@@ -926,9 +978,17 @@ const handleBatchDistribute = (college: string) => {
   })
 }
 
-// 获取学院下子指标的统一状态（用于判断显示哪些批量操作按钮）
+// 获取学院下子指标的统一状态（用于判断显示哪些批量操作按钮，只统计当前部门下发的）
 const getCollegeStatus = (college: string) => {
-  const childIndicators = strategicStore.getChildIndicatorsByCollege(college)
+  // 只统计当前部门下发给该学院的指标
+  const childIndicators = strategicStore.indicators.filter(i => {
+    if (i.isStrategic) return false
+    if (i.ownerDept !== currentDept.value) return false
+    if (Array.isArray(i.responsibleDept)) {
+      return i.responsibleDept.includes(college)
+    }
+    return i.responsibleDept === college
+  })
   if (childIndicators.length === 0) return { draft: 0, distributed: 0, pending: 0, approved: 0 }
   
   // 统计各状态数量
@@ -948,6 +1008,27 @@ const getCollegeStatus = (college: string) => {
   
   return statusCounts
 }
+
+// 计算当前选中学院的整体状态（用于表头显示）
+// 状态定义：暂无指标、待下发、进行中、待审批
+const collegeOverallStatus = computed(() => {
+  if (!selectedCollege.value) return { label: '暂无指标', type: 'info' }
+  
+  const status = getCollegeStatus(selectedCollege.value)
+  const total = status.draft + status.distributed + status.pending + status.approved
+  
+  if (total === 0) return { label: '暂无指标', type: 'info' }
+  
+  // 优先级：待审批 > 待下发 > 进行中
+  // 待审批：有学院提交的进度等待审批
+  if (status.pending > 0) return { label: '待审批', type: 'warning' }
+  // 待下发：有草稿状态的指标
+  if (status.draft > 0) return { label: '待下发', type: 'info' }
+  // 进行中：已下发或已通过的指标（正在执行中）
+  if (status.distributed > 0 || status.approved > 0) return { label: '进行中', type: 'success' }
+  
+  return { label: '暂无指标', type: 'info' }
+})
 
 // 下发/撤销统一处理函数
 const handleDistributeOrWithdraw = (command: string) => {
@@ -1481,54 +1562,80 @@ const getRowClassName = ({ row }: { row: TableRowData }) => {
           <div class="card-header">
             <div class="header-left">
               <span class="card-title">{{ selectedCollege }}</span>
-              <span class="indicator-count">共 {{ collegeIndicators.length }} 个父指标</span>
+              <el-tag 
+                :type="collegeOverallStatus.type" 
+                size="default" 
+                style="margin-left: 12px;"
+              >
+                状态: {{ collegeOverallStatus.label }}
+              </el-tag>
             </div>
             <div class="header-actions" v-if="canEditChild">
-              <!-- 批量审批按钮 -->
-              <el-button 
-                v-if="getCollegeStatus(selectedCollege).pending > 0"
-                type="success" 
-                @click="handleBatchApprove(selectedCollege)"
-              >
-                批量通过 ({{ getCollegeStatus(selectedCollege).pending }})
-              </el-button>
-              <!-- 批量打回按钮 -->
-              <el-button 
-                v-if="getCollegeStatus(selectedCollege).pending > 0"
-                type="danger" 
-                plain
-                @click="handleBatchReject(selectedCollege)"
-              >
-                批量打回 ({{ getCollegeStatus(selectedCollege).pending }})
-              </el-button>
-              <!-- 添加指标按钮 -->
-              <el-button 
-                type="primary"
-                :disabled="!canAddIndicator"
-                @click="openAddIndicatorDialog"
-              >
-                <el-icon><Plus /></el-icon>
-                添加指标
-              </el-button>
-              <!-- 下发草稿按钮 -->
-              <el-button 
-                v-if="getCollegeStatus(selectedCollege).draft > 0"
-                type="success"
-                @click="handleBatchDistribute(selectedCollege)"
-              >
-                <el-icon><Promotion /></el-icon>
-                下发 ({{ getCollegeStatus(selectedCollege).draft }})
-              </el-button>
-              <!-- 撤销已下发按钮 -->
-              <el-button 
-                v-if="getCollegeStatus(selectedCollege).distributed + getCollegeStatus(selectedCollege).pending > 0"
-                type="warning"
-                plain
-                @click="handleBatchWithdraw(selectedCollege)"
-              >
-                <el-icon><RefreshLeft /></el-icon>
-                撤销 ({{ getCollegeStatus(selectedCollege).distributed + getCollegeStatus(selectedCollege).pending }})
-              </el-button>
+              <!-- 
+                按钮显示逻辑：
+                - 暂无指标 → 只显示"添加指标"按钮
+                - 其他状态 → 审批按钮始终显示，其他按钮根据状态显示
+              -->
+              <!-- 暂无指标：只显示添加指标按钮 -->
+              <template v-if="collegeOverallStatus.label === '暂无指标'">
+                <el-button 
+                  type="primary"
+                  @click="openAddIndicatorDialog"
+                >
+                  <el-icon><Plus /></el-icon>
+                  添加指标
+                </el-button>
+              </template>
+              <!-- 有指标时：审批按钮始终显示 -->
+              <template v-else>
+                <!-- 审批按钮 - 始终显示 -->
+                <el-button 
+                  :type="pendingApprovalCount > 0 ? 'warning' : 'default'"
+                  @click="handleOpenApproval"
+                >
+                  <el-icon><Check /></el-icon>
+                  审批{{ pendingApprovalCount > 0 ? ` (${pendingApprovalCount})` : '' }}
+                </el-button>
+                <!-- 待下发状态：显示添加指标和下发按钮 -->
+                <template v-if="collegeOverallStatus.label === '待下发'">
+                  <el-button 
+                    type="primary"
+                    @click="openAddIndicatorDialog"
+                  >
+                    <el-icon><Plus /></el-icon>
+                    添加指标
+                  </el-button>
+                  <el-button 
+                    type="success"
+                    @click="handleBatchDistribute(selectedCollege)"
+                  >
+                    <el-icon><Promotion /></el-icon>
+                    下发 ({{ getCollegeStatus(selectedCollege).draft }})
+                  </el-button>
+                </template>
+                <!-- 进行中状态：显示撤回按钮 -->
+                <template v-else-if="collegeOverallStatus.label === '进行中'">
+                  <el-button 
+                    type="warning"
+                    plain
+                    @click="handleBatchWithdraw(selectedCollege)"
+                  >
+                    <el-icon><RefreshLeft /></el-icon>
+                    撤回
+                  </el-button>
+                </template>
+                <!-- 待审批状态：显示撤回按钮 -->
+                <template v-else-if="collegeOverallStatus.label === '待审批'">
+                  <el-button 
+                    type="warning"
+                    plain
+                    @click="handleBatchWithdraw(selectedCollege)"
+                  >
+                    <el-icon><RefreshLeft /></el-icon>
+                    撤回
+                  </el-button>
+                </template>
+              </template>
             </div>
           </div>
 
@@ -1874,26 +1981,6 @@ const getRowClassName = ({ row }: { row: TableRowData }) => {
                   </template>
                 </el-table-column>
 
-                <!-- 状态列 -->
-                <el-table-column label="状态" width="85" align="center" class-name="status-column-cell">
-                  <template #default="{ row }">
-                    <template v-if="row.type === 'indicator-only'">
-                      <span class="status-text">-</span>
-                    </template>
-                    <template v-else-if="row.type === 'child'">
-                      <el-tag 
-                        :type="getStatusTagType(getChildStatus(row.child))" 
-                        size="small"
-                      >
-                        {{ getStatusText(getChildStatus(row.child)) }}
-                      </el-tag>
-                    </template>
-                    <template v-else-if="row.type === 'new-child'">
-                      <el-tag size="small">草稿</el-tag>
-                    </template>
-                  </template>
-                </el-table-column>
-
                 <!-- 操作列 - 学院模式：仅查看和删除（删除需先撤销） -->
                 <el-table-column label="操作" width="120" align="center">
                   <template #default="{ row }">
@@ -1907,7 +1994,7 @@ const getRowClassName = ({ row }: { row: TableRowData }) => {
                         <el-button link type="primary" size="small" @click="handleViewDetail(row.child)">
                           <el-icon><View /></el-icon>查看
                         </el-button>
-                        <!-- 只有草稿状态才能删除，已下发/待审批/已通过的需要先批量撤销 -->
+                        <!-- 只有草稿状态才能删除，已下发/待审批/已通过的不显示删除按钮 -->
                         <el-button 
                           v-if="canEditChild && getChildStatus(row.child) === 'draft'"
                           link 
@@ -1917,20 +2004,6 @@ const getRowClassName = ({ row }: { row: TableRowData }) => {
                         >
                           <el-icon><Close /></el-icon>删除
                         </el-button>
-                        <el-tooltip 
-                          v-else-if="canEditChild && getChildStatus(row.child) !== 'draft'"
-                          content="需要先撤销下发才能删除"
-                          placement="top"
-                        >
-                          <el-button 
-                            link 
-                            type="info" 
-                            size="small" 
-                            disabled
-                          >
-                            <el-icon><Close /></el-icon>删除
-                          </el-button>
-                        </el-tooltip>
                       </div>
                     </template>
                     <!-- 新增子指标操作：删除 -->
@@ -1973,6 +2046,16 @@ const getRowClassName = ({ row }: { row: TableRowData }) => {
       v-model:visible="auditLogVisible"
       :indicator="currentAuditIndicator"
       @close="auditLogVisible = false"
+    />
+
+    <!-- 任务审批抽屉 -->
+    <TaskApprovalDrawer
+      v-model:visible="taskApprovalVisible"
+      :indicators="approvalIndicators"
+      :department-name="selectedCollege || ''"
+      :show-approval-section="true"
+      @close="taskApprovalVisible = false"
+      @refresh="handleApprovalRefresh"
     />
 
     <!-- 里程碑编辑弹窗 -->
@@ -2149,93 +2232,18 @@ const getRowClassName = ({ row }: { row: TableRowData }) => {
                 </el-col>
               </el-row>
               
-              <el-row :gutter="16">
-                <el-col :span="24">
-                  <el-form-item label="备注" label-width="120px">
-                    <el-input 
-                      v-model="item.remark" 
-                      type="textarea"
-                      :rows="2"
-                      placeholder="输入备注说明（选填）" 
-                    />
-                  </el-form-item>
-                </el-col>
-              </el-row>
-              
-              <el-row :gutter="16">
-                <el-col :span="24">
-                  <el-form-item label="里程碑" label-width="120px">
-
-                  <div class="milestone-form-area">
-                    <!-- 定性指标可手动添加里程碑 -->
-                    <el-button v-if="item.type1 === '定性'" type="primary" size="small" plain @click="addDialogMilestone(index)">
-                      <el-icon><Plus /></el-icon> 添加里程碑
-                    </el-button>
-                    <!-- 里程碑列表（定量和定性共用） -->
-                    <div v-if="item.milestones.length > 0" class="milestone-list">
-                      <div v-for="(ms, msIdx) in item.milestones" :key="ms.id" class="milestone-item">
-                        <span class="milestone-index">{{ msIdx + 1 }}.</span>
-                        <el-input v-model="ms.name" placeholder="里程碑名称" style="width: 160px" size="small" />
-                        <el-input-number v-model="ms.targetProgress" :min="0" :max="100" placeholder="目标进度%" size="small" style="width: 110px" />
-                        <el-date-picker v-model="ms.deadline" type="date" placeholder="截止日期" size="small" style="width: 130px" value-format="YYYY-MM-DD" />
-                        <el-button type="danger" size="small" text @click="removeDialogMilestone(index, msIdx)">
-                          <el-icon><Close /></el-icon>
-                        </el-button>
-                      </div>
-                    </div>
-                    <!-- 提示文字 -->
-                    <span v-else class="milestone-hint">
-                      {{ item.type1 === '定量' ? '选择定量后自动生成12月里程碑' : '暂无里程碑，点击添加' }}
-                    </span>
-                  </div>
-                </el-form-item>
-              </el-col>
-            </el-row>
-          </el-form>
-        </div>
-        
-        <!-- 添加更多指标按钮 -->
-        <div class="add-more-indicator">
-          <el-button type="primary" plain @click="addNewIndicatorRow">
-            <el-icon><Plus /></el-icon> 添加更多指标
-          </el-button>
-        </div>
-      </div>
-      
-      <template #footer>
-        <el-button @click="closeAddIndicatorDialog">取消</el-button>
-        <el-button type="primary" @click="saveNewIndicators">
-          确认添加 ({{ newIndicatorList.length }})
-        </el-button>
-      </template>
-    </el-dialog>
-
-    <!-- 选择关联指标弹框 -->
-    <el-dialog
-      v-model="selectParentDialogVisible"
-      title="选择关联的核心指标"
-      width="900px"
-      :close-on-click-modal="false"
-      class="select-parent-dialog"
-    >
-      <div class="select-parent-content">
-        <el-table
-          :data="selectParentTableData"
-          border
-          class="select-parent-table"
-          :span-method="selectParentSpanMethod"
-        >
-          <!-- 战略任务列 - 合并单元格 -->
-          <el-table-column label="战略任务" width="220">
-            <template #default="{ row }">
-              <div class="task-cell">
-                <el-tag size="small" :type="row.type2 === '发展性' ? 'success' : 'info'" style="margin-right: 8px;">
-                  {{ row.type2 }}
-                </el-tag>
-                <span class="task-content-text">{{ row.taskContent }}</span>
-              </div>
-            </template>
-          </el-table-column>
+                <el-row :gutter="16">
+                  <el-col :span="24">
+                    <el-form-item label="备注" label-width="120px">
+                      <el-input 
+                        v-model="item.remark" 
+                        type="textarea"
+                        :rows="2"
+                        placeholder="输入备注内容（选填）" 
+                      />
+                    </el-form-item>
+                  </el-col>
+                </el-row>
           <!-- 核心指标列 - 可选择 -->
           <el-table-column label="核心指标" min-width="280">
             <template #default="{ row }">
@@ -2832,10 +2840,12 @@ const getRowClassName = ({ row }: { row: TableRowData }) => {
 /* 操作单元格 */
 .action-cell {
   display: flex;
+  flex-direction: row;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+  white-space: nowrap;
 }
 
 .action-placeholder {

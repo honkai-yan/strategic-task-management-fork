@@ -131,13 +131,13 @@ export const indicators2026: StrategicIndicator[] = [
     isQualitative: false,
     type1: '定量',
     type2: '发展性',
-    progress: 10,
+    progress: 15,
     createTime: '2026年1月10日',
     weight: 25,
     remark: '工科学院就业质量要求更高',
     canWithdraw: false,
     taskContent: '全力促进毕业生多元化高质量就业创业',
-    milestones: generateQuarterlyMilestones(2026, 10),
+    milestones: generateQuarterlyMilestones(2026, 15),
     targetValue: 18,
     unit: '%',
     responsibleDept: '计算机学院',
@@ -147,7 +147,51 @@ export const indicators2026: StrategicIndicator[] = [
     ownerDept: '就业创业指导中心',
     parentIndicatorId: '2026-101',
     year: 2026,
-    statusAudit: []
+    progressApprovalStatus: 'pending',
+    pendingProgress: 20,
+    pendingRemark: '已完成Q1就业数据统计，优质就业比例达到20%',
+    statusAudit: [
+      {
+        id: 'audit-101-1-1',
+        timestamp: new Date('2026-01-12'),
+        operator: 'jyc-admin',
+        operatorName: '就业中心管理员',
+        operatorDept: '就业创业指导中心',
+        action: 'distribute',
+        comment: '下发子指标给计算机学院'
+      },
+      {
+        id: 'audit-101-1-2',
+        timestamp: new Date('2026-01-20'),
+        operator: 'zhao-dean',
+        operatorName: '赵院长',
+        operatorDept: '计算机学院',
+        action: 'submit',
+        comment: '提交Q1进度，优质就业比例达到15%',
+        previousProgress: 0,
+        newProgress: 15
+      },
+      {
+        id: 'audit-101-1-3',
+        timestamp: new Date('2026-01-22'),
+        operator: 'jyc-admin',
+        operatorName: '就业中心管理员',
+        operatorDept: '就业创业指导中心',
+        action: 'approve',
+        comment: '审批通过，进度符合预期'
+      },
+      {
+        id: 'audit-101-1-4',
+        timestamp: new Date('2026-01-28'),
+        operator: 'zhao-dean',
+        operatorName: '赵院长',
+        operatorDept: '计算机学院',
+        action: 'submit',
+        comment: '更新进度至20%，就业质量持续提升',
+        previousProgress: 15,
+        newProgress: 20
+      }
+    ]
   },
   {
     id: '2026-101-2',
@@ -155,13 +199,13 @@ export const indicators2026: StrategicIndicator[] = [
     isQualitative: false,
     type1: '定量',
     type2: '发展性',
-    progress: 8,
+    progress: 10,
     createTime: '2026年1月10日',
     weight: 20,
     remark: '商科专业就业质量稳步提升',
     canWithdraw: false,
     taskContent: '全力促进毕业生多元化高质量就业创业',
-    milestones: generateQuarterlyMilestones(2026, 8),
+    milestones: generateQuarterlyMilestones(2026, 10),
     targetValue: 12,
     unit: '%',
     responsibleDept: '商学院',
@@ -171,7 +215,38 @@ export const indicators2026: StrategicIndicator[] = [
     ownerDept: '就业创业指导中心',
     parentIndicatorId: '2026-101',
     year: 2026,
-    statusAudit: []
+    progressApprovalStatus: 'approved',
+    statusAudit: [
+      {
+        id: 'audit-101-2-1',
+        timestamp: new Date('2026-01-12'),
+        operator: 'jyc-admin',
+        operatorName: '就业中心管理员',
+        operatorDept: '就业创业指导中心',
+        action: 'distribute',
+        comment: '下发子指标给商学院'
+      },
+      {
+        id: 'audit-101-2-2',
+        timestamp: new Date('2026-01-18'),
+        operator: 'qian-dean',
+        operatorName: '钱院长',
+        operatorDept: '商学院',
+        action: 'submit',
+        comment: '提交Q1进度，优质就业比例达到10%',
+        previousProgress: 0,
+        newProgress: 10
+      },
+      {
+        id: 'audit-101-2-3',
+        timestamp: new Date('2026-01-20'),
+        operator: 'jyc-admin',
+        operatorName: '就业中心管理员',
+        operatorDept: '就业创业指导中心',
+        action: 'approve',
+        comment: '审批通过'
+      }
+    ]
   },
   {
     id: '2026-101-3',
@@ -195,7 +270,31 @@ export const indicators2026: StrategicIndicator[] = [
     ownerDept: '就业创业指导中心',
     parentIndicatorId: '2026-101',
     year: 2026,
-    statusAudit: []
+    progressApprovalStatus: 'pending',
+    pendingProgress: 8,
+    pendingRemark: '艺术类专业就业渠道拓展中，预计Q2达标',
+    statusAudit: [
+      {
+        id: 'audit-101-3-1',
+        timestamp: new Date('2026-01-12'),
+        operator: 'jyc-admin',
+        operatorName: '就业中心管理员',
+        operatorDept: '就业创业指导中心',
+        action: 'distribute',
+        comment: '下发子指标给艺术与科技学院'
+      },
+      {
+        id: 'audit-101-3-2',
+        timestamp: new Date('2026-01-25'),
+        operator: 'sun-dean',
+        operatorName: '孙院长',
+        operatorDept: '艺术与科技学院',
+        action: 'submit',
+        comment: '提交进度更新，就业渠道拓展中',
+        previousProgress: 5,
+        newProgress: 8
+      }
+    ]
   },
   {
     id: '2026-101-4',
@@ -203,13 +302,13 @@ export const indicators2026: StrategicIndicator[] = [
     isQualitative: false,
     type1: '定量',
     type2: '发展性',
-    progress: 9,
+    progress: 12,
     createTime: '2026年1月10日',
     weight: 22,
     remark: '工科类专业就业质量要求高',
     canWithdraw: false,
     taskContent: '全力促进毕业生多元化高质量就业创业',
-    milestones: generateQuarterlyMilestones(2026, 9),
+    milestones: generateQuarterlyMilestones(2026, 12),
     targetValue: 16,
     unit: '%',
     responsibleDept: '工学院',
@@ -219,7 +318,58 @@ export const indicators2026: StrategicIndicator[] = [
     ownerDept: '就业创业指导中心',
     parentIndicatorId: '2026-101',
     year: 2026,
-    statusAudit: []
+    progressApprovalStatus: 'approved',
+    statusAudit: [
+      {
+        id: 'audit-101-4-1',
+        timestamp: new Date('2026-01-12'),
+        operator: 'jyc-admin',
+        operatorName: '就业中心管理员',
+        operatorDept: '就业创业指导中心',
+        action: 'distribute',
+        comment: '下发子指标给工学院'
+      },
+      {
+        id: 'audit-101-4-2',
+        timestamp: new Date('2026-01-15'),
+        operator: 'li-dean',
+        operatorName: '李院长',
+        operatorDept: '工学院',
+        action: 'submit',
+        comment: '提交初始进度9%',
+        previousProgress: 0,
+        newProgress: 9
+      },
+      {
+        id: 'audit-101-4-3',
+        timestamp: new Date('2026-01-17'),
+        operator: 'jyc-admin',
+        operatorName: '就业中心管理员',
+        operatorDept: '就业创业指导中心',
+        action: 'reject',
+        comment: '进度偏低，请加强就业指导工作'
+      },
+      {
+        id: 'audit-101-4-4',
+        timestamp: new Date('2026-01-22'),
+        operator: 'li-dean',
+        operatorName: '李院长',
+        operatorDept: '工学院',
+        action: 'submit',
+        comment: '重新提交，已加强就业指导，进度提升至12%',
+        previousProgress: 9,
+        newProgress: 12
+      },
+      {
+        id: 'audit-101-4-5',
+        timestamp: new Date('2026-01-24'),
+        operator: 'jyc-admin',
+        operatorName: '就业中心管理员',
+        operatorDept: '就业创业指导中心',
+        action: 'approve',
+        comment: '审批通过，继续保持'
+      }
+    ]
   },
   {
     id: '2026-101-5',
@@ -227,13 +377,13 @@ export const indicators2026: StrategicIndicator[] = [
     isQualitative: false,
     type1: '定量',
     type2: '发展性',
-    progress: 12,
+    progress: 15,
     createTime: '2026年1月10日',
     weight: 25,
     remark: '航空专业就业质量优势明显',
     canWithdraw: false,
     taskContent: '全力促进毕业生多元化高质量就业创业',
-    milestones: generateQuarterlyMilestones(2026, 12),
+    milestones: generateQuarterlyMilestones(2026, 15),
     targetValue: 17,
     unit: '%',
     responsibleDept: '航空学院',
@@ -243,7 +393,38 @@ export const indicators2026: StrategicIndicator[] = [
     ownerDept: '就业创业指导中心',
     parentIndicatorId: '2026-101',
     year: 2026,
-    statusAudit: []
+    progressApprovalStatus: 'approved',
+    statusAudit: [
+      {
+        id: 'audit-101-5-1',
+        timestamp: new Date('2026-01-12'),
+        operator: 'jyc-admin',
+        operatorName: '就业中心管理员',
+        operatorDept: '就业创业指导中心',
+        action: 'distribute',
+        comment: '下发子指标给航空学院'
+      },
+      {
+        id: 'audit-101-5-2',
+        timestamp: new Date('2026-01-18'),
+        operator: 'zhou-dean',
+        operatorName: '周院长',
+        operatorDept: '航空学院',
+        action: 'submit',
+        comment: '提交Q1进度，航空专业就业优势明显',
+        previousProgress: 0,
+        newProgress: 15
+      },
+      {
+        id: 'audit-101-5-3',
+        timestamp: new Date('2026-01-20'),
+        operator: 'jyc-admin',
+        operatorName: '就业中心管理员',
+        operatorDept: '就业创业指导中心',
+        action: 'approve',
+        comment: '审批通过，表现优秀'
+      }
+    ]
   },
   {
     id: '2026-102-1',
@@ -251,13 +432,13 @@ export const indicators2026: StrategicIndicator[] = [
     isQualitative: false,
     type1: '定量',
     type2: '发展性',
-    progress: 11,
+    progress: 15,
     createTime: '2026年1月10日',
     weight: 30,
     remark: '工科就业率目标更高',
     canWithdraw: false,
     taskContent: '全力促进毕业生多元化高质量就业创业',
-    milestones: generateQuarterlyMilestones(2026, 11),
+    milestones: generateQuarterlyMilestones(2026, 15),
     targetValue: 93,
     unit: '%',
     responsibleDept: '计算机学院',
@@ -267,7 +448,51 @@ export const indicators2026: StrategicIndicator[] = [
     ownerDept: '就业创业指导中心',
     parentIndicatorId: '2026-102',
     year: 2026,
-    statusAudit: []
+    progressApprovalStatus: 'pending',
+    pendingProgress: 18,
+    pendingRemark: '就业率稳步提升，预计Q2可达25%',
+    statusAudit: [
+      {
+        id: 'audit-102-1-1',
+        timestamp: new Date('2026-01-12'),
+        operator: 'jyc-admin',
+        operatorName: '就业中心管理员',
+        operatorDept: '就业创业指导中心',
+        action: 'distribute',
+        comment: '下发子指标给计算机学院'
+      },
+      {
+        id: 'audit-102-1-2',
+        timestamp: new Date('2026-01-20'),
+        operator: 'zhao-dean',
+        operatorName: '赵院长',
+        operatorDept: '计算机学院',
+        action: 'submit',
+        comment: '提交Q1就业率进度',
+        previousProgress: 0,
+        newProgress: 15
+      },
+      {
+        id: 'audit-102-1-3',
+        timestamp: new Date('2026-01-22'),
+        operator: 'jyc-admin',
+        operatorName: '就业中心管理员',
+        operatorDept: '就业创业指导中心',
+        action: 'approve',
+        comment: '审批通过'
+      },
+      {
+        id: 'audit-102-1-4',
+        timestamp: new Date('2026-01-28'),
+        operator: 'zhao-dean',
+        operatorName: '赵院长',
+        operatorDept: '计算机学院',
+        action: 'submit',
+        comment: '更新进度至18%',
+        previousProgress: 15,
+        newProgress: 18
+      }
+    ]
   },
   {
     id: '2026-102-2',
@@ -275,13 +500,13 @@ export const indicators2026: StrategicIndicator[] = [
     isQualitative: false,
     type1: '定量',
     type2: '发展性',
-    progress: 9,
+    progress: 12,
     createTime: '2026年1月10日',
     weight: 25,
     remark: '商科就业率稳步提升',
     canWithdraw: false,
     taskContent: '全力促进毕业生多元化高质量就业创业',
-    milestones: generateQuarterlyMilestones(2026, 9),
+    milestones: generateQuarterlyMilestones(2026, 12),
     targetValue: 91,
     unit: '%',
     responsibleDept: '商学院',
@@ -291,7 +516,38 @@ export const indicators2026: StrategicIndicator[] = [
     ownerDept: '就业创业指导中心',
     parentIndicatorId: '2026-102',
     year: 2026,
-    statusAudit: []
+    progressApprovalStatus: 'approved',
+    statusAudit: [
+      {
+        id: 'audit-102-2-1',
+        timestamp: new Date('2026-01-12'),
+        operator: 'jyc-admin',
+        operatorName: '就业中心管理员',
+        operatorDept: '就业创业指导中心',
+        action: 'distribute',
+        comment: '下发子指标给商学院'
+      },
+      {
+        id: 'audit-102-2-2',
+        timestamp: new Date('2026-01-19'),
+        operator: 'qian-dean',
+        operatorName: '钱院长',
+        operatorDept: '商学院',
+        action: 'submit',
+        comment: '提交Q1就业率进度12%',
+        previousProgress: 0,
+        newProgress: 12
+      },
+      {
+        id: 'audit-102-2-3',
+        timestamp: new Date('2026-01-21'),
+        operator: 'jyc-admin',
+        operatorName: '就业中心管理员',
+        operatorDept: '就业创业指导中心',
+        action: 'approve',
+        comment: '审批通过'
+      }
+    ]
   },
   {
     id: '2026-102-3',
@@ -299,13 +555,13 @@ export const indicators2026: StrategicIndicator[] = [
     isQualitative: false,
     type1: '定量',
     type2: '发展性',
-    progress: 7,
+    progress: 10,
     createTime: '2026年1月10日',
     weight: 20,
     remark: '文理综合类专业就业稳步提升',
     canWithdraw: false,
     taskContent: '全力促进毕业生多元化高质量就业创业',
-    milestones: generateQuarterlyMilestones(2026, 7),
+    milestones: generateQuarterlyMilestones(2026, 10),
     targetValue: 89,
     unit: '%',
     responsibleDept: '文理学院',
@@ -315,7 +571,51 @@ export const indicators2026: StrategicIndicator[] = [
     ownerDept: '就业创业指导中心',
     parentIndicatorId: '2026-102',
     year: 2026,
-    statusAudit: []
+    progressApprovalStatus: 'pending',
+    pendingProgress: 12,
+    pendingRemark: '文理学院就业指导工作持续推进中',
+    statusAudit: [
+      {
+        id: 'audit-102-3-1',
+        timestamp: new Date('2026-01-12'),
+        operator: 'jyc-admin',
+        operatorName: '就业中心管理员',
+        operatorDept: '就业创业指导中心',
+        action: 'distribute',
+        comment: '下发子指标给文理学院'
+      },
+      {
+        id: 'audit-102-3-2',
+        timestamp: new Date('2026-01-20'),
+        operator: 'wu-dean',
+        operatorName: '吴院长',
+        operatorDept: '文理学院',
+        action: 'submit',
+        comment: '提交Q1就业率进度10%',
+        previousProgress: 0,
+        newProgress: 10
+      },
+      {
+        id: 'audit-102-3-3',
+        timestamp: new Date('2026-01-22'),
+        operator: 'jyc-admin',
+        operatorName: '就业中心管理员',
+        operatorDept: '就业创业指导中心',
+        action: 'approve',
+        comment: '审批通过'
+      },
+      {
+        id: 'audit-102-3-4',
+        timestamp: new Date('2026-01-28'),
+        operator: 'wu-dean',
+        operatorName: '吴院长',
+        operatorDept: '文理学院',
+        action: 'submit',
+        comment: '更新进度至12%',
+        previousProgress: 10,
+        newProgress: 12
+      }
+    ]
   },
   {
     id: '2026-102-4',
@@ -323,13 +623,13 @@ export const indicators2026: StrategicIndicator[] = [
     isQualitative: false,
     type1: '定量',
     type2: '发展性',
-    progress: 10,
+    progress: 12,
     createTime: '2026年1月10日',
     weight: 18,
     remark: '国际化专业就业多元化',
     canWithdraw: false,
     taskContent: '全力促进毕业生多元化高质量就业创业',
-    milestones: generateQuarterlyMilestones(2026, 10),
+    milestones: generateQuarterlyMilestones(2026, 12),
     targetValue: 86,
     unit: '%',
     responsibleDept: '国际教育学院',
@@ -339,7 +639,38 @@ export const indicators2026: StrategicIndicator[] = [
     ownerDept: '就业创业指导中心',
     parentIndicatorId: '2026-102',
     year: 2026,
-    statusAudit: []
+    progressApprovalStatus: 'approved',
+    statusAudit: [
+      {
+        id: 'audit-102-4-1',
+        timestamp: new Date('2026-01-12'),
+        operator: 'jyc-admin',
+        operatorName: '就业中心管理员',
+        operatorDept: '就业创业指导中心',
+        action: 'distribute',
+        comment: '下发子指标给国际教育学院'
+      },
+      {
+        id: 'audit-102-4-2',
+        timestamp: new Date('2026-01-18'),
+        operator: 'zheng-dean',
+        operatorName: '郑院长',
+        operatorDept: '国际教育学院',
+        action: 'submit',
+        comment: '提交Q1就业率进度，国际化就业渠道拓展中',
+        previousProgress: 0,
+        newProgress: 12
+      },
+      {
+        id: 'audit-102-4-3',
+        timestamp: new Date('2026-01-20'),
+        operator: 'jyc-admin',
+        operatorName: '就业中心管理员',
+        operatorDept: '就业创业指导中心',
+        action: 'approve',
+        comment: '审批通过，继续保持'
+      }
+    ]
   },
 
   // ============ 战略任务2：推进校友工作提质增效，赋能校友成长 ============
@@ -535,7 +866,51 @@ export const indicators2026: StrategicIndicator[] = [
     ownerDept: '教务处',
     parentIndicatorId: '2026-401',
     year: 2026,
-    statusAudit: []
+    progressApprovalStatus: 'pending',
+    pendingProgress: 15,
+    pendingRemark: '本学期课程优良率统计完成，达到15%',
+    statusAudit: [
+      {
+        id: 'audit-401-1-1',
+        timestamp: new Date('2026-01-12'),
+        operator: 'jiaowu-admin',
+        operatorName: '教务处管理员',
+        operatorDept: '教务处',
+        action: 'distribute',
+        comment: '下发子指标给计算机学院'
+      },
+      {
+        id: 'audit-401-1-2',
+        timestamp: new Date('2026-01-20'),
+        operator: 'zhao-dean',
+        operatorName: '赵院长',
+        operatorDept: '计算机学院',
+        action: 'submit',
+        comment: '提交Q1课程优良率数据',
+        previousProgress: 0,
+        newProgress: 10
+      },
+      {
+        id: 'audit-401-1-3',
+        timestamp: new Date('2026-01-22'),
+        operator: 'jiaowu-admin',
+        operatorName: '教务处管理员',
+        operatorDept: '教务处',
+        action: 'approve',
+        comment: '审批通过'
+      },
+      {
+        id: 'audit-401-1-4',
+        timestamp: new Date('2026-01-28'),
+        operator: 'zhao-dean',
+        operatorName: '赵院长',
+        operatorDept: '计算机学院',
+        action: 'submit',
+        comment: '更新进度至15%，教学质量持续提升',
+        previousProgress: 10,
+        newProgress: 15
+      }
+    ]
   },
   {
     id: '2026-401-2',
@@ -559,7 +934,329 @@ export const indicators2026: StrategicIndicator[] = [
     ownerDept: '教务处',
     parentIndicatorId: '2026-401',
     year: 2026,
-    statusAudit: []
+    progressApprovalStatus: 'approved',
+    statusAudit: [
+      {
+        id: 'audit-401-2-1',
+        timestamp: new Date('2026-01-12'),
+        operator: 'jiaowu-admin',
+        operatorName: '教务处管理员',
+        operatorDept: '教务处',
+        action: 'distribute',
+        comment: '下发子指标给工学院'
+      },
+      {
+        id: 'audit-401-2-2',
+        timestamp: new Date('2026-01-18'),
+        operator: 'li-dean',
+        operatorName: '李院长',
+        operatorDept: '工学院',
+        action: 'submit',
+        comment: '提交Q1课程优良率数据9%',
+        previousProgress: 0,
+        newProgress: 9
+      },
+      {
+        id: 'audit-401-2-3',
+        timestamp: new Date('2026-01-20'),
+        operator: 'jiaowu-admin',
+        operatorName: '教务处管理员',
+        operatorDept: '教务处',
+        action: 'approve',
+        comment: '审批通过'
+      }
+    ]
+  },
+  // 教务处下发给商学院的指标
+  {
+    id: '2026-401-3',
+    name: '商学院课程优良率达85%',
+    isQualitative: false,
+    type1: '定量',
+    type2: '基础性',
+    progress: 8,
+    createTime: '2026年1月10日',
+    weight: 20,
+    remark: '商科教学质量提升',
+    canWithdraw: false,
+    taskContent: '全力促进毕业生多元化高质量就业创业',
+    milestones: generateQuarterlyMilestones(2026, 8),
+    targetValue: 85,
+    unit: '%',
+    responsibleDept: '商学院',
+    responsiblePerson: '钱院长',
+    status: 'active',
+    isStrategic: false,
+    ownerDept: '教务处',
+    parentIndicatorId: '2026-401',
+    year: 2026,
+    progressApprovalStatus: 'pending',
+    pendingProgress: 12,
+    pendingRemark: '商学院课程优良率统计完成，达到12%',
+    statusAudit: [
+      {
+        id: 'audit-401-3-1',
+        timestamp: new Date('2026-01-12'),
+        operator: 'jiaowu-admin',
+        operatorName: '教务处管理员',
+        operatorDept: '教务处',
+        action: 'distribute',
+        comment: '下发子指标给商学院'
+      },
+      {
+        id: 'audit-401-3-2',
+        timestamp: new Date('2026-01-22'),
+        operator: 'qian-dean',
+        operatorName: '钱院长',
+        operatorDept: '商学院',
+        action: 'submit',
+        comment: '提交Q1课程优良率数据12%',
+        previousProgress: 0,
+        newProgress: 12
+      }
+    ]
+  },
+  // 教务处下发给文理学院的指标
+  {
+    id: '2026-401-4',
+    name: '文理学院课程优良率达84%',
+    isQualitative: false,
+    type1: '定量',
+    type2: '基础性',
+    progress: 7,
+    createTime: '2026年1月10日',
+    weight: 18,
+    remark: '文理综合类教学质量提升',
+    canWithdraw: false,
+    taskContent: '全力促进毕业生多元化高质量就业创业',
+    milestones: generateQuarterlyMilestones(2026, 7),
+    targetValue: 84,
+    unit: '%',
+    responsibleDept: '文理学院',
+    responsiblePerson: '吴院长',
+    status: 'active',
+    isStrategic: false,
+    ownerDept: '教务处',
+    parentIndicatorId: '2026-401',
+    year: 2026,
+    progressApprovalStatus: 'approved',
+    statusAudit: [
+      {
+        id: 'audit-401-4-1',
+        timestamp: new Date('2026-01-12'),
+        operator: 'jiaowu-admin',
+        operatorName: '教务处管理员',
+        operatorDept: '教务处',
+        action: 'distribute',
+        comment: '下发子指标给文理学院'
+      },
+      {
+        id: 'audit-401-4-2',
+        timestamp: new Date('2026-01-20'),
+        operator: 'wu-dean',
+        operatorName: '吴院长',
+        operatorDept: '文理学院',
+        action: 'submit',
+        comment: '提交Q1课程优良率数据7%',
+        previousProgress: 0,
+        newProgress: 7
+      },
+      {
+        id: 'audit-401-4-3',
+        timestamp: new Date('2026-01-22'),
+        operator: 'jiaowu-admin',
+        operatorName: '教务处管理员',
+        operatorDept: '教务处',
+        action: 'approve',
+        comment: '审批通过'
+      }
+    ]
+  },
+  // 教务处下发给艺术与科技学院的指标
+  {
+    id: '2026-401-5',
+    name: '艺术与科技学院课程优良率达82%',
+    isQualitative: false,
+    type1: '定量',
+    type2: '基础性',
+    progress: 6,
+    createTime: '2026年1月10日',
+    weight: 15,
+    remark: '艺术类教学质量提升',
+    canWithdraw: false,
+    taskContent: '全力促进毕业生多元化高质量就业创业',
+    milestones: generateQuarterlyMilestones(2026, 6),
+    targetValue: 82,
+    unit: '%',
+    responsibleDept: '艺术与科技学院',
+    responsiblePerson: '孙院长',
+    status: 'active',
+    isStrategic: false,
+    ownerDept: '教务处',
+    parentIndicatorId: '2026-401',
+    year: 2026,
+    statusAudit: []  // 草稿状态，待下发
+  },
+  // 教务处下发给航空学院的指标
+  {
+    id: '2026-401-6',
+    name: '航空学院课程优良率达89%',
+    isQualitative: false,
+    type1: '定量',
+    type2: '基础性',
+    progress: 11,
+    createTime: '2026年1月10日',
+    weight: 22,
+    remark: '航空专业教学质量要求高',
+    canWithdraw: false,
+    taskContent: '全力促进毕业生多元化高质量就业创业',
+    milestones: generateQuarterlyMilestones(2026, 11),
+    targetValue: 89,
+    unit: '%',
+    responsibleDept: '航空学院',
+    responsiblePerson: '周院长',
+    status: 'active',
+    isStrategic: false,
+    ownerDept: '教务处',
+    parentIndicatorId: '2026-401',
+    year: 2026,
+    progressApprovalStatus: 'approved',
+    statusAudit: [
+      {
+        id: 'audit-401-6-1',
+        timestamp: new Date('2026-01-12'),
+        operator: 'jiaowu-admin',
+        operatorName: '教务处管理员',
+        operatorDept: '教务处',
+        action: 'distribute',
+        comment: '下发子指标给航空学院'
+      },
+      {
+        id: 'audit-401-6-2',
+        timestamp: new Date('2026-01-18'),
+        operator: 'zhou-dean',
+        operatorName: '周院长',
+        operatorDept: '航空学院',
+        action: 'submit',
+        comment: '提交Q1课程优良率数据11%',
+        previousProgress: 0,
+        newProgress: 11
+      },
+      {
+        id: 'audit-401-6-3',
+        timestamp: new Date('2026-01-20'),
+        operator: 'jiaowu-admin',
+        operatorName: '教务处管理员',
+        operatorDept: '教务处',
+        action: 'approve',
+        comment: '审批通过，航空专业表现优秀'
+      }
+    ]
+  },
+  // 教务处下发给国际教育学院的指标
+  {
+    id: '2026-401-7',
+    name: '国际教育学院课程优良率达80%',
+    isQualitative: false,
+    type1: '定量',
+    type2: '基础性',
+    progress: 5,
+    createTime: '2026年1月10日',
+    weight: 15,
+    remark: '国际化教学质量提升',
+    canWithdraw: false,
+    taskContent: '全力促进毕业生多元化高质量就业创业',
+    milestones: generateQuarterlyMilestones(2026, 5),
+    targetValue: 80,
+    unit: '%',
+    responsibleDept: '国际教育学院',
+    responsiblePerson: '郑院长',
+    status: 'active',
+    isStrategic: false,
+    ownerDept: '教务处',
+    parentIndicatorId: '2026-401',
+    year: 2026,
+    progressApprovalStatus: 'pending',
+    pendingProgress: 8,
+    pendingRemark: '国际教育学院课程优良率统计完成',
+    statusAudit: [
+      {
+        id: 'audit-401-7-1',
+        timestamp: new Date('2026-01-12'),
+        operator: 'jiaowu-admin',
+        operatorName: '教务处管理员',
+        operatorDept: '教务处',
+        action: 'distribute',
+        comment: '下发子指标给国际教育学院'
+      },
+      {
+        id: 'audit-401-7-2',
+        timestamp: new Date('2026-01-25'),
+        operator: 'zheng-dean',
+        operatorName: '郑院长',
+        operatorDept: '国际教育学院',
+        action: 'submit',
+        comment: '提交Q1课程优良率数据8%',
+        previousProgress: 0,
+        newProgress: 8
+      }
+    ]
+  },
+  // 教务处下发给马克思主义学院的指标
+  {
+    id: '2026-401-8',
+    name: '马克思主义学院思政课程优良率达95%',
+    isQualitative: false,
+    type1: '定量',
+    type2: '基础性',
+    progress: 20,
+    createTime: '2026年1月10日',
+    weight: 30,
+    remark: '思政课程质量要求高',
+    canWithdraw: false,
+    taskContent: '全力促进毕业生多元化高质量就业创业',
+    milestones: generateQuarterlyMilestones(2026, 20),
+    targetValue: 95,
+    unit: '%',
+    responsibleDept: '马克思主义学院',
+    responsiblePerson: '张院长',
+    status: 'active',
+    isStrategic: false,
+    ownerDept: '教务处',
+    parentIndicatorId: '2026-401',
+    year: 2026,
+    progressApprovalStatus: 'approved',
+    statusAudit: [
+      {
+        id: 'audit-401-8-1',
+        timestamp: new Date('2026-01-12'),
+        operator: 'jiaowu-admin',
+        operatorName: '教务处管理员',
+        operatorDept: '教务处',
+        action: 'distribute',
+        comment: '下发子指标给马克思主义学院'
+      },
+      {
+        id: 'audit-401-8-2',
+        timestamp: new Date('2026-01-15'),
+        operator: 'zhang-dean',
+        operatorName: '张院长',
+        operatorDept: '马克思主义学院',
+        action: 'submit',
+        comment: '提交Q1思政课程优良率数据20%',
+        previousProgress: 0,
+        newProgress: 20
+      },
+      {
+        id: 'audit-401-8-3',
+        timestamp: new Date('2026-01-17'),
+        operator: 'jiaowu-admin',
+        operatorName: '教务处管理员',
+        operatorDept: '教务处',
+        action: 'approve',
+        comment: '审批通过，思政课程表现优秀'
+      }
+    ]
   },
 
   // 科技处 - 科研成果提升

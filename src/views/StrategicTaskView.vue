@@ -1484,15 +1484,15 @@
               <el-icon><component :is="hasDistributedIndicators ? RefreshLeft : Promotion" /></el-icon>
               {{ hasDistributedIndicators ? '撤回' : '下发' }}
             </el-button>
-                <!-- 审批按钮 -->
-                <el-button 
-                  size="small" 
-                  type="primary" 
-                  @click="handleOpenApproval"
-                >
-                  <el-icon><Check /></el-icon>
-                  审批 ({{ pendingApprovalCount }})
-                </el-button>
+                  <!-- 审批按钮 -->
+                  <el-button 
+                    size="small" 
+                    type="primary" 
+                    @click="handleOpenApproval"
+                  >
+                    <el-icon><Check /></el-icon>
+                    审批
+                  </el-button>
             <el-button size="small">
               <el-icon><Download /></el-icon>
               导出
@@ -1835,8 +1835,8 @@
                       <span class="info-value">{{ currentIndicator.responsiblePerson }}</span>
                     </div>
                     <div class="info-item full-width">
-                      <span class="info-label">说明：</span>
-                      <span class="info-value">{{ currentIndicator.remark || '无说明' }}</span>
+                      <span class="info-label">备注：</span>
+                      <span class="info-value">{{ currentIndicator.remark || '无备注' }}</span>
                     </div>
                   </div>
                 </div>
@@ -1867,7 +1867,7 @@
                         </span>
                       </div>
                       <div v-if="currentIndicator.pendingRemark" class="pending-remark">
-                        <span class="remark-label">填报说明：</span>
+                        <span class="remark-label">填报备注：</span>
                         <span class="remark-text">{{ currentIndicator.pendingRemark }}</span>
                       </div>
                     </div>
@@ -1983,7 +1983,7 @@
                       v-model="newRow.remark" 
                       type="textarea"
                       :autosize="{ minRows: 3, maxRows: 15 }"
-                      placeholder="输入指标说明"
+                        placeholder="输入指标备注"
                     />
                   </el-form-item>
                 </el-col>

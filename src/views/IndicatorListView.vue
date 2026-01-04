@@ -1441,7 +1441,7 @@ const handleWithdrawAll = () => {
           <el-descriptions-item label="责任部门">{{ currentDetail.responsibleDept || '未分配' }}</el-descriptions-item>
           <el-descriptions-item label="责任人">{{ currentDetail.responsiblePerson || '未分配' }}</el-descriptions-item>
           <el-descriptions-item label="创建时间" :span="2">{{ currentDetail.createTime }}</el-descriptions-item>
-          <el-descriptions-item label="备注" :span="2">{{ currentDetail.remark || '暂无说明' }}</el-descriptions-item>
+          <el-descriptions-item label="备注" :span="2">{{ currentDetail.remark || '暂无备注' }}</el-descriptions-item>
         </el-descriptions>
 
         <!-- 里程碑信息 -->
@@ -1585,7 +1585,7 @@ const handleWithdrawAll = () => {
               v-model="reportForm.remark"
               type="textarea"
               :rows="4"
-              placeholder="请详细说明本次进度更新的工作内容和完成情况..."
+              placeholder="请详细备注本次进度更新的工作内容和完成情况..."
               maxlength="500"
               show-word-limit
             />

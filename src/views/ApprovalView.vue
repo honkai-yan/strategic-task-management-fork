@@ -47,51 +47,51 @@ interface ApprovalItem {
   strategicTask: string // 战略任务名称
   coreIndicator: string // 核心指标（即指标名称）
   weight: number // 权重
-  remark: string // 说明
-  submitter: string // 提交人
-  dept: string // 部门
-  time: string // 提交时间
-  type: '定量' | '定性' // 指标类型
-  status: ApprovalStatus
-  auditLogs: AuditLog[] // 审批链路日志
-  progress: number // 里程碑进度
-  milestones: Milestone[] // 里程碑列表
-  canWithdraw: boolean // 是否可下发（用于进度条颜色判断）
-  targetValue: number // 目标值
-}
-
-// ================== 2. 数据源（从 Store 获取） ==================
-
-const currentUser = computed(() => `${authStore.userDepartment}-${authStore.userName}` || '未登录用户')
-
-// 获取当前选中的战略任务名称
-const currentTaskName = computed(() => {
-  const task = strategicStore.tasks[0] // 默认取第一个任务
-  return task?.title || '年度战略任务'
-})
-
-// 将 Store 中的指标转换为审批项格式
-const convertIndicatorToApprovalItem = (indicator: StrategicIndicator): ApprovalItem => {
-  return {
-    id: indicator.id,
-    indicatorId: indicator.id,
-    indicatorCategory: indicator.type2 === '发展性' ? '发展性任务' : '基础性任务',
-    strategicTask: indicator.taskContent || currentTaskName.value,
-    coreIndicator: indicator.name,
-    weight: indicator.weight,
-    remark: indicator.remark,
-    submitter: indicator.responsiblePerson,
-    dept: indicator.responsibleDept,
-    time: indicator.createTime,
-    type: indicator.type1,
-    status: indicator.approvalStatus || 'pending',
-    auditLogs: [{ timestamp: indicator.createTime, action: '提交', operator: indicator.responsiblePerson }],
-    progress: indicator.progress || 0,
-    milestones: indicator.milestones || [],
-    canWithdraw: indicator.canWithdraw ?? true,
-    targetValue: indicator.targetValue || 100
+    remark: string // 备注
+    submitter: string // 提交人
+    dept: string // 部门
+    time: string // 提交时间
+    type: '定量' | '定性' // 指标类型
+    status: ApprovalStatus
+    auditLogs: AuditLog[] // 审批链路日志
+    progress: number // 里程碑进度
+    milestones: Milestone[] // 里程碑列表
+    canWithdraw: boolean // 是否可下发（用于进度条颜色判断）
+    targetValue: number // 目标值
   }
-}
+  
+  // ================== 2. 数据源（从 Store 获取） ==================
+  
+  const currentUser = computed(() => `${authStore.userDepartment}-${authStore.userName}` || '未登录用户')
+  
+  // 获取当前选中的战略任务名称
+  const currentTaskName = computed(() => {
+    const task = strategicStore.tasks[0] // 默认取第一个任务
+    return task?.title || '年度战略任务'
+  })
+  
+  // 将 Store 中的指标转换为审批项格式
+  const convertIndicatorToApprovalItem = (indicator: StrategicIndicator): ApprovalItem => {
+    return {
+      id: indicator.id,
+      indicatorId: indicator.id,
+      indicatorCategory: indicator.type2 === '发展性' ? '发展性任务' : '基础性任务',
+      strategicTask: indicator.taskContent || currentTaskName.value,
+      coreIndicator: indicator.name,
+      weight: indicator.weight,
+      remark: indicator.remark,
+      submitter: indicator.responsiblePerson,
+      dept: indicator.responsibleDept,
+      time: indicator.createTime,
+      type: indicator.type1,
+      status: indicator.approvalStatus || 'pending',
+      auditLogs: [{ timestamp: indicator.createTime, action: '提交', operator: indicator.responsiblePerson }],
+      progress: indicator.progress || 0,
+      milestones: indicator.milestones || [],
+      canWithdraw: indicator.canWithdraw ?? true,
+      targetValue: indicator.targetValue || 100
+    }
+  }
 
 // 待审批数据源（从 Store 中筛选 approvalStatus 为 pending 或未设置的指标）
 const pendingList = computed(() => {
@@ -415,18 +415,18 @@ const handleBatchApprove = (group: { strategicTask: string; rows: ApprovalItem[]
       <div v-else ref="pendingTableScrollRef" class="approval-table-wrapper" :class="{ 'is-scrolling': isPendingTableScrolling }" @scroll="handlePendingTableScroll">
         <table class="approval-table">
           <thead>
-            <tr>
-              <th style="width: 60px;">序号</th>
-              <th style="width: 120px;">任务类别</th>
-              <th style="min-width: 200px;">战略任务</th>
-              <th style="min-width: 220px;">核心指标</th>
-              <th style="width: 100px;">指标类型</th>
-                <th style="width: 100px;">权重</th>
-              <th style="width: 150px;">里程碑进度</th>
-              <th style="min-width: 180px;">说明</th>
-              <th style="width: 160px;">提交信息</th>
-              <th class="sticky-col sticky-col-first sticky-col-last cell-center" style="width: 280px;" colspan="2">操作</th>
-            </tr>
+              <tr>
+                <th style="width: 60px;">序号</th>
+                <th style="width: 120px;">任务类别</th>
+                <th style="min-width: 200px;">战略任务</th>
+                <th style="min-width: 220px;">核心指标</th>
+                <th style="width: 100px;">指标类型</th>
+                  <th style="width: 100px;">权重</th>
+                <th style="width: 150px;">里程碑进度</th>
+                <th style="min-width: 180px;">备注</th>
+                <th style="width: 160px;">提交信息</th>
+                <th class="sticky-col sticky-col-first sticky-col-last cell-center" style="width: 280px;" colspan="2">操作</th>
+              </tr>
           </thead>
           <tbody>
             <!-- 发展性任务 -->
@@ -453,7 +453,7 @@ const handleBatchApprove = (group: { strategicTask: string; rows: ApprovalItem[]
                   <td class="cell-center">
                     <span class="progress-number">{{ row.progress || 0 }}</span>
                   </td>
-                  <!-- 说明 -->
+                  <!-- 备注 -->
                   <td>{{ row.remark }}</td>
                   <!-- 提交信息 -->
                   <td>
@@ -499,7 +499,7 @@ const handleBatchApprove = (group: { strategicTask: string; rows: ApprovalItem[]
                   <td class="cell-center">
                     <span class="progress-number">{{ row.progress || 0 }}</span>
                   </td>
-                  <!-- 说明 -->
+                  <!-- 备注 -->
                   <td>{{ row.remark }}</td>
                   <!-- 提交信息 -->
                   <td>
