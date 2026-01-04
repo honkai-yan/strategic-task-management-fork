@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import type { StrategicTask, StrategicIndicator, Milestone, StatusAuditEntry } from '@/types'
 import { useTimeContextStore } from './timeContext'
-import { indicators2023, indicators2024, indicators2026 } from '@/data/historicalIndicators'
+import { indicators2023, indicators2024, indicators2025, indicators2026 } from '@/data/indicators'
 
 export const useStrategicStore = defineStore('strategic', () => {
   // State
@@ -1718,9 +1718,12 @@ export const useStrategicStore = defineStore('strategic', () => {
   }
 
   const updateIndicator = (id: string, updates: Partial<StrategicIndicator>) => {
-    const indicator = getIndicatorById(id)
-    if (indicator) {
-      Object.assign(indicator, updates)
+    const index = indicators.value.findIndex(i => i.id === id)
+    if (index !== -1) {
+      // 使用响应式更新方式，确保 Vue 能检测到变化
+      indicators.value[index] = { ...indicators.value[index], ...updates }
+      // 强制触发响应式更新（创建新数组引用）
+      indicators.value = [...indicators.value]
     }
   }
 
@@ -1772,28 +1775,37 @@ export const useStrategicStore = defineStore('strategic', () => {
     })
   }
 
-  // 保存 2025 年的当前数据（工作模式数据）
-  const current2025Indicators = ref<StrategicIndicator[]>([])
+  // 保存 2025 和 2026 年的当前数据（工作模式数据）
+  const initial2025Indicators = ref<StrategicIndicator[]>([])
+  const current2026Indicators = ref<StrategicIndicator[]>([])
   
   // 保存初始数据
   const saveCurrentIndicators = () => {
-    current2025Indicators.value = JSON.parse(JSON.stringify(indicators.value))
+    current2026Indicators.value = JSON.parse(JSON.stringify(indicators.value))
+  }
+
+  // 保存2025年初始数据
+  const save2025Indicators = () => {
+    initial2025Indicators.value = JSON.parse(JSON.stringify(
+      indicators.value.filter(i => i.year === 2025)
+    ))
   }
 
   // 根据年份加载对应数据
   const loadIndicatorsByYear = (year: number) => {
-    if (year === 2025) {
-      // 2025 年：加载当前工作数据
-      indicators.value = JSON.parse(JSON.stringify(current2025Indicators.value))
+    if (year === 2026) {
+      // 2026 年：加载当前工作数据（可编辑）
+      // 首次加载时，使用历史数据作为初始数据
+      indicators.value = JSON.parse(JSON.stringify(indicators2026))
     } else if (year === 2023) {
-      // 2023 年：加载历史数据
+      // 2023 年：加载历史数据（只读）
       indicators.value = JSON.parse(JSON.stringify(indicators2023))
     } else if (year === 2024) {
-      // 2024 年：加载历史数据
+      // 2024 年：加载历史数据（只读）
       indicators.value = JSON.parse(JSON.stringify(indicators2024))
-    } else if (year === 2026) {
-      // 2026 年：加载历史数据
-      indicators.value = JSON.parse(JSON.stringify(indicators2026))
+    } else if (year === 2025) {
+      // 2025 年：加载2025年历史数据（只读）
+      indicators.value = JSON.parse(JSON.stringify(indicators2025))
     } else {
       // 其他年份：显示空数据
       indicators.value = []
@@ -1802,15 +1814,21 @@ export const useStrategicStore = defineStore('strategic', () => {
 
   // 监听年份变化，动态切换数据
   const timeContext = getTimeContext()
-  watch(() => timeContext.currentYear, (newYear) => {
-    loadIndicatorsByYear(newYear)
-  })
+  watch(
+    () => timeContext.currentYear,
+    (newYear) => {
+      loadIndicatorsByYear(newYear)
+    }
+  )
 
-  // 初始化字段
+  // 初始化流程
+  // 1. 先初始化字段（确保所有指标都有 year 和 statusAudit）
   initializeIndicatorFields()
-  // 保存 2025 年当前数据
+  // 2. 保存 2025 年初始数据（作为历史数据）
+  save2025Indicators()
+  // 3. 保存 2026 年当前数据（作为工作模式的基准数据）
   saveCurrentIndicators()
-  // 根据当前年份加载数据
+  // 4. 根据当前年份加载对应数据
   loadIndicatorsByYear(timeContext.currentYear)
 
   // 添加审计日志条目

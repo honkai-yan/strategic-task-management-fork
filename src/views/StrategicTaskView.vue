@@ -237,8 +237,8 @@
     }
     
     const mappedList = list.map(i => ({
-      ...i,
-      id: Number(i.id)
+      ...i
+      // 移除 ID 转换，保持原始字符串格式
     }))
     
     // 先按 type2（任务类型）排序，再按 taskContent（战略任务）排序
@@ -332,6 +332,8 @@
       })
       ElMessage.success(`已成功撤回 ${distributedRows.length} 个指标`)
       updateEditTime()
+    }).catch(() => {
+      // 用户取消操作
     })
   }
 
@@ -779,6 +781,8 @@
       strategicStore.deleteIndicator(indicator.id.toString())
       ElMessage.success('指标已删除')
       updateEditTime()
+    }).catch(() => {
+      // 用户取消操作
     })
   }
   
@@ -904,6 +908,8 @@
       showAssignmentDialog.value = false
       assignmentTarget.value = ''
       assignmentMethod.value = 'self'
+    }).catch(() => {
+      // 用户取消操作
     })
   }
   
@@ -1072,6 +1078,8 @@
 
       closeApprovalDialog()
       updateEditTime()
+    }).catch(() => {
+      // 用户取消操作
     })
   }
   
@@ -1140,6 +1148,8 @@
         ElMessage.success(`已成功下发 ${pendingRows.length} 个指标到 ${distributeTarget.value.length} 个部门`)
         closeDistributeDialog()
         updateEditTime()
+      }).catch(() => {
+        // 用户取消操作
       })
       return
     }
@@ -1184,6 +1194,8 @@
       ElMessage.success(`指标已成功下发到 ${distributeTarget.value.length} 个部门`)
       closeDistributeDialog()
       updateEditTime()
+    }).catch(() => {
+      // 用户取消操作
     })
   }
   
@@ -1209,6 +1221,8 @@
       strategicStore.updateIndicator(row.id.toString(), { canWithdraw: true })
       ElMessage.info('指标已撤回')
       updateEditTime()
+    }).catch(() => {
+      // 用户取消操作
     })
   }
 
@@ -1234,6 +1248,8 @@
       })
       ElMessage.success(`已成功下发 ${pendingRows.length} 个指标`)
       updateEditTime()
+    }).catch(() => {
+      // 用户取消操作
     })
   }
 
@@ -1257,8 +1273,11 @@
       distributedRows.forEach(row => {
         strategicStore.updateIndicator(row.id.toString(), { canWithdraw: true })
       })
+      
       ElMessage.success(`已成功撤回 ${distributedRows.length} 个指标`)
       updateEditTime()
+    }).catch(() => {
+      // 用户取消操作
     })
   }
   
@@ -1298,6 +1317,8 @@
       })
       ElMessage.success(`已成功撤回 ${distributedRows.length} 个指标`)
       updateEditTime()
+    }).catch(() => {
+      // 用户取消操作
     })
   }
 
@@ -1322,6 +1343,8 @@
       })
       ElMessage.success(`已成功删除 ${group.rows.length} 个指标`)
       updateEditTime()
+    }).catch(() => {
+      // 用户取消操作
     })
   }
   
@@ -1339,6 +1362,8 @@
       strategicStore.deleteIndicator(row.id.toString())
       ElMessage.success('指标已删除')
       updateEditTime()
+    }).catch(() => {
+      // 用户取消操作
     })
   }
   

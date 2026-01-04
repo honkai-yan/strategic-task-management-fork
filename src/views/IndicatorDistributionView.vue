@@ -719,6 +719,16 @@ const saveChildEdit = (child: StrategicIndicator, field: string) => {
     valueToSave = valueToSave.join(',')
   }
   
+  // 如果是进度字段，需要验证范围
+  if (field === 'progress') {
+    const progressValue = Number(valueToSave)
+    if (isNaN(progressValue) || progressValue < 0 || progressValue > 100) {
+      ElMessage.warning('进度必须在0-100之间')
+      return
+    }
+    valueToSave = progressValue
+  }
+  
   const updates: Partial<StrategicIndicator> = {
     [field]: valueToSave
   }
@@ -1722,7 +1732,7 @@ const getRowClassName = ({ row }: { row: TableRowData }) => {
                           <template #reference>
                             <div 
                               class="milestone-cell"
-                              @click="canEditChild && getChildStatus(row.child) === 'draft' && openMilestonesDialog(row.child)"
+                              @dblclick="canEditChild && getChildStatus(row.child) === 'draft' && openMilestonesDialog(row.child)"
                             >
                               <span 
                                 class="target-progress-text" 
@@ -1766,7 +1776,7 @@ const getRowClassName = ({ row }: { row: TableRowData }) => {
                           <template #reference>
                             <div 
                               class="milestone-cell"
-                              @click="canEditChild && getChildStatus(row.child) === 'draft' && openMilestonesDialog(row.child)"
+                              @dblclick="canEditChild && getChildStatus(row.child) === 'draft' && openMilestonesDialog(row.child)"
                             >
                               <span class="milestone-count" :class="{ editable: canEditChild && getChildStatus(row.child) === 'draft' }">
                                 {{ row.child?.milestones?.length || 0 }} 个里程碑
@@ -1807,7 +1817,7 @@ const getRowClassName = ({ row }: { row: TableRowData }) => {
                         <template v-if="row.child.type1 === '定量'">
                           <div 
                             class="milestone-cell"
-                            @click.stop="openMilestonesDialog(row.child)"
+                            @dblclick.stop="openMilestonesDialog(row.child)"
                           >
                             <span class="target-progress-text editable">
                               当月 {{ getCurrentMonthTargetProgress(row.child) }}%
@@ -1818,7 +1828,7 @@ const getRowClassName = ({ row }: { row: TableRowData }) => {
                         <template v-else>
                           <div 
                             class="milestone-cell"
-                            @click.stop="openMilestonesDialog(row.child)"
+                            @dblclick.stop="openMilestonesDialog(row.child)"
                           >
                             <span class="milestone-count editable">
                               {{ row.child.milestones?.length || 0 }} 个里程碑
@@ -1837,7 +1847,26 @@ const getRowClassName = ({ row }: { row: TableRowData }) => {
                       <span class="progress-text">-</span>
                     </template>
                     <template v-else-if="row.type === 'child'">
-                      <span class="progress-text">{{ row.child?.progress || 0 }}%</span>
+                      <div 
+                        class="progress-cell"
+                        @dblclick="handleChildDblClick(row.child, 'progress')"
+                      >
+                        <el-input-number
+                          v-if="editingChildId === row.child.id.toString() && editingChildField === 'progress'"
+                          v-model="editingChildValue"
+                          :min="0"
+                          :max="100"
+                          :precision="0"
+                          size="small"
+                          class="editing-field"
+                          @blur="saveChildEdit(row.child, 'progress')"
+                          @keyup.enter="saveChildEdit(row.child, 'progress')"
+                          @keyup.esc="cancelChildEdit"
+                        />
+                        <span v-else class="progress-text" :class="{ editable: canEditChild && getChildStatus(row.child) === 'draft' }">
+                          {{ row.child?.progress || 0 }}%
+                        </span>
+                      </div>
                     </template>
                     <template v-else-if="row.type === 'new-child'">
                       <span class="progress-text">-</span>
