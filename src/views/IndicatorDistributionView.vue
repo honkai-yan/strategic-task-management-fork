@@ -1977,26 +1977,26 @@ const getRowClassName = ({ row }: { row: TableRowData }) => {
                 @click="removeMilestone(index)"
               />
             </div>
-            <div class="milestone-edit-body">
-              <el-form-item label="节点名称" label-width="80px">
-                <el-input 
-                  v-model="milestone.name" 
-                  placeholder="请输入节点名称"
-                  size="small"
-                />
-              </el-form-item>
-              <el-form-item label="预期完成" label-width="80px">
-                <el-date-picker
-                  v-model="milestone.expectedDate"
-                  type="date"
-                  placeholder="选择日期"
-                  size="small"
-                  format="YYYY-MM-DD"
-                  value-format="YYYY-MM-DD"
-                  style="width: 100%"
-                />
-              </el-form-item>
-              <el-form-item label="节点进度" label-width="80px">
+              <div class="milestone-edit-body">
+                <el-form-item label="节点名称" label-width="100px">
+                  <el-input 
+                    v-model="milestone.name" 
+                    placeholder="请输入节点名称"
+                    size="small"
+                  />
+                </el-form-item>
+                <el-form-item label="预期完成" label-width="100px">
+                  <el-date-picker
+                    v-model="milestone.expectedDate"
+                    type="date"
+                    placeholder="选择日期"
+                    size="small"
+                    format="YYYY-MM-DD"
+                    value-format="YYYY-MM-DD"
+                    style="width: 100%"
+                  />
+                </el-form-item>
+                <el-form-item label="节点进度" label-width="100px">
                 <div class="milestone-progress-row">
                   <el-input-number
                     v-model="milestone.progress"
@@ -2061,79 +2061,82 @@ const getRowClassName = ({ row }: { row: TableRowData }) => {
             </el-button>
           </div>
           
-          <el-form label-width="100px" class="indicator-form-body">
-            <el-row :gutter="16">
-              <el-col :span="16">
-                <el-form-item label="关联核心指标" required>
-                  <div class="parent-select-wrapper">
+            <el-form label-width="120px" class="indicator-form-body">
+              <el-row :gutter="16">
+                <el-col :span="24">
+                  <el-form-item label="关联核心指标" required label-width="120px">
+                    <div class="parent-select-wrapper" @click="openSelectParentDialog(index)" style="cursor: pointer;">
+                      <el-input 
+                        :model-value="item.parentIndicatorName" 
+                        readonly 
+                        placeholder="点击选择关联的核心指标"
+                        class="parent-select-input"
+                      >
+                        <template #suffix>
+                          <el-icon style="pointer-events: none;"><Search /></el-icon>
+                        </template>
+                      </el-input>
+                      <span v-if="item.taskContent" class="task-content-hint">
+                        所属任务：{{ item.taskContent }}
+                      </span>
+                    </div>
+                  </el-form-item>
+                </el-col>
+              </el-row>
+              
+              <el-row :gutter="16">
+                <el-col :span="16">
+                  <el-form-item label="指标类型" label-width="120px">
+                    <el-select v-model="item.type1" style="width: 100%" @change="(val: string) => handleIndicatorTypeChange(index, val as '定量' | '定性')">
+                      <el-option label="定量" value="定量" />
+                      <el-option label="定性" value="定性" />
+                    </el-select>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                  <el-form-item label="权重" label-width="80px">
+                    <el-input-number 
+                      v-model="item.weight" 
+                      :min="0" 
+                      :max="100"
+                      :controls="false"
+                      placeholder="权重" 
+                      style="width: 100%" 
+                    />
+                  </el-form-item>
+                </el-col>
+              </el-row>
+              
+              <el-row :gutter="16">
+                <el-col :span="24">
+                  <el-form-item label="指标内容" required label-width="120px">
                     <el-input 
-                      :model-value="item.parentIndicatorName || '点击选择关联的核心指标'" 
-                      readonly 
-                      placeholder="点击选择关联的核心指标"
-                      @click="openSelectParentDialog(index)"
-                      class="parent-select-input"
-                    >
-                      <template #suffix>
-                        <el-icon><Search /></el-icon>
-                      </template>
-                    </el-input>
-                    <span v-if="item.taskContent" class="task-content-hint">
-                      所属任务：{{ item.taskContent }}
-                    </span>
-                  </div>
-                </el-form-item>
-              </el-col>
-              <el-col :span="8">
-                <el-form-item label="指标类型">
-                  <el-select v-model="item.type1" style="width: 100%" @change="(val: string) => handleIndicatorTypeChange(index, val as '定量' | '定性')">
-                    <el-option label="定量" value="定量" />
-                    <el-option label="定性" value="定性" />
-                  </el-select>
-                </el-form-item>
-              </el-col>
-            </el-row>
-            
-            <el-row :gutter="16">
-              <el-col :span="16">
-                <el-form-item label="指标内容" required>
-                  <el-input 
-                    v-model="item.name" 
-                    type="textarea"
-                    :rows="2"
-                    placeholder="输入指标内容" 
-                  />
-                </el-form-item>
-              </el-col>
-              <el-col :span="8">
-                <el-form-item label="权重">
-                  <el-input-number 
-                    v-model="item.weight" 
-                    :min="0" 
-                    :max="100"
-                    :controls="false"
-                    placeholder="权重" 
-                    style="width: 100%" 
-                  />
-                </el-form-item>
-              </el-col>
-            </el-row>
-            
-            <el-row :gutter="16">
-              <el-col :span="24">
-                <el-form-item label="备注">
-                  <el-input 
-                    v-model="item.remark" 
-                    type="textarea"
-                    :rows="2"
-                    placeholder="输入备注说明（选填）" 
-                  />
-                </el-form-item>
-              </el-col>
-            </el-row>
-            
-            <el-row :gutter="16">
-              <el-col :span="24">
-                <el-form-item label="里程碑">
+                      v-model="item.name" 
+                      type="textarea"
+                      :rows="2"
+                      placeholder="输入指标内容" 
+                    />
+                  </el-form-item>
+                </el-col>
+              </el-row>
+              
+              <el-row :gutter="16">
+                <el-col :span="24">
+                  <el-form-item label="备注" label-width="120px">
+                    <el-input 
+                      v-model="item.remark" 
+                      type="textarea"
+                      :rows="2"
+                      placeholder="输入备注说明（选填）" 
+                    />
+                  </el-form-item>
+                </el-col>
+              </el-row>
+              
+              <el-row :gutter="16">
+                <el-col :span="24">
+                  <el-form-item label="里程碑" label-width="120px">
+
                   <div class="milestone-form-area">
                     <!-- 定性指标可手动添加里程碑 -->
                     <el-button v-if="item.type1 === '定性'" type="primary" size="small" plain @click="addDialogMilestone(index)">
@@ -3124,7 +3127,7 @@ const getRowClassName = ({ row }: { row: TableRowData }) => {
    添加指标弹框样式
    ======================================== */
 .add-indicator-content {
-  max-height: 60vh;
+  max-height: 75vh;
   overflow-y: auto;
 }
 
@@ -3242,7 +3245,7 @@ const getRowClassName = ({ row }: { row: TableRowData }) => {
    选择关联指标弹框样式
    ======================================== */
 .select-parent-content {
-  max-height: 60vh;
+  max-height: 75vh;
   overflow-y: auto;
 }
 
