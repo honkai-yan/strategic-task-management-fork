@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
-import { Download, TrendCharts, DataAnalysis, Warning, Aim, Refresh, Filter, QuestionFilled, Top, Bottom, Lightning } from '@element-plus/icons-vue'
+import { Download, TrendCharts, DataAnalysis, Warning, Aim, Refresh, Filter, QuestionFilled, Top, Bottom, Lightning, Close } from '@element-plus/icons-vue'
 import type { DashboardData, UserRole } from '@/types'
 import { useStrategicStore } from '@/stores/strategic'
 import { useDashboardStore } from '@/stores/dashboard'
@@ -41,6 +41,127 @@ let radarChartInstance: echarts.ECharts | null = null
 let benchmarkChartInstance: echarts.ECharts | null = null
 const radarChartRef = ref<HTMLElement | null>(null)
 const benchmarkChartRef = ref<HTMLElement | null>(null)
+
+// 选中的部门（用于右侧指标完成情况卡片）
+const selectedBenchmarkDept = ref<string | null>(null)
+
+// 指标状态类型
+type IndicatorStatus = 'normal' | 'ahead' | 'warning' | 'delayed'
+
+// 计算指标状态的函数
+const getIndicatorStatus = (indicator: any): IndicatorStatus => {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  
+  const milestones = indicator.milestones || []
+  if (milestones.length === 0) {
+    return 'normal'
+  }
+  
+  const currentProgress = indicator.progress || 0
+  
+  // 按deadline排序里程碑
+  const sortedMilestones = [...milestones].sort((a, b) => 
+    new Date(a.deadline).getTime() - new Date(b.deadline).getTime()
+  )
+  
+  // 检查是否有已过期但未达标的里程碑（延期）
+  for (const milestone of sortedMilestones) {
+    const deadlineDate = new Date(milestone.deadline)
+    deadlineDate.setHours(23, 59, 59, 999)
+    
+    if (deadlineDate < today && currentProgress < milestone.targetProgress) {
+      return 'delayed'
+    }
+  }
+  
+  // 找到离今天最近的未来里程碑（deadline > 今天）
+  const nextMilestone = sortedMilestones.find(m => {
+    const deadlineDate = new Date(m.deadline)
+    deadlineDate.setHours(23, 59, 59, 999)
+    return deadlineDate >= today
+  })
+  
+  if (!nextMilestone) {
+    // 没有未来的里程碑，检查最后一个里程碑是否完成
+    const lastMilestone = sortedMilestones[sortedMilestones.length - 1]
+    if (lastMilestone && currentProgress >= lastMilestone.targetProgress) {
+      return 'ahead' // 全部完成
+    }
+    return 'normal'
+  }
+  
+  // 检查是否超前完成
+  if (currentProgress >= nextMilestone.targetProgress) {
+    return 'ahead'
+  }
+  
+  // 检查是否预警（距离deadline ≤ 3天且未达标）
+  const nextDeadline = new Date(nextMilestone.deadline)
+  nextDeadline.setHours(23, 59, 59, 999)
+  const daysUntilDeadline = Math.ceil((nextDeadline.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+  
+  if (daysUntilDeadline <= 3 && currentProgress < nextMilestone.targetProgress) {
+    return 'warning'
+  }
+  
+  return 'normal'
+}
+
+// 获取状态显示文本
+const getStatusText = (status: IndicatorStatus): string => {
+  const statusMap: Record<IndicatorStatus, string> = {
+    normal: '正常',
+    ahead: '超前完成',
+    warning: '预警',
+    delayed: '延期'
+  }
+  return statusMap[status]
+}
+
+// 获取状态对应的颜色类
+const getStatusClass = (status: IndicatorStatus): string => {
+  const classMap: Record<IndicatorStatus, string> = {
+    normal: 'status-normal',
+    ahead: 'status-ahead',
+    warning: 'status-warning',
+    delayed: 'status-delayed'
+  }
+  return classMap[status]
+}
+
+// 选中部门的指标列表
+const selectedDeptIndicators = computed(() => {
+  if (!selectedBenchmarkDept.value) {
+    return []
+  }
+  
+  const strategicStore = useStrategicStore()
+  const timeContext = useTimeContextStore()
+  const currentYear = timeContext.currentYear
+  const realYear = timeContext.realCurrentYear
+  
+  // 筛选该部门接收的指标（responsibleDept === 选中的部门）
+  return strategicStore.indicators
+    .filter(i => {
+      const indicatorYear = i.year || realYear
+      return indicatorYear === currentYear && i.responsibleDept === selectedBenchmarkDept.value
+    })
+    .map(i => ({
+      ...i,
+      status: getIndicatorStatus(i)
+    }))
+})
+
+// 处理排名图表点击事件
+const handleBenchmarkClick = (deptName: string) => {
+  if (selectedBenchmarkDept.value === deptName) {
+    // 再次点击同一部门，取消选中
+    selectedBenchmarkDept.value = null
+  } else {
+    selectedBenchmarkDept.value = deptName
+  }
+}
 
 // 接收父组件传递的视角角色
 const props = defineProps<{
@@ -574,7 +695,8 @@ const initBenchmarkChart = () => {
         const fullName = dataItem?.fullName || item.name
         return `<strong>${fullName}</strong><br/>
                 进度: ${item.value}%<br/>
-                完成: ${dataItem?.completed || 0}/${dataItem?.total || 0} 项`
+                完成: ${dataItem?.completed || 0}/${dataItem?.total || 0} 项<br/>
+                <span style="color: #409eff; font-size: 11px;">点击查看指标详情</span>`
       }
     },
     graphic: [{
@@ -600,10 +722,21 @@ const initBenchmarkChart = () => {
     },
     yAxis: { 
       type: 'category', 
-      data: data.map(d => d.name),
+      data: data.map(d => {
+        const isSelected = d.fullName === selectedBenchmarkDept.value
+        return {
+          value: d.name,
+          textStyle: {
+            color: isSelected ? '#409eff' : '#606266',
+            fontWeight: isSelected ? 800 : 600
+          }
+        }
+      }),
       axisLine: { show: false },
       axisTick: { show: false },
-      axisLabel: { color: '#606266', fontWeight: 600, fontSize: 12 },
+      axisLabel: { 
+        fontSize: 12 
+      },
       inverse: true
     },
     series: [{
@@ -614,9 +747,14 @@ const initBenchmarkChart = () => {
       z: 1,
       itemStyle: {
         borderRadius: [0, 4, 4, 0],
-        color: (params: any) => params.value < benchmark 
-          ? '#f56c6c'
-          : '#409eff'
+        color: (params: any) => {
+          const dataItem = data[params.dataIndex]
+          const isSelected = dataItem?.fullName === selectedBenchmarkDept.value
+          if (isSelected) {
+            return '#67c23a' // 选中状态用绿色
+          }
+          return params.value < benchmark ? '#f56c6c' : '#409eff'
+        }
       },
       data: data.map(d => d.value),
       markLine: {
@@ -631,6 +769,21 @@ const initBenchmarkChart = () => {
       }
     }]
   })
+  
+  // 添加点击事件
+  benchmarkChartInstance.off('click') // 先移除旧的事件监听
+  benchmarkChartInstance.on('click', (params: any) => {
+    if (params.componentType === 'series') {
+      const dataItem = data[params.dataIndex]
+      if (dataItem) {
+        handleBenchmarkClick(dataItem.fullName)
+        // 重新渲染图表以更新选中状态
+        nextTick(() => {
+          initBenchmarkChart()
+        })
+      }
+    }
+  })
 }
 
 // 窗口大小变化时重绘图表
@@ -644,6 +797,16 @@ watch([benchmarkData, radarData], () => {
   nextTick(() => {
     initBenchmarkChart()
     initRadarChart()
+  })
+})
+
+// 监听选中部门变化，重新调整图表大小
+watch(selectedBenchmarkDept, () => {
+  nextTick(() => {
+    // 给布局一些时间来重新计算
+    setTimeout(() => {
+      initBenchmarkChart()
+    }, 100)
   })
 })
 
@@ -752,7 +915,7 @@ onUnmounted(() => {
     <!-- 中间深度图表层 -->
     <el-row :gutter="16" class="chart-section deep-charts">
       <!-- 部门排名对标（二级学院不显示） -->
-      <el-col v-if="currentRole !== 'secondary_college'" :xs="24" :lg="16">
+      <el-col v-if="currentRole !== 'secondary_college'" :xs="24" :lg="selectedBenchmarkDept ? 12 : 24">
         <el-card shadow="hover" class="chart-card glass-card benchmark-card">
           <template #header>
             <div class="card-header benchmark-header">
@@ -763,7 +926,7 @@ onUnmounted(() => {
                     <el-icon class="help-icon"><QuestionFilled /></el-icon>
                   </el-tooltip>
                 </div>
-                <span class="card-subtitle">REAL-TIME PERFORMANCE VS BASELINE</span>
+                <span class="card-subtitle">REAL-TIME PERFORMANCE VS BASELINE · 点击查看详情</span>
               </div>
               <div class="header-right">
                 <div class="view-toggle">
@@ -784,6 +947,95 @@ onUnmounted(() => {
             </div>
           </template>
           <div ref="benchmarkChartRef" class="benchmark-chart"></div>
+        </el-card>
+      </el-col>
+
+      <!-- 指标完成情况卡片（选中部门后显示） -->
+      <el-col v-if="currentRole !== 'secondary_college' && selectedBenchmarkDept" :xs="24" :lg="12">
+        <el-card shadow="hover" class="chart-card glass-card indicator-status-card">
+          <template #header>
+            <div class="card-header benchmark-header">
+              <div class="header-left">
+                <div style="display: flex; align-items: center; gap: 4px;">
+                  <span class="card-title benchmark-title">指标完成情况 <span class="title-tag-italic">STATUS</span></span>
+                  <el-tooltip content="展示选中部门接收的各项指标及其完成状态" placement="top" effect="light">
+                    <el-icon class="help-icon"><QuestionFilled /></el-icon>
+                  </el-tooltip>
+                </div>
+                <span class="card-subtitle">{{ selectedBenchmarkDept }} · {{ selectedDeptIndicators.length }} 项指标</span>
+              </div>
+              <div class="header-right">
+                <el-button link type="primary" size="small" @click="selectedBenchmarkDept = null">
+                  <el-icon><Close /></el-icon>
+                  关闭
+                </el-button>
+              </div>
+            </div>
+          </template>
+          <div class="indicator-status-list">
+            <div v-if="selectedDeptIndicators.length === 0" class="empty-indicator-list">
+              <el-empty description="该部门暂无接收的指标" :image-size="80" />
+            </div>
+            <div v-else class="indicator-scroll-container">
+              <el-popover
+                v-for="indicator in selectedDeptIndicators"
+                :key="indicator.id"
+                placement="left"
+                :width="320"
+                trigger="hover"
+                popper-class="indicator-detail-popover"
+              >
+                <template #reference>
+                  <div class="indicator-status-item" :class="getStatusClass(indicator.status)">
+                    <div class="indicator-info">
+                      <div class="indicator-name" :title="indicator.name">{{ indicator.name }}</div>
+                      <div class="indicator-meta">
+                        <span class="indicator-type-tag">{{ indicator.type1 }}</span>
+                        <span class="indicator-progress">进度: {{ indicator.progress }}%</span>
+                      </div>
+                    </div>
+                    <div class="indicator-status-badge" :class="getStatusClass(indicator.status)">
+                      {{ getStatusText(indicator.status) }}
+                    </div>
+                  </div>
+                </template>
+                <div class="indicator-detail-content">
+                  <h4 class="detail-title">{{ indicator.name }}</h4>
+                  <div class="detail-row">
+                    <span class="detail-label">指标类型</span>
+                    <span class="detail-value">{{ indicator.type1 }} / {{ indicator.type2 }}</span>
+                  </div>
+                  <div class="detail-row">
+                    <span class="detail-label">当前进度</span>
+                    <span class="detail-value">
+                      <el-progress 
+                        :percentage="indicator.progress" 
+                        :stroke-width="8"
+                        :color="indicator.progress >= 80 ? '#67c23a' : indicator.progress >= 50 ? '#e6a23c' : '#f56c6c'"
+                        style="width: 120px; display: inline-flex;"
+                      />
+                    </span>
+                  </div>
+                  <div class="detail-row">
+                    <span class="detail-label">权重</span>
+                    <span class="detail-value">{{ indicator.weight }}%</span>
+                  </div>
+                  <div class="detail-row">
+                    <span class="detail-label">所属战略任务</span>
+                    <span class="detail-value task-content">{{ indicator.taskContent || '未关联' }}</span>
+                  </div>
+                  <div class="detail-row">
+                    <span class="detail-label">完成状态</span>
+                    <span class="detail-value">
+                      <span class="status-tag" :class="getStatusClass(indicator.status)">
+                        {{ getStatusText(indicator.status) }}
+                      </span>
+                    </span>
+                  </div>
+                </div>
+              </el-popover>
+            </div>
+          </div>
         </el-card>
       </el-col>
 
@@ -1824,6 +2076,212 @@ onUnmounted(() => {
 .department-card :deep(.department-item:hover) {
   background: var(--bg-page);
   border-radius: var(--radius-sm);
+}
+
+/* ========== 指标完成情况卡片 ========== */
+.indicator-status-card {
+  border-left: 3px solid var(--color-success);
+}
+
+.indicator-status-list {
+  height: 350px;
+  overflow: hidden;
+}
+
+.indicator-scroll-container {
+  height: 100%;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.indicator-scroll-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.indicator-scroll-container::-webkit-scrollbar-thumb {
+  background: rgba(144, 147, 153, 0.3);
+  border-radius: 3px;
+}
+
+.indicator-scroll-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(144, 147, 153, 0.5);
+}
+
+.empty-indicator-list {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.indicator-status-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  margin-bottom: 8px;
+  background: var(--bg-page);
+  border-radius: var(--radius-md);
+  border-left: 3px solid transparent;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.indicator-status-item:hover {
+  background: var(--color-primary-light);
+  transform: translateX(4px);
+}
+
+.indicator-status-item.status-normal {
+  border-left-color: var(--color-primary);
+}
+
+.indicator-status-item.status-ahead {
+  border-left-color: var(--color-success);
+}
+
+.indicator-status-item.status-warning {
+  border-left-color: var(--color-warning);
+}
+
+.indicator-status-item.status-delayed {
+  border-left-color: var(--color-danger);
+}
+
+.indicator-info {
+  flex: 1;
+  min-width: 0;
+  margin-right: 12px;
+}
+
+.indicator-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-main);
+  line-height: 1.4;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.indicator-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+}
+
+.indicator-type-tag {
+  padding: 2px 6px;
+  background: rgba(64, 158, 255, 0.1);
+  color: var(--color-primary);
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.indicator-progress {
+  color: var(--text-secondary);
+}
+
+.indicator-status-badge {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  border-radius: var(--radius-md);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.indicator-status-badge.status-normal {
+  background: rgba(64, 158, 255, 0.1);
+  color: var(--color-primary);
+}
+
+.indicator-status-badge.status-ahead {
+  background: rgba(103, 194, 58, 0.1);
+  color: var(--color-success);
+}
+
+.indicator-status-badge.status-warning {
+  background: rgba(230, 162, 60, 0.1);
+  color: var(--color-warning);
+}
+
+.indicator-status-badge.status-delayed {
+  background: rgba(245, 108, 108, 0.1);
+  color: var(--color-danger);
+}
+
+/* ========== 指标详情弹出层 ========== */
+.indicator-detail-content {
+  padding: 4px;
+}
+
+.indicator-detail-content .detail-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-main);
+  margin: 0 0 12px 0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-color);
+  line-height: 1.5;
+}
+
+.indicator-detail-content .detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 10px;
+  font-size: 13px;
+}
+
+.indicator-detail-content .detail-label {
+  color: var(--text-secondary);
+  flex-shrink: 0;
+  width: 80px;
+}
+
+.indicator-detail-content .detail-value {
+  color: var(--text-main);
+  font-weight: 500;
+  text-align: right;
+  flex: 1;
+}
+
+.indicator-detail-content .detail-value.task-content {
+  font-size: 12px;
+  line-height: 1.4;
+  max-width: 200px;
+}
+
+.indicator-detail-content .status-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.indicator-detail-content .status-tag.status-normal {
+  background: rgba(64, 158, 255, 0.1);
+  color: var(--color-primary);
+}
+
+.indicator-detail-content .status-tag.status-ahead {
+  background: rgba(103, 194, 58, 0.1);
+  color: var(--color-success);
+}
+
+.indicator-detail-content .status-tag.status-warning {
+  background: rgba(230, 162, 60, 0.1);
+  color: var(--color-warning);
+}
+
+.indicator-detail-content .status-tag.status-delayed {
+  background: rgba(245, 108, 108, 0.1);
+  color: var(--color-danger);
 }
 
 /* ========== 响应式适配 ========== */
