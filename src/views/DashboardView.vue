@@ -130,6 +130,37 @@ const getStatusClass = (status: IndicatorStatus): string => {
   return classMap[status]
 }
 
+// 获取当月目标进度（离今天最近的里程碑的目标进度）
+const getCurrentTargetProgress = (indicator: any): number | null => {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  
+  const milestones = indicator.milestones || []
+  if (milestones.length === 0) {
+    return null
+  }
+  
+  // 按deadline排序里程碑
+  const sortedMilestones = [...milestones].sort((a, b) => 
+    new Date(a.deadline).getTime() - new Date(b.deadline).getTime()
+  )
+  
+  // 找到离今天最近的里程碑（deadline >= 今天）
+  const nextMilestone = sortedMilestones.find(m => {
+    const deadlineDate = new Date(m.deadline)
+    deadlineDate.setHours(23, 59, 59, 999)
+    return deadlineDate >= today
+  })
+  
+  if (nextMilestone) {
+    return nextMilestone.targetProgress
+  }
+  
+  // 如果没有未来的里程碑，返回最后一个里程碑的目标
+  const lastMilestone = sortedMilestones[sortedMilestones.length - 1]
+  return lastMilestone ? lastMilestone.targetProgress : null
+}
+
 // 选中部门的指标列表
 const selectedDeptIndicators = computed(() => {
   if (!selectedBenchmarkDept.value) {
@@ -149,8 +180,20 @@ const selectedDeptIndicators = computed(() => {
     })
     .map(i => ({
       ...i,
-      status: getIndicatorStatus(i)
+      status: getIndicatorStatus(i),
+      targetProgress: getCurrentTargetProgress(i)
     }))
+})
+
+// 选中部门的指标状态统计
+const selectedDeptStats = computed(() => {
+  const indicators = selectedDeptIndicators.value
+  return {
+    ahead: indicators.filter(i => i.status === 'ahead').length,
+    warning: indicators.filter(i => i.status === 'warning').length,
+    delayed: indicators.filter(i => i.status === 'delayed').length,
+    normal: indicators.filter(i => i.status === 'normal').length
+  }
 })
 
 // 处理排名图表点击事件
@@ -973,6 +1016,21 @@ onUnmounted(() => {
             </div>
           </template>
           <div class="indicator-status-list">
+            <!-- 状态统计摘要 -->
+            <div v-if="selectedDeptIndicators.length > 0" class="status-summary">
+              <span class="status-summary-item ahead">
+                <span class="status-dot"></span>超前 {{ selectedDeptStats.ahead }}
+              </span>
+              <span class="status-summary-item normal">
+                <span class="status-dot"></span>正常 {{ selectedDeptStats.normal }}
+              </span>
+              <span class="status-summary-item warning">
+                <span class="status-dot"></span>预警 {{ selectedDeptStats.warning }}
+              </span>
+              <span class="status-summary-item delayed">
+                <span class="status-dot"></span>延期 {{ selectedDeptStats.delayed }}
+              </span>
+            </div>
             <div v-if="selectedDeptIndicators.length === 0" class="empty-indicator-list">
               <el-empty description="该部门暂无接收的指标" :image-size="80" />
             </div>
@@ -1003,7 +1061,7 @@ onUnmounted(() => {
                   <h4 class="detail-title">{{ indicator.name }}</h4>
                   <div class="detail-row">
                     <span class="detail-label">指标类型</span>
-                    <span class="detail-value">{{ indicator.type1 }} / {{ indicator.type2 }}</span>
+                    <span class="detail-value">{{ indicator.type1 }}</span>
                   </div>
                   <div class="detail-row">
                     <span class="detail-label">当前进度</span>
@@ -1016,9 +1074,13 @@ onUnmounted(() => {
                       />
                     </span>
                   </div>
+                  <div class="detail-row" v-if="indicator.targetProgress !== null">
+                    <span class="detail-label">当月目标</span>
+                    <span class="detail-value">{{ indicator.targetProgress }}%</span>
+                  </div>
                   <div class="detail-row">
                     <span class="detail-label">权重</span>
-                    <span class="detail-value">{{ indicator.weight }}%</span>
+                    <span class="detail-value">{{ indicator.weight }}</span>
                   </div>
                   <div class="detail-row">
                     <span class="detail-label">所属战略任务</span>
@@ -2086,10 +2148,69 @@ onUnmounted(() => {
 .indicator-status-list {
   height: 350px;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 状态统计摘要 */
+.status-summary {
+  display: flex;
+  gap: 12px;
+  padding: 10px 12px;
+  background: var(--bg-page);
+  border-radius: var(--radius-md);
+  margin-bottom: 12px;
+  flex-shrink: 0;
+}
+
+.status-summary-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.status-summary-item .status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.status-summary-item.ahead .status-dot {
+  background: var(--color-success);
+}
+
+.status-summary-item.ahead {
+  color: var(--color-success);
+}
+
+.status-summary-item.normal .status-dot {
+  background: var(--color-primary);
+}
+
+.status-summary-item.normal {
+  color: var(--color-primary);
+}
+
+.status-summary-item.warning .status-dot {
+  background: var(--color-warning);
+}
+
+.status-summary-item.warning {
+  color: var(--color-warning);
+}
+
+.status-summary-item.delayed .status-dot {
+  background: var(--color-danger);
+}
+
+.status-summary-item.delayed {
+  color: var(--color-danger);
 }
 
 .indicator-scroll-container {
-  height: 100%;
+  flex: 1;
   overflow-y: auto;
   padding-right: 8px;
 }
