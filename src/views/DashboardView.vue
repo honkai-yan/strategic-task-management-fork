@@ -196,6 +196,32 @@ const selectedDeptStats = computed(() => {
   }
 })
 
+// 获取任意部门的指标状态统计（用于tooltip显示）
+const getDeptStats = (deptName: string) => {
+  const strategicStore = useStrategicStore()
+  const timeContext = useTimeContextStore()
+  const currentYear = timeContext.currentYear
+  const realYear = timeContext.realCurrentYear
+  
+  const indicators = strategicStore.indicators
+    .filter(i => {
+      const indicatorYear = i.year || realYear
+      return indicatorYear === currentYear && i.responsibleDept === deptName
+    })
+    .map(i => ({
+      ...i,
+      status: getIndicatorStatus(i)
+    }))
+  
+  return {
+    ahead: indicators.filter(i => i.status === 'ahead').length,
+    warning: indicators.filter(i => i.status === 'warning').length,
+    delayed: indicators.filter(i => i.status === 'delayed').length,
+    normal: indicators.filter(i => i.status === 'normal').length,
+    total: indicators.length
+  }
+}
+
 // 处理排名图表点击事件
 const handleBenchmarkClick = (deptName: string) => {
   if (selectedBenchmarkDept.value === deptName) {
@@ -736,9 +762,16 @@ const initBenchmarkChart = () => {
         const item = params[0]
         const dataItem = data[item.dataIndex]
         const fullName = dataItem?.fullName || item.name
+        const stats = getDeptStats(fullName)
         return `<strong>${fullName}</strong><br/>
                 进度: ${item.value}%<br/>
                 完成: ${dataItem?.completed || 0}/${dataItem?.total || 0} 项<br/>
+                <div style="margin-top: 6px; padding-top: 6px; border-top: 1px dashed #e4e7ed;">
+                  <span style="color: #67c23a; margin-right: 8px;">超前 ${stats.ahead}</span>
+                  <span style="color: #409eff; margin-right: 8px;">正常 ${stats.normal}</span>
+                  <span style="color: #e6a23c; margin-right: 8px;">预警 ${stats.warning}</span>
+                  <span style="color: #f56c6c;">延期 ${stats.delayed}</span>
+                </div>
                 <span style="color: #409eff; font-size: 11px;">点击查看指标详情</span>`
       }
     },
@@ -848,8 +881,11 @@ watch(selectedBenchmarkDept, () => {
   nextTick(() => {
     // 给布局一些时间来重新计算
     setTimeout(() => {
+      // 触发resize以适应新的容器宽度
+      benchmarkChartInstance?.resize()
+      // 重新初始化以更新选中状态的高亮
       initBenchmarkChart()
-    }, 100)
+    }, 150)
   })
 })
 
