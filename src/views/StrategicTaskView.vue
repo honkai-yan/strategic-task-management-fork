@@ -1771,7 +1771,7 @@
                   <div class="card-tags">
                     <el-tag 
                       size="small" 
-                      :type="currentIndicator.type1 === '定量' ? 'primary' : 'warning'"
+                      :class="currentIndicator.type1 === '定性' ? 'tag-qualitative' : 'tag-quantitative'"
                     >
                       {{ currentIndicator.type1 }}
                     </el-tag>
@@ -2082,7 +2082,7 @@
           <div class="detail-header">
             <h3>{{ currentDetail.name }}</h3>
             <div class="detail-tags">
-              <el-tag size="small" :type="currentDetail.type1 === '定量' ? 'primary' : 'warning'">{{ currentDetail.type1 }}</el-tag>
+              <el-tag size="small" :class="currentDetail.type1 === '定性' ? 'tag-qualitative' : 'tag-quantitative'">{{ currentDetail.type1 }}</el-tag>
               <el-tag size="small" :style="{ backgroundColor: getCategoryColor(currentDetail.type2), color: '#fff', border: 'none' }">
                 {{ currentDetail.type2 }}任务
               </el-tag>
@@ -2476,6 +2476,19 @@
      使用 colors.css 中定义的 CSS 变量
      Requirements: 2.1, 4.1, 5.1, 10.2
      ======================================== */
+
+  /* 定性/定量指标标签样式 */
+  .tag-quantitative {
+    background: rgba(64, 158, 255, 0.15) !important;
+    color: #409eff !important;
+    border: 1px solid rgba(64, 158, 255, 0.3) !important;
+  }
+
+  .tag-qualitative {
+    background: rgba(147, 51, 234, 0.15) !important;
+    color: #9333ea !important;
+    border: 1px solid rgba(147, 51, 234, 0.3) !important;
+  }
   
   /* 页面主容器 */
   .strategic-task-container {

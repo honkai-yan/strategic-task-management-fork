@@ -44,6 +44,8 @@ const benchmarkChartRef = ref<HTMLElement | null>(null)
 
 // 选中的部门（用于右侧指标完成情况卡片）
 const selectedBenchmarkDept = ref<string | null>(null)
+// 用于控制卡片内容显示（延迟隐藏，确保退出动画播放）
+const showIndicatorCard = ref(false)
 
 // 指标状态类型
 type IndicatorStatus = 'normal' | 'ahead' | 'warning' | 'delayed'
@@ -226,10 +228,22 @@ const getDeptStats = (deptName: string) => {
 const handleBenchmarkClick = (deptName: string) => {
   if (selectedBenchmarkDept.value === deptName) {
     // 再次点击同一部门，取消选中
-    selectedBenchmarkDept.value = null
+    handleCloseIndicatorCard()
   } else {
     selectedBenchmarkDept.value = deptName
+    // 立即显示卡片内容
+    showIndicatorCard.value = true
   }
+}
+
+// 关闭指标卡片（带退出动画）
+const handleCloseIndicatorCard = () => {
+  // 先触发退出动画
+  showIndicatorCard.value = false
+  // 延迟清空数据，等动画完成
+  setTimeout(() => {
+    selectedBenchmarkDept.value = null
+  }, 400)
 }
 
 // 接收父组件传递的视角角色
@@ -877,16 +891,24 @@ watch([benchmarkData, radarData], () => {
 })
 
 // 监听选中部门变化，重新调整图表大小
-watch(selectedBenchmarkDept, () => {
-  nextTick(() => {
-    // 给布局一些时间来重新计算
-    setTimeout(() => {
-      // 触发resize以适应新的容器宽度
-      benchmarkChartInstance?.resize()
-      // 重新初始化以更新选中状态的高亮
-      initBenchmarkChart()
-    }, 150)
-  })
+watch(showIndicatorCard, () => {
+  // 在动画过程中持续调整图表大小
+  const resizeChart = () => {
+    benchmarkChartInstance?.resize()
+  }
+  
+  // 动画开始时立即调整
+  resizeChart()
+  
+  // 动画过程中多次调整，确保平滑
+  setTimeout(resizeChart, 100)
+  setTimeout(resizeChart, 200)
+  setTimeout(resizeChart, 300)
+  setTimeout(() => {
+    resizeChart()
+    // 动画结束后重新初始化图表
+    initBenchmarkChart()
+  }, 400)
 })
 
 // 生命周期
@@ -992,9 +1014,9 @@ onUnmounted(() => {
     -->
 
     <!-- 中间深度图表层 -->
-    <el-row :gutter="16" class="chart-section deep-charts">
+    <div class="chart-section deep-charts benchmark-section" :class="{ 'has-detail': showIndicatorCard }">
       <!-- 部门排名对标（二级学院不显示） -->
-      <el-col v-if="currentRole !== 'secondary_college'" :xs="24" :lg="selectedBenchmarkDept ? 12 : 24">
+      <div v-if="currentRole !== 'secondary_college'" class="benchmark-col">
         <el-card shadow="hover" class="chart-card glass-card benchmark-card">
           <template #header>
             <div class="card-header benchmark-header">
@@ -1027,11 +1049,12 @@ onUnmounted(() => {
           </template>
           <div ref="benchmarkChartRef" class="benchmark-chart"></div>
         </el-card>
-      </el-col>
+      </div>
 
       <!-- 指标完成情况卡片（选中部门后显示） -->
-      <el-col v-if="currentRole !== 'secondary_college' && selectedBenchmarkDept" :xs="24" :lg="12">
-        <el-card shadow="hover" class="chart-card glass-card indicator-status-card">
+      <div v-if="currentRole !== 'secondary_college'" class="indicator-col" :class="{ 'visible': showIndicatorCard }">
+        <div class="indicator-card-wrapper">
+          <el-card v-show="selectedBenchmarkDept" shadow="hover" class="chart-card glass-card indicator-status-card">
           <template #header>
             <div class="card-header benchmark-header">
               <div class="header-left">
@@ -1044,7 +1067,7 @@ onUnmounted(() => {
                 <span class="card-subtitle">{{ selectedBenchmarkDept }} · {{ selectedDeptIndicators.length }} 项指标</span>
               </div>
               <div class="header-right">
-                <el-button link type="primary" size="small" @click="selectedBenchmarkDept = null">
+                <el-button link type="primary" size="small" @click="handleCloseIndicatorCard">
                   <el-icon><Close /></el-icon>
                   关闭
                 </el-button>
@@ -1084,7 +1107,7 @@ onUnmounted(() => {
                     <div class="indicator-info">
                       <div class="indicator-name" :title="indicator.name">{{ indicator.name }}</div>
                       <div class="indicator-meta">
-                        <span class="indicator-type-tag">{{ indicator.type1 }}</span>
+                        <span class="indicator-type-tag" :class="indicator.type1 === '定性' ? 'type-qualitative' : 'type-quantitative'">{{ indicator.type1 }}</span>
                         <span class="indicator-progress">进度: {{ indicator.progress }}%</span>
                       </div>
                     </div>
@@ -1135,38 +1158,9 @@ onUnmounted(() => {
             </div>
           </div>
         </el-card>
-      </el-col>
-
-      <!-- 雷达分析 -->
-      <!-- <el-col :xs="24" :lg="8">
-        <el-card shadow="hover" class="chart-card glass-card radar-card">
-          <template #header>
-            <div class="card-header radar-header">
-              <div class="header-left">
-                <div style="display: flex; align-items: center; gap: 4px;">
-                  <span class="card-title radar-title">核心维度雷达全景</span>
-                  <el-tooltip :content="helpTexts.radar" placement="top" effect="light">
-                    <el-icon class="help-icon"><QuestionFilled /></el-icon>
-                  </el-tooltip>
-                </div>
-                <span class="card-subtitle">CONTRIBUTION DIMENSION ANALYSIS</span>
-              </div>
-            </div>
-          </template>
-          <div ref="radarChartRef" class="radar-chart"></div>
-          <div class="radar-stats">
-            <div class="radar-stat">
-              <div class="radar-stat-label">平均匹配度</div>
-              <div class="radar-stat-value primary">{{ radarStats.avgMatch }}%</div>
-            </div>
-            <div class="radar-stat border-left">
-              <div class="radar-stat-label">波动离散度</div>
-              <div class="radar-stat-value danger">{{ radarStats.volatility }}</div>
-            </div>
-          </div>
-        </el-card>
-      </el-col> -->
-    </el-row>
+        </div>
+      </div>
+    </div>
 
     <!-- 图表区域 -->
     <el-row :gutter="16" class="chart-section">
@@ -1742,6 +1736,50 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+
+/* Benchmark 区域使用 Grid 布局 */
+.benchmark-section {
+  display: grid;
+  grid-template-columns: 1fr 0fr;
+  gap: 16px;
+  transition: grid-template-columns 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  margin-bottom: var(--spacing-lg);
+}
+
+.benchmark-section.has-detail {
+  grid-template-columns: 1fr 1fr;
+}
+
+.benchmark-col {
+  min-width: 0;
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.benchmark-col .benchmark-card {
+  overflow: hidden;
+}
+
+.benchmark-col .benchmark-chart {
+  width: 100% !important;
+}
+
+.indicator-col {
+  min-width: 0;
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.indicator-card-wrapper {
+  transform: translateX(80px);
+  opacity: 0;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.indicator-col.visible .indicator-card-wrapper {
+  transform: translateX(0);
+  opacity: 1;
 }
 
 .title-tag {
@@ -2331,10 +2369,23 @@ onUnmounted(() => {
 
 .indicator-type-tag {
   padding: 2px 6px;
-  background: rgba(64, 158, 255, 0.1);
-  color: var(--color-primary);
   border-radius: 4px;
   font-weight: 600;
+  font-size: 11px;
+}
+
+/* 定量指标 - 蓝色 */
+.indicator-type-tag.type-quantitative {
+  background: rgba(64, 158, 255, 0.15);
+  color: #409eff;
+  border: 1px solid rgba(64, 158, 255, 0.3);
+}
+
+/* 定性指标 - 紫色 */
+.indicator-type-tag.type-qualitative {
+  background: rgba(147, 51, 234, 0.15);
+  color: #9333ea;
+  border: 1px solid rgba(147, 51, 234, 0.3);
 }
 
 .indicator-progress {
