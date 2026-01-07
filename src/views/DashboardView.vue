@@ -46,6 +46,8 @@ const benchmarkChartRef = ref<HTMLElement | null>(null)
 const selectedBenchmarkDept = ref<string | null>(null)
 // 用于控制卡片内容显示（延迟隐藏，确保退出动画播放）
 const showIndicatorCard = ref(false)
+// 指标状态筛选
+const selectedStatusFilter = ref<IndicatorStatus | null>(null)
 
 // 指标状态类型
 type IndicatorStatus = 'normal' | 'ahead' | 'warning' | 'delayed'
@@ -187,6 +189,24 @@ const selectedDeptIndicators = computed(() => {
     }))
 })
 
+// 筛选后的指标列表（根据状态筛选）
+const filteredDeptIndicators = computed(() => {
+  if (!selectedStatusFilter.value) {
+    return selectedDeptIndicators.value
+  }
+  return selectedDeptIndicators.value.filter(i => i.status === selectedStatusFilter.value)
+})
+
+// 点击状态筛选
+const handleStatusFilterClick = (status: IndicatorStatus) => {
+  if (selectedStatusFilter.value === status) {
+    // 再次点击同一状态，取消筛选
+    selectedStatusFilter.value = null
+  } else {
+    selectedStatusFilter.value = status
+  }
+}
+
 // 选中部门的指标状态统计
 const selectedDeptStats = computed(() => {
   const indicators = selectedDeptIndicators.value
@@ -231,6 +251,8 @@ const handleBenchmarkClick = (deptName: string) => {
     handleCloseIndicatorCard()
   } else {
     selectedBenchmarkDept.value = deptName
+    // 重置状态筛选
+    selectedStatusFilter.value = null
     // 立即显示卡片内容
     showIndicatorCard.value = true
   }
@@ -243,6 +265,7 @@ const handleCloseIndicatorCard = () => {
   // 延迟清空数据，等动画完成
   setTimeout(() => {
     selectedBenchmarkDept.value = null
+    selectedStatusFilter.value = null
   }, 400)
 }
 
@@ -1077,25 +1100,44 @@ onUnmounted(() => {
           <div class="indicator-status-list">
             <!-- 状态统计摘要 -->
             <div v-if="selectedDeptIndicators.length > 0" class="status-summary">
-              <span class="status-summary-item ahead">
+              <span 
+                class="status-summary-item ahead" 
+                :class="{ active: selectedStatusFilter === 'ahead' }"
+                @click="handleStatusFilterClick('ahead')"
+              >
                 <span class="status-dot"></span>超前 {{ selectedDeptStats.ahead }}
               </span>
-              <span class="status-summary-item normal">
+              <span 
+                class="status-summary-item normal"
+                :class="{ active: selectedStatusFilter === 'normal' }"
+                @click="handleStatusFilterClick('normal')"
+              >
                 <span class="status-dot"></span>正常 {{ selectedDeptStats.normal }}
               </span>
-              <span class="status-summary-item warning">
+              <span 
+                class="status-summary-item warning"
+                :class="{ active: selectedStatusFilter === 'warning' }"
+                @click="handleStatusFilterClick('warning')"
+              >
                 <span class="status-dot"></span>预警 {{ selectedDeptStats.warning }}
               </span>
-              <span class="status-summary-item delayed">
+              <span 
+                class="status-summary-item delayed"
+                :class="{ active: selectedStatusFilter === 'delayed' }"
+                @click="handleStatusFilterClick('delayed')"
+              >
                 <span class="status-dot"></span>延期 {{ selectedDeptStats.delayed }}
               </span>
             </div>
             <div v-if="selectedDeptIndicators.length === 0" class="empty-indicator-list">
               <el-empty description="该部门暂无接收的指标" :image-size="80" />
             </div>
+            <div v-else-if="filteredDeptIndicators.length === 0" class="empty-indicator-list">
+              <el-empty description="没有符合筛选条件的指标" :image-size="80" />
+            </div>
             <div v-else class="indicator-scroll-container">
               <el-popover
-                v-for="indicator in selectedDeptIndicators"
+                v-for="indicator in filteredDeptIndicators"
                 :key="indicator.id"
                 placement="left"
                 :width="320"
@@ -2243,6 +2285,18 @@ onUnmounted(() => {
   gap: 4px;
   font-size: 12px;
   font-weight: 600;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: var(--radius-md);
+  transition: all var(--transition-fast);
+}
+
+.status-summary-item:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.status-summary-item.active {
+  transform: scale(1.05);
 }
 
 .status-summary-item .status-dot {
@@ -2259,12 +2313,20 @@ onUnmounted(() => {
   color: var(--color-success);
 }
 
+.status-summary-item.ahead.active {
+  background: rgba(103, 194, 58, 0.15);
+}
+
 .status-summary-item.normal .status-dot {
   background: var(--color-primary);
 }
 
 .status-summary-item.normal {
   color: var(--color-primary);
+}
+
+.status-summary-item.normal.active {
+  background: rgba(64, 158, 255, 0.15);
 }
 
 .status-summary-item.warning .status-dot {
@@ -2275,12 +2337,20 @@ onUnmounted(() => {
   color: var(--color-warning);
 }
 
+.status-summary-item.warning.active {
+  background: rgba(230, 162, 60, 0.15);
+}
+
 .status-summary-item.delayed .status-dot {
   background: var(--color-danger);
 }
 
 .status-summary-item.delayed {
   color: var(--color-danger);
+}
+
+.status-summary-item.delayed.active {
+  background: rgba(245, 108, 108, 0.15);
 }
 
 .indicator-scroll-container {
