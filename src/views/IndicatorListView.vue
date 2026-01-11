@@ -81,6 +81,13 @@ const isStrategicDept = computed(() => {
   return props.viewingRole === '战略发展部' || props.viewingRole === 'strategic_dept'
 })
 
+// 判断当前是否为二级学院角色
+const isSecondaryCollege = computed(() => {
+  if (!props.viewingRole) return false
+  // 包含"学院"的部门名称视为二级学院
+  return props.viewingRole.includes('学院')
+})
+
 // 判断是否可以编辑（只有战略发展部可以编辑，职能部门不能新增指标，历史年份只读）
 const canEdit = computed(() => authStore.userRole === 'strategic_dept' && isStrategicDept.value && !timeContext.isReadOnly)
 
@@ -98,12 +105,47 @@ const selectedDepartment = ref('')
 const filterType2 = ref('')  // 任务类型筛选
 const filterType1 = ref('')  // 指标类型筛选
 const filterDept = ref('')   // 责任部门筛选
+const filterOwnerDept = ref('')  // 来源部门筛选（仅学院使用）
+
+// 获取学院接收到的来源部门列表（从指标数据中提取）
+const availableOwnerDepts = computed(() => {
+  if (!isSecondaryCollege.value || !props.viewingRole) return []
+  
+  const currentYear = timeContext.currentYear
+  const realYear = timeContext.realCurrentYear
+  
+  // 获取当前学院作为责任部门的所有指标的来源部门
+  const ownerDepts = new Set<string>()
+  strategicStore.indicators.forEach(i => {
+    const indicatorYear = i.year || realYear
+    if (indicatorYear === currentYear && 
+        i.responsibleDept === props.viewingRole && 
+        i.ownerDept) {
+      ownerDepts.add(i.ownerDept)
+    }
+  })
+  
+  return Array.from(ownerDepts).sort()
+})
+
+// 初始化来源部门筛选（默认选中第一个）
+const initOwnerDeptFilter = () => {
+  if (isSecondaryCollege.value && availableOwnerDepts.value.length > 0 && !filterOwnerDept.value) {
+    filterOwnerDept.value = availableOwnerDepts.value[0]
+  }
+}
 
 // 重置筛选条件
 const resetFilters = () => {
   filterType2.value = ''
   filterType1.value = ''
   filterDept.value = ''
+  // 学院重置时恢复默认来源部门
+  if (isSecondaryCollege.value && availableOwnerDepts.value.length > 0) {
+    filterOwnerDept.value = availableOwnerDepts.value[0]
+  } else {
+    filterOwnerDept.value = ''
+  }
 }
 
 // 职能部门列表（从配置文件导入）
@@ -197,6 +239,9 @@ const currentTask = computed(() => taskList.value[currentTaskIndex.value] || {
 
 // 从 Store 获取指标列表（带里程碑），按任务类型和战略任务分组排序，并应用筛选
 const indicators = computed(() => {
+  // 初始化来源部门筛选
+  initOwnerDeptFilter()
+  
   let list = strategicStore.indicators.map(i => ({
     ...i,
     // 保持 id 为字符串类型，避免 "301-1" 这样的 id 转换成 NaN
@@ -233,6 +278,10 @@ const indicators = computed(() => {
   }
   if (filterDept.value) {
     list = list.filter(i => i.responsibleDept === filterDept.value)
+  }
+  // 学院角色：按来源部门筛选
+  if (isSecondaryCollege.value && filterOwnerDept.value) {
+    list = list.filter(i => i.ownerDept === filterOwnerDept.value)
   }
 
   // 先按 type2（任务类型）排序，再按 taskContent（战略任务）排序
@@ -1126,6 +1175,17 @@ const handleWithdrawAll = () => {
               <el-select v-model="filterType2" placeholder="全部类型" clearable style="width: 140px;">
                 <el-option label="发展性" value="发展性" />
                 <el-option label="基础性" value="基础性" />
+              </el-select>
+            </el-form-item>
+            <!-- 来源部门筛选（仅学院可见） -->
+            <el-form-item label="来源部门" v-if="isSecondaryCollege && availableOwnerDepts.length > 0">
+              <el-select v-model="filterOwnerDept" placeholder="选择来源部门" style="width: 200px;">
+                <el-option 
+                  v-for="dept in availableOwnerDepts" 
+                  :key="dept" 
+                  :label="dept" 
+                  :value="dept" 
+                />
               </el-select>
             </el-form-item>
             <el-form-item label="责任部门" v-if="showResponsibleDeptColumn">
