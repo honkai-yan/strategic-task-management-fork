@@ -16,11 +16,6 @@
     "type-check": "vue-tsc --noEmit",
     "test": "vitest --run",
     "test:watch": "vitest",
-    "sync-db": "node scripts/sync-all.js",
-    "verify": "node scripts/verify.js",
-    "db:setup": "node database/db-setup.js",
-    "db:reset": "node database/db-setup.js --reset --seed",
-    "server": "node server/index.js",
     "prepare": "husky"
   },
   "dependencies": {
