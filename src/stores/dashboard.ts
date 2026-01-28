@@ -532,7 +532,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
       // TODO: Replace with actual API call
       const response = await fetch('/api/dashboard', {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
       })
 
@@ -555,7 +555,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
       // TODO: Replace with actual API call
       const response = await fetch('/api/dashboard/department-progress', {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
       })
 
@@ -573,7 +573,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
       // TODO: Replace with actual API call
       const response = await fetch('/api/dashboard/recent-activities', {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
       })
 
@@ -598,7 +598,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
     try {
       const response = await fetch(`/api/dashboard/export/${format}`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
       })
 

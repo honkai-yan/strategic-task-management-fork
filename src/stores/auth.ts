@@ -181,10 +181,10 @@ export const useAuthStore = defineStore('auth', () => {
     // 清除 TokenManager 中的 Token
     tokenManager.clearAccessToken()
 
-    // 清除 localStorage 中的用户信息
-    // 注意: auth_token 已经不再存储在 localStorage 中
+    // 清除 localStorage 中的用户信息和token
     localStorage.removeItem('currentUser')
-
+    localStorage.removeItem('token')
+    
     // 防御性清理: 确保旧的 auth_token 也被清除
     localStorage.removeItem('auth_token')
 
