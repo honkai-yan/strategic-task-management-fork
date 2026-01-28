@@ -127,7 +127,8 @@
                 :loading="loading"
                 :disabled="isLoginLocked"
                 class="login-btn"
-                @click="handleLogin"
+                @click.prevent="handleLogin"
+                native-type="button"
               >
                 {{ loading ? '登录中...' : (isLoginLocked ? '账户已锁定' : '登 录') }}
               </el-button>
@@ -325,6 +326,10 @@ const userDatabase = [
 ]
 
 const handleLogin = async () => {
+  console.log('🔍 [Login] 登录按钮被点击')
+  console.log('📝 [Login] 表单数据:', loginForm)
+  console.log('🔒 [Login] 锁定状态:', isLoginLocked.value)
+  
   if (isLoginLocked.value) {
     ElMessage.error('账户已锁定，请稍后再试')
     return
