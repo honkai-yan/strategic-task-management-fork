@@ -1,11 +1,11 @@
 /**
  * 历史年份指标数据 - 兼容性导出
- * 
- * @deprecated 此文件已废弃，请使用以下导入方式：
- * - 完整数据：import { indicators2023, ... } from '@/data/indicators'
- * - 降级数据：import { allMockIndicators, ... } from '@/data/mockIndicators'
- * 
- * 降级机制使用 mockIndicators.ts 中的精简数据
+ *
+ * ⚠️ 已废弃：现在所有数据都从后端真实数据库获取
+ * 数据库：PostgreSQL @ 175.24.139.148:8386/strategic
+ *
+ * @deprecated 此文件已废弃，请使用后端API获取真实数据
+ * @see src/api/fallback.ts 降级机制已禁用
  */
 
 // 从原位置重新导出（保持向后兼容）

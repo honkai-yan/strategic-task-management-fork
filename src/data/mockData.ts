@@ -1,6 +1,10 @@
 /**
- * @deprecated 此文件已废弃,系统现在使用真实数据库数据
- * 保留仅用于向后兼容和测试
+ * ⚠️ 已废弃：现在所有数据都从后端真实数据库获取
+ * 数据库：PostgreSQL @ 175.24.139.148:8386/strategic
+ *
+ * @deprecated 此文件已废弃，请使用后端API获取真实数据
+ * @see src/api/fallback.ts 降级机制已禁用
+ * 保留仅用于向后兼容，建议后续版本删除此文件
  */
 import type { DashboardData, Indicator, DepartmentProgress, PendingApproval, TabItem, RoleOption } from '@/types'
 

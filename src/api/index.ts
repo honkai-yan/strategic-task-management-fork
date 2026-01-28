@@ -3,7 +3,6 @@ import type { AxiosError } from 'axios'
 import type { ApiResponse } from '@/types'
 import { useAuthStore } from '@/stores/auth'
 import { generateSignature } from '@/utils/security'
-import { fallbackService, getFallbackReason } from './fallback'
 import { logger } from '@/utils/logger'
 import { createRetryInterceptor, DEFAULT_RETRY_CONFIG } from './retry'
 import {
@@ -120,23 +119,6 @@ api.interceptors.request.use(
       }
     })
 
-    // 检查是否强制使用模拟数据
-    if (fallbackService.isForceMock()) {
-      const url = config.url || ''
-      const mockResponse = fallbackService.getMockData(url)
-
-      if (mockResponse) {
-        fallbackService.logFallback(url, '环境变量 VITE_USE_MOCK=true 强制使用模拟数据')
-        logger.debug('🎭 [API Mock] 使用模拟数据:', url)
-        // 通过抛出特殊错误来中断请求并返回模拟数据
-        const error = new axios.Cancel('FORCE_MOCK') as unknown as Error & {
-          mockResponse: typeof mockResponse
-        }
-        error.mockResponse = mockResponse
-        throw error
-      }
-    }
-
     const authStore = useAuthStore()
 
     // 添加 Token
@@ -188,10 +170,6 @@ api.interceptors.request.use(
   },
   error => {
     logger.error('❌ [API Request Error]', error)
-    // 处理强制模拟数据的情况
-    if (axios.isCancel(error) && (error as unknown as { mockResponse?: unknown }).mockResponse) {
-      return Promise.resolve({ data: (error as unknown as { mockResponse: unknown }).mockResponse })
-    }
     return Promise.reject(error)
   }
 )
@@ -336,25 +314,8 @@ api.interceptors.response.use(
       requestId: error.config?.headers?.['X-Request-ID']
     })
 
-    // 检查是否应该降级
-    if (fallbackService.shouldFallback(error)) {
-      const url = error.config?.url || ''
-      const reason = getFallbackReason(error)
-
-      // 记录降级日志
-      fallbackService.logFallback(url, reason)
-      logger.debug('🎭 [API Fallback] 降级到模拟数据:', url, '原因:', reason)
-
-      // 尝试获取模拟数据
-      const mockResponse = fallbackService.getMockData(url)
-      if (mockResponse) {
-        logger.debug('✅ [API Fallback] 使用模拟数据成功')
-        // 返回模拟数据作为成功响应
-        return Promise.resolve({ data: mockResponse })
-      } else {
-        logger.warn('⚠️ [API Fallback] 无可用的模拟数据')
-      }
-    }
+    // ⚠️ 降级机制已禁用，所有数据从后端API获取
+    // 如果后端服务不可用，将直接返回错误给用户处理
 
     if (error.response?.status === 401) {
       logger.warn('🔒 [API Auth] 401 未授权')

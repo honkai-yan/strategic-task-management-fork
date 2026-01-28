@@ -1,8 +1,11 @@
 /**
  * 统一的模拟指标数据
- * 
- * 用于前端降级机制，当后端 API 不可用时自动切换到本地模拟数据
- * 数据结构与后端 API DTO 保持一致
+ *
+ * ⚠️ 已废弃：现在所有数据都从后端真实数据库获取
+ * 数据库：PostgreSQL @ 175.24.139.148:8386/strategic
+ *
+ * @deprecated 此文件已废弃，请使用后端API获取真实数据
+ * @see src/api/fallback.ts 降级机制已禁用
  */
 import type { StrategicIndicator, Milestone, DashboardData, DepartmentProgress } from '@/types'
 
