@@ -1100,15 +1100,19 @@
             comment: approvalForm.value.rejectReason,
             previousProgress: currentProgress,
             newProgress: pendingProgress,
-          previousStatus: 'pending_approval',
-          newStatus: 'rejected'
-        })
+            previousStatus: 'pending_approval',
+            newStatus: 'rejected'
+          })
 
-        ElMessage.info('已驳回该进度填报')
+          ElMessage.info('已驳回该进度填报')
+        }
+
+        closeApprovalDialog()
+        updateEditTime()
+      } catch (error) {
+        console.error('审批操作失败:', error)
+        ElMessage.error('审批操作失败，请重试')
       }
-
-      closeApprovalDialog()
-      updateEditTime()
     }).catch(() => {
       // 用户取消操作
     })
