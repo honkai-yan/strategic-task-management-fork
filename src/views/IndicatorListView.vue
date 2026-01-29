@@ -470,28 +470,33 @@ const handleBatchFillByTask = (group: { taskContent: string; rows: StrategicIndi
         return true
       }
     }
-  ).then(({ value: submitComment }) => {
-    pendingRows.forEach(row => {
-      // 更新指标状态为待审批
-      strategicStore.updateIndicator(row.id.toString(), {
-        progressApprovalStatus: 'pending'
-      })
+  ).then(async ({ value: submitComment }) => {
+    try {
+      for (const row of pendingRows) {
+        // 更新指标状态为待审批
+        await strategicStore.updateIndicator(row.id.toString(), {
+          progressApprovalStatus: 'pending'
+        })
 
-      // 添加审计日志
-      strategicStore.addStatusAuditEntry(row.id.toString(), {
-        operator: authStore.userName || 'unknown',
-        operatorName: authStore.userName || '未知用户',
-        operatorDept: authStore.userDepartment || '未知部门',
-        action: 'submit',
-        comment: submitComment || '批量提交进度填报',
-        previousProgress: row.progress,
-        newProgress: row.pendingProgress,
-        previousStatus: row.progressApprovalStatus,
-        newStatus: 'pending'
-      })
-    })
+        // 添加审计日志
+        strategicStore.addStatusAuditEntry(row.id.toString(), {
+          operator: authStore.userName || 'unknown',
+          operatorName: authStore.userName || '未知用户',
+          operatorDept: authStore.userDepartment || '未知部门',
+          action: 'submit',
+          comment: submitComment || '批量提交进度填报',
+          previousProgress: row.progress,
+          newProgress: row.pendingProgress,
+          previousStatus: row.progressApprovalStatus,
+          newStatus: 'pending'
+        })
+      }
 
-    ElMessage.success(`成功提交${pendingRows.length}项指标进度`)
+      ElMessage.success(`成功提交${pendingRows.length}项指标进度`)
+    } catch (error) {
+      logger.error('Failed to submit indicators:', error)
+      ElMessage.error('提交失败，请稍后重试')
+    }
   })
 }
 

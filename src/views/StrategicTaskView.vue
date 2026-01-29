@@ -448,7 +448,7 @@
     }
 
     // 更新指标的里程碑
-    strategicStore.updateIndicator(editingMilestoneIndicator.value.id.toString(), {
+    await strategicStore.updateIndicator(editingMilestoneIndicator.value.id.toString(), {
       milestones: [...editingMilestones.value]
     })
 
@@ -457,7 +457,11 @@
     editingMilestoneIndicator.value = null
     editingMilestones.value = []
     updateEditTime()
+  } catch (error) {
+    logger.error('Failed to save milestones:', error)
+    ElMessage.error('里程碑更新失败')
   }
+}
 
   // 取消里程碑编辑
   const cancelMilestoneEdit = () => {
@@ -666,28 +670,33 @@
         return
     }
     
-    // 使用 Store 更新指标
-    const updates: Partial<StrategicIndicator> = {}
-    
-    if (field === 'type1' || field === 'type2') {
-        updates[field] = editingIndicatorValue.value
-        // 更新 isQualitative 状态如果修改的是 type1
-        if (field === 'type1') {
-            updates.isQualitative = editingIndicatorValue.value === '定性'
-        }
-    } else {
-        (updates as any)[field] = editingIndicatorValue.value
-    }
+    try {
+      // 使用 Store 更新指标
+      const updates: Partial<StrategicIndicator> = {}
+      
+      if (field === 'type1' || field === 'type2') {
+          updates[field] = editingIndicatorValue.value
+          // 更新 isQualitative 状态如果修改的是 type1
+          if (field === 'type1') {
+              updates.isQualitative = editingIndicatorValue.value === '定性'
+          }
+      } else {
+          (updates as any)[field] = editingIndicatorValue.value
+      }
 
-    // 如果编辑的是核心指标名称，且当前没有指标类型，则设置默认类型为"定性"
-    if (field === 'name' && !row.type1) {
-        updates.type1 = '定性'
-        updates.isQualitative = true
+      // 如果编辑的是核心指标名称，且当前没有指标类型，则设置默认类型为"定性"
+      if (field === 'name' && !row.type1) {
+          updates.type1 = '定性'
+          updates.isQualitative = true
+      }
+      
+      await strategicStore.updateIndicator(row.id.toString(), updates)
+      cancelIndicatorEdit()
+      updateEditTime()
+    } catch (error) {
+      logger.error('Failed to save indicator:', error)
+      // 错误已经在Store中显示，这里不需要再显示
     }
-    
-    strategicStore.updateIndicator(row.id.toString(), updates)
-    cancelIndicatorEdit()
-    updateEditTime()
   }
   
   // 取消指标编辑
@@ -1049,46 +1058,47 @@
         cancelButtonText: '取消',
         type: isApprove ? 'success' : 'warning'
       }
-    ).then(() => {
-      if (isApprove) {
-        // 审批通过：更新实际进度，清除待审批状态
-        strategicStore.updateIndicator(indicator.id.toString(), {
-          progress: pendingProgress,
-          progressApprovalStatus: 'approved',
-          pendingProgress: undefined,
-          pendingRemark: undefined,
-          pendingAttachments: undefined
-        })
+    ).then(async () => {
+      try {
+        if (isApprove) {
+          // 审批通过：更新实际进度，清除待审批状态
+          await strategicStore.updateIndicator(indicator.id.toString(), {
+            progress: pendingProgress,
+            progressApprovalStatus: 'approved',
+            pendingProgress: undefined,
+            pendingRemark: undefined,
+            pendingAttachments: undefined
+          })
 
-        // 添加审计日志
-        strategicStore.addStatusAuditEntry(indicator.id.toString(), {
-          operator: authStore.userName || 'unknown',
-          operatorName: authStore.userName || '未知用户',
-          operatorDept: authStore.userDepartment || '战略发展部',
-          action: 'approve',
-          comment: approvalForm.value.comment || '审批通过',
-          previousProgress: currentProgress,
-          newProgress: pendingProgress,
-          previousStatus: 'pending_approval',
-          newStatus: 'active'
-        })
+          // 添加审计日志
+          strategicStore.addStatusAuditEntry(indicator.id.toString(), {
+            operator: authStore.userName || 'unknown',
+            operatorName: authStore.userName || '未知用户',
+            operatorDept: authStore.userDepartment || '战略发展部',
+            action: 'approve',
+            comment: approvalForm.value.comment || '审批通过',
+            previousProgress: currentProgress,
+            newProgress: pendingProgress,
+            previousStatus: 'pending_approval',
+            newStatus: 'active'
+          })
 
-        ElMessage.success('审批通过，进度已更新')
-      } else {
-        // 审批驳回：设置驳回状态，保留待审批数据供查看
-        strategicStore.updateIndicator(indicator.id.toString(), {
-          progressApprovalStatus: 'rejected'
-        })
+          ElMessage.success('审批通过，进度已更新')
+        } else {
+          // 审批驳回：设置驳回状态，保留待审批数据供查看
+          await strategicStore.updateIndicator(indicator.id.toString(), {
+            progressApprovalStatus: 'rejected'
+          })
 
-        // 添加审计日志
-        strategicStore.addStatusAuditEntry(indicator.id.toString(), {
-          operator: authStore.userName || 'unknown',
-          operatorName: authStore.userName || '未知用户',
-          operatorDept: authStore.userDepartment || '战略发展部',
-          action: 'reject',
-          comment: approvalForm.value.rejectReason,
-          previousProgress: currentProgress,
-          newProgress: pendingProgress,
+          // 添加审计日志
+          strategicStore.addStatusAuditEntry(indicator.id.toString(), {
+            operator: authStore.userName || 'unknown',
+            operatorName: authStore.userName || '未知用户',
+            operatorDept: authStore.userDepartment || '战略发展部',
+            action: 'reject',
+            comment: approvalForm.value.rejectReason,
+            previousProgress: currentProgress,
+            newProgress: pendingProgress,
           previousStatus: 'pending_approval',
           newStatus: 'rejected'
         })
@@ -1137,37 +1147,42 @@
           cancelButtonText: '取消',
           type: 'info'
         }
-      ).then(() => {
-        // 为每个目标部门创建指标副本
-        pendingRows.forEach(row => {
-          // 更新原指标状态
-          strategicStore.updateIndicator(row.id.toString(), { canWithdraw: false })
-          
-          // 为每个额外的目标部门创建副本（第一个部门使用原指标）
-          distributeTarget.value.forEach((dept, index) => {
-            if (index === 0) {
-              // 第一个部门更新原指标的责任部门
-              strategicStore.updateIndicator(row.id.toString(), { 
-                responsibleDept: dept,
-                ownerDept: dept
-              })
-            } else {
-              // 其他部门创建新的指标副本
-              strategicStore.addIndicator({
-                ...row,
-                id: `${Date.now()}-${index}-${row.id}`,
-                responsibleDept: dept,
-                ownerDept: dept,
-                canWithdraw: false,
-                progress: 0,
-                statusAudit: []
-              })
+      ).then(async () => {
+        try {
+          // 为每个目标部门创建指标副本
+          for (const row of pendingRows) {
+            // 更新原指标状态
+            await strategicStore.updateIndicator(row.id.toString(), { canWithdraw: false })
+            
+            // 为每个额外的目标部门创建副本（第一个部门使用原指标）
+            for (const [index, dept] of distributeTarget.value.entries()) {
+              if (index === 0) {
+                // 第一个部门更新原指标的责任部门
+                await strategicStore.updateIndicator(row.id.toString(), { 
+                  responsibleDept: dept,
+                  ownerDept: dept
+                })
+              } else {
+                // 其他部门创建新的指标副本
+                strategicStore.addIndicator({
+                  ...row,
+                  id: `${Date.now()}-${index}-${row.id}`,
+                  responsibleDept: dept,
+                  ownerDept: dept,
+                  canWithdraw: false,
+                  progress: 0,
+                  statusAudit: []
+                })
+              }
             }
-          })
-        })
-        ElMessage.success(`已成功下发 ${pendingRows.length} 个指标到 ${distributeTarget.value.length} 个部门`)
-        closeDistributeDialog()
-        updateEditTime()
+          }
+          ElMessage.success(`已成功下发 ${pendingRows.length} 个指标到 ${distributeTarget.value.length} 个部门`)
+          closeDistributeDialog()
+          updateEditTime()
+        } catch (error) {
+          logger.error('Failed to distribute indicators:', error)
+          ElMessage.error('下发失败，请稍后重试')
+        }
       }).catch(() => {
         // 用户取消操作
       })
@@ -1185,35 +1200,40 @@
         cancelButtonText: '取消',
         type: 'info'
       }
-    ).then(() => {
-      const row = currentDistributeItem.value!
-      // 更新原指标状态
-      strategicStore.updateIndicator(row.id.toString(), { canWithdraw: false })
-      
-      // 为每个目标部门处理
-      distributeTarget.value.forEach((dept, index) => {
-        if (index === 0) {
-          // 第一个部门更新原指标的责任部门
-          strategicStore.updateIndicator(row.id.toString(), { 
-            responsibleDept: dept,
-            ownerDept: dept
-          })
-        } else {
-          // 其他部门创建新的指标副本
-          strategicStore.addIndicator({
-            ...row,
-            id: `${Date.now()}-${index}-${row.id}`,
-            responsibleDept: dept,
-            ownerDept: dept,
-            canWithdraw: false,
-            progress: 0,
-            statusAudit: []
-          })
+    ).then(async () => {
+      try {
+        const row = currentDistributeItem.value!
+        // 更新原指标状态
+        await strategicStore.updateIndicator(row.id.toString(), { canWithdraw: false })
+        
+        // 为每个目标部门处理
+        for (const [index, dept] of distributeTarget.value.entries()) {
+          if (index === 0) {
+            // 第一个部门更新原指标的责任部门
+            await strategicStore.updateIndicator(row.id.toString(), { 
+              responsibleDept: dept,
+              ownerDept: dept
+            })
+          } else {
+            // 其他部门创建新的指标副本
+            strategicStore.addIndicator({
+              ...row,
+              id: `${Date.now()}-${index}-${row.id}`,
+              responsibleDept: dept,
+              ownerDept: dept,
+              canWithdraw: false,
+              progress: 0,
+              statusAudit: []
+            })
+          }
         }
-      })
-      ElMessage.success(`指标已成功下发到 ${distributeTarget.value.length} 个部门`)
-      closeDistributeDialog()
-      updateEditTime()
+        ElMessage.success(`指标已成功下发到 ${distributeTarget.value.length} 个部门`)
+        closeDistributeDialog()
+        updateEditTime()
+      } catch (error) {
+        logger.error('Failed to distribute indicator:', error)
+        ElMessage.error('下发失败，请稍后重试')
+      }
     }).catch(() => {
       // 用户取消操作
     })

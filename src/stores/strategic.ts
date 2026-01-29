@@ -256,27 +256,60 @@ export const useStrategicStore = defineStore('strategic', () => {
     if (index !== -1) {
       const indicator = indicators.value[index]
       if (indicator) {
+        // 保存原始状态用于回滚
+        const originalState = { ...indicator }
+        
         // 先更新本地状态
         Object.assign(indicator, updates)
         // 强制触发响应式更新（创建新数组引用）
         indicators.value = [...indicators.value]
         
-        // 如果更新的是 canWithdraw 状态，需要同步到后端（必须等待完成）
-        if ('canWithdraw' in updates) {
+        // 检查是否有需要同步到后端的字段
+        const backendFields = [
+          'canWithdraw', 'indicatorDesc', 'weightPercent', 'sortOrder', 'remark', 
+          'parentIndicatorId', 'level', 'ownerOrgId', 'targetOrgId', 'year',
+          'status', 'progress', 'progressApprovalStatus', 'pendingProgress', 
+          'pendingRemark', 'pendingAttachments', 'targetValue', 'actualValue', 
+          'unit', 'responsiblePerson'
+        ]
+        const hasBackendUpdates = Object.keys(updates).some(key => backendFields.includes(key))
+        
+        if (hasBackendUpdates) {
           try {
-            // 调用后端API更新指标状态
+            // 调用后端API更新指标
             const { default: indicatorApi } = await import('@/api/indicator')
-            const updateRequest = {
-              canWithdraw: updates.canWithdraw
-            }
+            
+            // 构建后端更新请求（只包含后端支持的字段）
+            const updateRequest: any = {}
+            if ('canWithdraw' in updates) updateRequest.canWithdraw = updates.canWithdraw
+            if ('indicatorDesc' in updates) updateRequest.indicatorDesc = updates.indicatorDesc
+            if ('weightPercent' in updates) updateRequest.weightPercent = updates.weightPercent
+            if ('sortOrder' in updates) updateRequest.sortOrder = updates.sortOrder
+            if ('remark' in updates) updateRequest.remark = updates.remark
+            if ('parentIndicatorId' in updates) updateRequest.parentIndicatorId = updates.parentIndicatorId
+            if ('level' in updates) updateRequest.level = updates.level
+            if ('ownerOrgId' in updates) updateRequest.ownerOrgId = updates.ownerOrgId
+            if ('targetOrgId' in updates) updateRequest.targetOrgId = updates.targetOrgId
+            if ('year' in updates) updateRequest.year = updates.year
+            if ('status' in updates) updateRequest.status = updates.status
+            if ('progress' in updates) updateRequest.progress = updates.progress
+            if ('progressApprovalStatus' in updates) updateRequest.progressApprovalStatus = updates.progressApprovalStatus
+            if ('pendingProgress' in updates) updateRequest.pendingProgress = updates.pendingProgress
+            if ('pendingRemark' in updates) updateRequest.pendingRemark = updates.pendingRemark
+            if ('pendingAttachments' in updates) updateRequest.pendingAttachments = updates.pendingAttachments
+            if ('targetValue' in updates) updateRequest.targetValue = updates.targetValue
+            if ('actualValue' in updates) updateRequest.actualValue = updates.actualValue
+            if ('unit' in updates) updateRequest.unit = updates.unit
+            if ('responsiblePerson' in updates) updateRequest.responsiblePerson = updates.responsiblePerson
+            
             await indicatorApi.updateIndicator(id, updateRequest)
-            logger.info(`[Strategic Store] Successfully synced canWithdraw status to backend for indicator ${id}`)
+            logger.info(`[Strategic Store] Successfully synced indicator ${id} to backend`, updateRequest)
           } catch (err) {
-            logger.error(`[Strategic Store] Failed to sync canWithdraw status to backend for indicator ${id}:`, err)
+            logger.error(`[Strategic Store] Failed to sync indicator ${id} to backend:`, err)
             // 如果后端同步失败，回滚本地状态
-            Object.assign(indicator, { canWithdraw: !updates.canWithdraw })
+            Object.assign(indicator, originalState)
             indicators.value = [...indicators.value]
-            ElMessage.error('状态更新失败，请稍后重试')
+            ElMessage.error('数据更新失败，请稍后重试')
             throw err // 抛出错误，让调用方知道失败了
           }
         }
