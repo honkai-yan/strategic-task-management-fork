@@ -33,6 +33,13 @@ app.config.errorHandler = (err, vm, info) => {
 // Mount app
 app.mount('#app')
 
+// 打印应用版本信息
+const version = import.meta.env.VITE_APP_VERSION || '1.0.1'
+const buildTime = new Date().toISOString()
+console.log(`%c🚀 战略指标管理系统 SISM v${version}`, 'color: #409EFF; font-size: 16px; font-weight: bold')
+console.log(`%c📅 构建时间: ${buildTime}`, 'color: #67C23A; font-size: 12px')
+console.log(`%c🌍 环境: ${import.meta.env.MODE}`, 'color: #E6A23C; font-size: 12px')
+
 // 初始化性能监控
 // **Validates: Requirements 4.1.1, 4.1.2, 4.1.3, 4.1.4, 4.1.5**
 performanceMonitor.init({
