@@ -428,7 +428,7 @@
   }
 
   // 保存里程碑编辑
-  const saveMilestoneEdit = () => {
+  const saveMilestoneEdit = async () => {
     if (!editingMilestoneIndicator.value) return
 
     // 验证里程碑数据
@@ -447,21 +447,22 @@
       }
     }
 
-    // 更新指标的里程碑
-    await strategicStore.updateIndicator(editingMilestoneIndicator.value.id.toString(), {
-      milestones: [...editingMilestones.value]
-    })
+    try {
+      // 更新指标的里程碑
+      await strategicStore.updateIndicator(editingMilestoneIndicator.value.id.toString(), {
+        milestones: [...editingMilestones.value]
+      })
 
-    ElMessage.success('里程碑已更新')
-    milestoneEditDialogVisible.value = false
-    editingMilestoneIndicator.value = null
-    editingMilestones.value = []
-    updateEditTime()
-  } catch (error) {
-    logger.error('Failed to save milestones:', error)
-    ElMessage.error('里程碑更新失败')
+      ElMessage.success('里程碑已更新')
+      milestoneEditDialogVisible.value = false
+      editingMilestoneIndicator.value = null
+      editingMilestones.value = []
+      updateEditTime()
+    } catch (error) {
+      console.error('Failed to save milestones:', error)
+      ElMessage.error('里程碑更新失败')
+    }
   }
-}
 
   // 取消里程碑编辑
   const cancelMilestoneEdit = () => {
@@ -661,7 +662,7 @@
   }
   
   // 保存指标编辑
-  const saveIndicatorEdit = (row: StrategicIndicator, field: string) => {
+  const saveIndicatorEdit = async (row: StrategicIndicator, field: string) => {
     // 如果已经在取消过程中或值无效，直接退出
     if (editingIndicatorId.value === null) return; 
   
@@ -694,7 +695,7 @@
       cancelIndicatorEdit()
       updateEditTime()
     } catch (error) {
-      logger.error('Failed to save indicator:', error)
+      console.error('Failed to save indicator:', error)
       // 错误已经在Store中显示，这里不需要再显示
     }
   }
