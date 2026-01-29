@@ -251,7 +251,7 @@ export const useStrategicStore = defineStore('strategic', () => {
     indicators.value.push(indicator)
   }
 
-  const updateIndicator = async (id: string, updates: Partial<StrategicIndicator>) => {
+  const updateIndicator = (id: string, updates: Partial<StrategicIndicator>) => {
     const index = indicators.value.findIndex(i => i.id === id)
     if (index !== -1) {
       const indicator = indicators.value[index]
@@ -261,21 +261,24 @@ export const useStrategicStore = defineStore('strategic', () => {
         // 强制触发响应式更新（创建新数组引用）
         indicators.value = [...indicators.value]
         
-        // 如果更新的是 canWithdraw 状态，需要同步到后端
+        // 如果更新的是 canWithdraw 状态，需要同步到后端（异步执行，不阻塞）
         if ('canWithdraw' in updates) {
-          try {
-            // 调用后端API更新指标状态
-            const { default: indicatorApi } = await import('@/api/indicator')
-            const updateRequest = {
-              canWithdraw: updates.canWithdraw
+          // 使用立即执行的异步函数，不阻塞主流程
+          ;(async () => {
+            try {
+              // 调用后端API更新指标状态
+              const { default: indicatorApi } = await import('@/api/indicator')
+              const updateRequest = {
+                canWithdraw: updates.canWithdraw
+              }
+              await indicatorApi.updateIndicator(id, updateRequest)
+              logger.info(`[Strategic Store] Successfully synced canWithdraw status to backend for indicator ${id}`)
+            } catch (err) {
+              logger.error(`[Strategic Store] Failed to sync canWithdraw status to backend for indicator ${id}:`, err)
+              // 即使后端同步失败，也保持前端状态更新（降级处理）
+              ElMessage.warning('状态更新失败，刷新页面后可能恢复原状态')
             }
-            await indicatorApi.updateIndicator(id, updateRequest)
-            logger.info(`[Strategic Store] Successfully synced canWithdraw status to backend for indicator ${id}`)
-          } catch (err) {
-            logger.error(`[Strategic Store] Failed to sync canWithdraw status to backend for indicator ${id}:`, err)
-            // 即使后端同步失败，也保持前端状态更新（降级处理）
-            ElMessage.warning('状态更新失败，刷新页面后可能恢复原状态')
-          }
+          })()
         }
       }
     }
