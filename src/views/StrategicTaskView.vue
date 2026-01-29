@@ -304,7 +304,7 @@
   }
 
   // 撤回整个任务（撤回同一战略任务下的所有指标）
-  const handleWithdrawTask = (row: StrategicIndicator) => {
+  const handleWithdrawTask = async (row: StrategicIndicator) => {
     const group = getTaskGroup(row)
     const distributedRows = group.rows.filter(r => !r.canWithdraw)
     
@@ -321,12 +321,30 @@
         cancelButtonText: '取消',
         type: 'warning'
       }
-    ).then(() => {
-      distributedRows.forEach(r => {
-        strategicStore.updateIndicator(r.id.toString(), { canWithdraw: true })
+    ).then(async () => {
+      // 显示加载状态
+      const loading = ElMessage({
+        message: '正在撤回指标...',
+        type: 'info',
+        duration: 0
       })
-      ElMessage.success(`已成功撤回 ${distributedRows.length} 个指标`)
-      updateEditTime()
+      
+      try {
+        // 等待所有指标撤回完成
+        await Promise.all(
+          distributedRows.map(r => 
+            strategicStore.updateIndicator(r.id.toString(), { canWithdraw: true })
+          )
+        )
+        
+        loading.close()
+        ElMessage.success(`已成功撤回 ${distributedRows.length} 个指标`)
+        updateEditTime()
+      } catch (err) {
+        loading.close()
+        ElMessage.error('撤回失败，请稍后重试')
+        console.error('Withdraw task failed:', err)
+      }
     }).catch(() => {
       // 用户取消操作
     })
@@ -1210,7 +1228,7 @@
   }
   
   // 单个撤回
-  const handleWithdraw = (row: StrategicIndicator) => {
+  const handleWithdraw = async (row: StrategicIndicator) => {
     ElMessageBox.confirm(
       `撤回后，该指标将重新变为可下发状态。确认撤回 "${row.name}"？`,
       '撤回操作',
@@ -1219,17 +1237,22 @@
         cancelButtonText: '取消',
         type: 'warning'
       }
-    ).then(() => {
-      strategicStore.updateIndicator(row.id.toString(), { canWithdraw: true })
-      ElMessage.info('指标已撤回')
-      updateEditTime()
+    ).then(async () => {
+      try {
+        await strategicStore.updateIndicator(row.id.toString(), { canWithdraw: true })
+        ElMessage.info('指标已撤回')
+        updateEditTime()
+      } catch (err) {
+        ElMessage.error('撤回失败，请稍后重试')
+        console.error('Withdraw failed:', err)
+      }
     }).catch(() => {
       // 用户取消操作
     })
   }
 
   // 全部下发（下发当前界面所有未下发的指标）
-  const handleDistributeAll = () => {
+  const handleDistributeAll = async () => {
     const pendingRows = indicators.value.filter(r => r.canWithdraw && r.name) // 只下发有核心指标的记录
     if (pendingRows.length === 0) {
       ElMessage.warning('当前没有待下发的指标')
@@ -1244,19 +1267,37 @@
         cancelButtonText: '取消',
         type: 'info'
       }
-    ).then(() => {
-      pendingRows.forEach(row => {
-        strategicStore.updateIndicator(row.id.toString(), { canWithdraw: false })
+    ).then(async () => {
+      // 显示加载状态
+      const loading = ElMessage({
+        message: '正在下发指标...',
+        type: 'info',
+        duration: 0
       })
-      ElMessage.success(`已成功下发 ${pendingRows.length} 个指标`)
-      updateEditTime()
+      
+      try {
+        // 等待所有指标下发完成
+        await Promise.all(
+          pendingRows.map(row => 
+            strategicStore.updateIndicator(row.id.toString(), { canWithdraw: false })
+          )
+        )
+        
+        loading.close()
+        ElMessage.success(`已成功下发 ${pendingRows.length} 个指标`)
+        updateEditTime()
+      } catch (err) {
+        loading.close()
+        ElMessage.error('下发失败，请稍后重试')
+        console.error('Distribute all failed:', err)
+      }
     }).catch(() => {
       // 用户取消操作
     })
   }
 
   // 全部撤回（撤回当前界面所有已下发的指标）
-  const handleWithdrawAll = () => {
+  const handleWithdrawAll = async () => {
     const distributedRows = indicators.value.filter(r => !r.canWithdraw)
     if (distributedRows.length === 0) {
       ElMessage.warning('当前没有已下发的指标')
@@ -1271,13 +1312,30 @@
         cancelButtonText: '取消',
         type: 'warning'
       }
-    ).then(() => {
-      distributedRows.forEach(row => {
-        strategicStore.updateIndicator(row.id.toString(), { canWithdraw: true })
+    ).then(async () => {
+      // 显示加载状态
+      const loading = ElMessage({
+        message: '正在撤回指标...',
+        type: 'info',
+        duration: 0
       })
       
-      ElMessage.success(`已成功撤回 ${distributedRows.length} 个指标`)
-      updateEditTime()
+      try {
+        // 等待所有指标撤回完成
+        await Promise.all(
+          distributedRows.map(row => 
+            strategicStore.updateIndicator(row.id.toString(), { canWithdraw: true })
+          )
+        )
+        
+        loading.close()
+        ElMessage.success(`已成功撤回 ${distributedRows.length} 个指标`)
+        updateEditTime()
+      } catch (err) {
+        loading.close()
+        ElMessage.error('撤回失败，请稍后重试')
+        console.error('Withdraw failed:', err)
+      }
     }).catch(() => {
       // 用户取消操作
     })
@@ -1298,7 +1356,7 @@
   }
 
   // 按任务整体撤回
-  const handleBatchWithdrawByTask = (group: { taskContent: string; rows: StrategicIndicator[] }) => {
+  const handleBatchWithdrawByTask = async (group: { taskContent: string; rows: StrategicIndicator[] }) => {
     const distributedRows = group.rows.filter(r => !r.canWithdraw)
     if (distributedRows.length === 0) {
       ElMessage.warning('该任务下没有已下发的指标')
@@ -1313,12 +1371,30 @@
         cancelButtonText: '取消',
         type: 'warning'
       }
-    ).then(() => {
-      distributedRows.forEach(row => {
-        strategicStore.updateIndicator(row.id.toString(), { canWithdraw: true })
+    ).then(async () => {
+      // 显示加载状态
+      const loading = ElMessage({
+        message: '正在撤回指标...',
+        type: 'info',
+        duration: 0
       })
-      ElMessage.success(`已成功撤回 ${distributedRows.length} 个指标`)
-      updateEditTime()
+      
+      try {
+        // 等待所有指标撤回完成
+        await Promise.all(
+          distributedRows.map(row => 
+            strategicStore.updateIndicator(row.id.toString(), { canWithdraw: true })
+          )
+        )
+        
+        loading.close()
+        ElMessage.success(`已成功撤回 ${distributedRows.length} 个指标`)
+        updateEditTime()
+      } catch (err) {
+        loading.close()
+        ElMessage.error('撤回失败，请稍后重试')
+        console.error('Batch withdraw failed:', err)
+      }
     }).catch(() => {
       // 用户取消操作
     })
