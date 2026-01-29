@@ -147,6 +147,15 @@ export const indicatorApi = {
   async getDistributedIndicators(parentIndicatorId: string): Promise<ApiResponse<IndicatorVO[]>> {
     return apiService.get<IndicatorVO[]>(`/indicators/${parentIndicatorId}/distributed`)
   },
+
+  /**
+   * 更新指标
+   * @param indicatorId 指标ID
+   * @param updates 更新的字段
+   */
+  async updateIndicator(indicatorId: string, updates: Partial<IndicatorVO>): Promise<ApiResponse<IndicatorVO>> {
+    return apiService.put<IndicatorVO>(`/indicators/${indicatorId}`, updates)
+  },
 }
 
 export default indicatorApi

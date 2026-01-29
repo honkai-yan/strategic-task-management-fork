@@ -288,43 +288,6 @@ const loginRules = {
   ]
 }
 
-// 用户数据库（模拟）
-const userDatabase = [
-  // 战略发展部（管理员）
-  { username: 'admin', password: '123456', role: '战略发展部', department: '战略发展部' },
-  
-  // 职能部门
-  { username: 'dangban', password: '123456', role: '职能部门', department: '党委办公室 | 党委统战部' },
-  { username: 'jiwei', password: '123456', role: '职能部门', department: '纪委办公室 | 监察处' },
-  { username: 'xuanchuan', password: '123456', role: '职能部门', department: '党委宣传部 | 宣传策划部' },
-  { username: 'zuzhi', password: '123456', role: '职能部门', department: '党委组织部 | 党委教师工作部' },
-  { username: 'renli', password: '123456', role: '职能部门', department: '人力资源部' },
-  { username: 'xuegong', password: '123456', role: '职能部门', department: '党委学工部 | 学生工作处' },
-  { username: 'baowei', password: '123456', role: '职能部门', department: '党委保卫部 | 保卫处' },
-  { username: 'zongban', password: '123456', role: '职能部门', department: '学校综合办公室' },
-  { username: 'jiaowu', password: '123456', role: '职能部门', department: '教务处' },
-  { username: 'keji', password: '123456', role: '职能部门', department: '科技处' },
-  { username: 'caiwu', password: '123456', role: '职能部门', department: '财务部' },
-  { username: 'zhaosheng', password: '123456', role: '职能部门', department: '招生工作处' },
-  { username: 'jiuye', password: '123456', role: '职能部门', department: '就业创业指导中心' },
-  { username: 'shiyanshi', password: '123456', role: '职能部门', department: '实验室建设管理处' },
-  { username: 'xinxi', password: '123456', role: '职能部门', department: '数字校园建设办公室' },
-  { username: 'tushuguan', password: '123456', role: '职能部门', department: '图书馆 | 档案馆' },
-  { username: 'houqin', password: '123456', role: '职能部门', department: '后勤资产处' },
-  { username: 'jixu', password: '123456', role: '职能部门', department: '继续教育部' },
-  { username: 'guoji', password: '123456', role: '职能部门', department: '国际合作与交流处' },
-  
-  // 二级学院
-  { username: 'makesi', password: '123456', role: '二级学院', department: '马克思主义学院' },
-  { username: 'gongxue', password: '123456', role: '二级学院', department: '工学院' },
-  { username: 'jisuanji', password: '123456', role: '二级学院', department: '计算机学院' },
-  { username: 'shangxue', password: '123456', role: '二级学院', department: '商学院' },
-  { username: 'wenli', password: '123456', role: '二级学院', department: '文理学院' },
-  { username: 'yishu', password: '123456', role: '二级学院', department: '艺术与科技学院' },
-  { username: 'hangkong', password: '123456', role: '二级学院', department: '航空学院' },
-  { username: 'guojijiaoyu', password: '123456', role: '二级学院', department: '国际教育学院' }
-]
-
 const handleLogin = async () => {
   console.log('🔍 [Login] 登录按钮被点击')
   console.log('📝 [Login] 表单数据:', loginForm)
@@ -359,10 +322,13 @@ const handleLogin = async () => {
 
   try {
     // 调用后端登录API
+    console.log('🚀 [Login] 调用后端登录API...')
     const result = await authStore.login({
       username: loginForm.username,
       password: loginForm.password
     })
+
+    console.log('📦 [Login] 登录结果:', result)
 
     if (result.success) {
       // 登录成功
@@ -386,18 +352,20 @@ const handleLogin = async () => {
         startAutoUnlock()
         ElMessage.error('登录失败次数过多，账户已被临时锁定')
       } else {
-        ElMessage.error(`用户名或密码错误，剩余尝试次数：${remainingAttempts.value}`)
+        const errorMsg = result.error || '用户名或密码错误'
+        ElMessage.error(`${errorMsg}，剩余尝试次数：${remainingAttempts.value}`)
       }
     }
-  } catch (error) {
-    console.error('Login error:', error)
+  } catch (error: any) {
+    console.error('❌ [Login] 登录异常:', error)
     loginErrorCount.value++
     
     if (isLoginLocked.value) {
       startAutoUnlock()
       ElMessage.error('登录失败次数过多，账户已被临时锁定')
     } else {
-      ElMessage.error(`登录失败，剩余尝试次数：${remainingAttempts.value}`)
+      const errorMsg = error.message || error.error || '登录失败，请检查网络连接'
+      ElMessage.error(`${errorMsg}，剩余尝试次数：${remainingAttempts.value}`)
     }
   } finally {
     loading.value = false
